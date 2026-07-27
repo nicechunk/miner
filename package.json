@@ -1,0 +1,22 @@
+{
+  "name": "nicechunk-pouw-miner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "i18n:update": "node scripts/update-locales.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "audit:secrets": "node scripts/audit-secrets.mjs",
+    "check:web": "node scripts/check-web.mjs",
+    "test:browser": "node scripts/test-browser.mjs",
+    "test:compat": "node scripts/test-js-codec-compatibility.mjs",
+    "test:wasm": "node scripts/test-wasm-consistency.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.1",
+    "playwright": "1.60.0"
+  }
+}

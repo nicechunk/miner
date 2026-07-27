@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "softwareVersion": "0.1.0",
+  "protocolVersion": 1,
+  "vmVersion": 1,
+  "costModelVersion": 1,
+  "commit": "unreleased",
+  "available": false,
+  "repository": null,
+  "releaseUrl": null,
+  "artifacts": [],
+  "message": "No public NiceChunk Miner release has been published. Download controls remain disabled until real, tested release assets exist."
+}

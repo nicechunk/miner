@@ -1,0 +1,23 @@
+[package]
+name = "pouw-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Native NiceChunk Proof of Useful Work miner"
+build = "build.rs"
+
+[[bin]]
+name = "nicechunk-miner"
+path = "src/main.rs"
+
+[dependencies]
+base64.workspace = true
+clap.workspace = true
+ctrlc.workspace = true
+pouw-core = { path = "../pouw-core" }
+pouw-search = { path = "../pouw-search" }
+serde.workspace = true
+serde_json.workspace = true
+tempfile = "3.20.0"

@@ -1,0 +1,21 @@
+[package]
+name = "pouw-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Deterministic NiceChunk Proof of Useful Work protocol core"
+
+[features]
+default = ["std"]
+std = ["base64/std", "serde/std", "sha2/std"]
+
+[dependencies]
+base64.workspace = true
+serde.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+serde_json.workspace = true

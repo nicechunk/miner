@@ -1,0 +1,11 @@
+{
+  "website": "https://nicechunk.com/",
+  "miner": "https://nicechunk.com/miner/",
+  "organization": "https://github.com/nicechunk",
+  "source": "https://github.com/nicechunk/miner",
+  "docs": "https://github.com/nicechunk/miner/tree/main/docs",
+  "issues": "https://github.com/nicechunk/miner/issues",
+  "releases": "https://github.com/nicechunk/miner/releases",
+  "publicMinerRepositoryAvailable": true,
+  "sourceNote": "The dedicated NiceChunk Miner source and protocol documentation are public. CLI downloads remain hidden until verified release artifacts are published."
+}

@@ -1,0 +1,13 @@
+/target/
+/.toolchains/
+/.cache/
+/.dependencies/
+/node_modules/
+/web/dist/
+/web/pkg/
+/artifacts/
+/coverage/
+*.chk
+*.ncpow
+*.tmp
+.DS_Store

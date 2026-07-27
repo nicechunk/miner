@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="NiceChunk Proof of Useful Work Miner searches bounded voxel programs for shorter, exactly equivalent encodings. Everything runs locally in your browser." data-i18n-content="meta.description">
+  <meta name="theme-color" content="#0c0e10">
+  <title data-i18n="meta.title">NiceChunk Proof of Useful Work Miner</title>
+  <link rel="icon" type="image/png" href="__LOGO_URL__">
+  <link rel="stylesheet" href="__CSS_URL__">
+</head>
+<body>
+  <a class="skip-link" href="#demo" data-i18n="nav.skip">Skip to browser miner</a>
+
+  <header class="site-header" id="siteHeader">
+    <a class="brand" href="https://nicechunk.com/" aria-label="NiceChunk home" data-i18n-aria-label="nav.homeAria">
+      <img src="__LOGO_URL__" width="44" height="44" alt="NiceChunk" data-i18n-alt="nav.logoAlt">
+      <span class="brand-name" data-i18n="nav.brand">NiceChunk</span>
+    </a>
+    <button id="headerMenuButton" class="site-menu-button" type="button" aria-controls="primaryNav" aria-expanded="false" aria-label="Open navigation" data-i18n-aria-label="nav.menuAria">
+      <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+    </button>
+    <nav id="primaryNav" class="site-nav" aria-label="Primary navigation" data-i18n-aria-label="nav.primaryAria">
+      <div class="nav-links">
+        <a href="https://nicechunk.com/" data-i18n="nav.home">Home</a>
+        <a href="https://nicechunk.com/roadmap/" data-i18n="nav.roadbook">Roadbook</a>
+        <a href="https://nicechunk.com/world_rule/" data-i18n="nav.worldRules">World Rules</a>
+        <a href="https://nicechunk.com/resource_rule/" data-i18n="nav.resources">Resources</a>
+        <a href="https://nicechunk.com/ncm/" data-i18n="nav.ncm">NCM</a>
+        <a href="https://nicechunk.com/ncfm/" data-i18n="nav.ncfm">NCFM</a>
+        <a href="https://nicechunk.com/elements/" data-i18n="nav.elements">Elements</a>
+        <a href="https://nicechunk.com/fairness/" data-i18n="nav.fairness">Fairness</a>
+        <a href="https://nicechunk.com/proof-of-frontier/" data-i18n="nav.proofOfFrontier">Proof</a>
+        <a href="https://nicechunk.com/seed/" data-i18n="nav.seed">Seed</a>
+        <a href="https://nicechunk.com/guardian/" data-i18n="nav.guardians">Guardians</a>
+        <a href="https://nicechunk.com/contracts/" data-i18n="nav.contracts">Contracts</a>
+        <a href="https://nicechunk.com/civilization/" data-i18n="nav.civilization">Civilization</a>
+        <a href="https://nicechunk.com/trust/" data-i18n="nav.trust">Trust</a>
+        <a href="https://nicechunk.com/docs/" data-i18n="nav.docs">Docs</a>
+        <a class="active" href="https://nicechunk.com/miner/" aria-current="page" data-i18n="nav.miner">Miner</a>
+      </div>
+      <div class="nav-actions">
+        <a class="header-action header-whitepaper-action" href="https://nicechunk.com/whitepaper/" data-i18n="nav.whitepaper">Whitepaper</a>
+        <a class="header-action" href="https://nicechunk.com/play/" data-i18n="nav.enterWorld">Enter World</a>
+        <label class="locale-picker">
+          <span class="sr-only" data-i18n="nav.language">Language</span>
+          <select id="localeSelect" aria-label="Language" data-i18n-aria-label="nav.language">
+            <option value="en" data-i18n="languages.en">English</option>
+            <option value="es" data-i18n="languages.es">Spanish</option>
+            <option value="fr" data-i18n="languages.fr">French</option>
+            <option value="de" data-i18n="languages.de">German</option>
+            <option value="ja" data-i18n="languages.ja">Japanese</option>
+            <option value="ru" data-i18n="languages.ru">Russian</option>
+            <option value="ko" data-i18n="languages.ko">Korean</option>
+            <option value="zh-Hant" data-i18n="languages.zhHant">Traditional Chinese</option>
+            <option value="zh-Hans" data-i18n="languages.zhHans">Simplified Chinese</option>
+          </select>
+        </label>
+      </div>
+    </nav>
+  </header>
+
+  <div class="miner-world-layer" aria-hidden="true">
+    <canvas id="minerWorldCanvas"></canvas>
+    <div class="miner-world-fallback">
+      <img src="__TERRAIN_IMAGE_URL__" alt="">
+    </div>
+    <div class="world-vignette"></div>
+    <div class="world-grid"></div>
+  </div>
+
+  <main>
+    <section class="hero" aria-labelledby="heroTitle">
+      <div class="hero-copy">
+        <div class="hero-signal"><span aria-hidden="true"></span><span data-i18n="hero.worldSignal">Live voxel research world</span></div>
+        <p class="eyebrow" data-i18n="hero.eyebrow">Proof of Useful Work / Local Research Preview</p>
+        <h1 id="heroTitle" data-i18n="hero.title">Compress the world, preserve every voxel</h1>
+        <p class="hero-lede" data-i18n="hero.lede">Search a bounded voxel language for a shorter encoding that reconstructs exactly the same terrain, building, or forged item.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#demo" data-scene-view="console" data-i18n="hero.try">Open Miner</a>
+          <a class="button ghost" href="#downloads" data-scene-view="forged" data-i18n="hero.download">Get the CLI</a>
+        </div>
+        <ul class="trust-list" aria-label="Miner properties" data-i18n-aria-label="hero.propertiesAria">
+          <li data-i18n="hero.exact">Exact</li>
+          <li data-i18n="hero.local">Local-only</li>
+          <li data-i18n="hero.open">Open source</li>
+          <li data-i18n="hero.noWallet">No wallet required</li>
+        </ul>
+      </div>
+
+      <div class="scene-readout" aria-hidden="true">
+        <span data-i18n="scene.engine">Chunk.js WebGL2 renderer</span>
+        <strong data-i18n="scene.drawCalls">Live game chunks</strong>
+        <small data-i18n="scene.local">WebGL2 / local only</small>
+      </div>
+
+      <div class="scene-dock" role="group" aria-label="World camera" data-i18n-aria-label="scene.cameraAria">
+        <button type="button" class="scene-active" data-scene-view="overview" aria-pressed="true">
+          <svg class="scene-icon world-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M16 3 28 9.5v13L16 29 4 22.5v-13L16 3Z" />
+            <path d="m4.5 9.7 11.5 6.2 11.5-6.2M16 16v13M10 6.2l12 6.5" />
+          </svg>
+          <span><strong data-i18n="scene.world">World</strong><small data-i18n="scene.worldDetail">Voxel island</small></span>
+        </button>
+        <button type="button" data-scene-view="terrain" data-scene-profile="terrain_delta" aria-pressed="false">
+          <svg class="scene-icon terrain-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="m3 10 13-7 13 7-13 7L3 10Z" />
+            <path d="m3 16 13 7 13-7M3 22l13 7 13-7" />
+            <path d="m22.5 5.8 4.7 4.8M25.8 4.5l2.9 2.9-11 11-4.2 1.3 1.3-4.2 11-11Z" class="icon-accent" />
+          </svg>
+          <span><strong data-i18n="scene.terrain">Terrain</strong><small data-i18n="scene.terrainDetail">Mining action</small></span>
+        </button>
+        <button type="button" data-scene-view="building" data-scene-profile="building" aria-pressed="false">
+          <svg class="scene-icon building-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M4 14.5 16 4l12 10.5" />
+            <path d="M7 12v16h18V12M13 28v-8h6v8M10 16h4M18 16h4" />
+            <path d="M23 7V3h3v7" class="icon-accent" />
+          </svg>
+          <span><strong data-i18n="scene.building">Building</strong><small data-i18n="scene.buildingDetail">Blueprint assembly</small></span>
+        </button>
+        <button type="button" data-scene-view="forged" data-scene-profile="forged_item" aria-pressed="false">
+          <svg class="scene-icon forge-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="m20 4 8 8-4 4-3-3L10 24l-2 5-5-5 5-2 11-11-3-3 4-4Z" />
+            <path d="m22 21 1.2 3.2L26.5 25l-3.3 1.2L22 29.5l-1.2-3.3-3.3-1.2 3.3-.8L22 21Z" class="icon-accent" />
+          </svg>
+          <span><strong data-i18n="scene.forge">Forge</strong><small data-i18n="scene.forgeDetail">Item inspection</small></span>
+        </button>
+      </div>
+    </section>
+
+    <nav class="section-jump-nav" aria-label="Miner page sections" data-i18n-aria-label="nav.sectionsAria">
+      <a href="#demo" data-scene-view="console" data-i18n="nav.demo">Browser Miner</a>
+      <a href="#how" data-scene-view="building" data-i18n="nav.how">How It Works</a>
+      <a href="#downloads" data-scene-view="forged" data-i18n="nav.cli">CLI</a>
+      <a href="#spec" data-scene-view="overview" data-i18n="nav.spec">Specification</a>
+    </nav>
+
+    <section id="demo" class="section demo-section" aria-labelledby="demoTitle">
+      <div class="section-heading demo-heading">
+        <div>
+          <p class="section-kicker" data-i18n="demo.kicker">Local compute console / files stay on this device</p>
+          <h2 id="demoTitle" data-i18n="demo.title">Browser compression lab</h2>
+        </div>
+        <p class="workspace-id" data-i18n="demo.workspaceId">NC-POUW / VM-1</p>
+      </div>
+
+      <div class="profile-tabs" role="tablist" aria-label="Compression profile" data-i18n-aria-label="demo.profileAria">
+        <button type="button" role="tab" aria-selected="true" data-profile="terrain_delta" data-scene-view="terrain">
+          <img src="__TERRAIN_IMAGE_URL__" alt="" aria-hidden="true">
+          <span class="profile-shade" aria-hidden="true"></span>
+          <span class="profile-index" data-i18n="demo.tab1">Workload 01</span>
+          <strong data-i18n="demo.terrain">Terrain Delta</strong>
+          <small data-i18n="demo.terrainDetail">Canonical broken-block coordinates</small>
+        </button>
+        <button type="button" role="tab" aria-selected="false" data-profile="building" data-scene-view="building">
+          <img src="__BUILDING_IMAGE_URL__" alt="" aria-hidden="true">
+          <span class="profile-shade" aria-hidden="true"></span>
+          <span class="profile-index" data-i18n="demo.tab2">Workload 02</span>
+          <strong data-i18n="demo.building">Building Blueprint</strong>
+          <small data-i18n="demo.buildingDetail">Exact voxel and material map</small>
+        </button>
+        <button type="button" role="tab" aria-selected="false" data-profile="forged_item" data-scene-view="forged">
+          <img src="__FORGED_IMAGE_URL__" alt="" aria-hidden="true">
+          <span class="profile-shade" aria-hidden="true"></span>
+          <span class="profile-index" data-i18n="demo.tab3">Workload 03</span>
+          <strong data-i18n="demo.forged">Forged Item</strong>
+          <small data-i18n="demo.forgedDetail">Geometry, paint, identity, and grip</small>
+        </button>
+      </div>
+
+      <div class="demo-shell">
+        <div class="workspace-status">
+          <div id="engineBadge" class="engine-badge" role="status" data-i18n="demo.engineLoading">WASM engine loading...</div>
+          <div id="statusBanner" class="status-banner idle" role="status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <div class="status-copy"><strong data-i18n="status.ready">Ready</strong><span data-i18n="status.readyDetail">Load a sample or local file, then press Start.</span></div>
+          </div>
+        </div>
+
+        <aside class="control-panel" aria-label="Miner controls" data-i18n-aria-label="controls.panelAria">
+          <div class="panel-label"><span data-i18n="controls.configuration">Configuration</span><span aria-hidden="true">01</span></div>
+          <div class="input-source">
+            <label><span data-i18n="controls.builtIn">Built-in vector</span>
+              <select id="sampleSelect">
+                <option value="normal" data-i18n="controls.normal">Normal</option>
+                <option value="complex" data-i18n="controls.complex">Complex</option>
+                <option value="boundary" data-i18n="controls.boundary">Boundary</option>
+              </select>
+            </label>
+            <button id="loadSampleButton" class="button compact secondary" type="button" data-i18n="controls.loadSample">Load sample</button>
+          </div>
+
+          <label class="file-picker"><span data-i18n="controls.localFile">Local file</span>
+            <input id="fileInput" type="file" accept=".ncbk,.ncm,.ncm3,.ncf,.ncf1,.bin,.txt">
+            <span id="fileName" data-i18n="controls.noFile">No file selected</span>
+          </label>
+
+          <div class="control-row">
+            <label><span data-i18n="controls.workers">Workers</span><input id="workerCount" type="number" min="1" max="16" value="1"></label>
+            <label><span data-i18n="controls.seed">Seed</span><input id="seedInput" type="number" min="0" max="4294967295" value="123"></label>
+          </div>
+          <div class="control-row">
+            <label><span data-i18n="controls.budget">Budget (s)</span><input id="timeBudget" type="number" min="1" max="300" value="8"></label>
+            <label><span data-i18n="controls.population">Population</span><input id="populationInput" type="number" min="4" max="256" step="4" value="24"></label>
+          </div>
+
+          <div class="transport" aria-label="Mining controls" data-i18n-aria-label="controls.miningAria">
+            <button id="startButton" class="button primary" type="button" data-i18n="controls.start">Start</button>
+            <button id="pauseButton" class="button ghost" type="button" disabled data-i18n="controls.pause">Pause</button>
+            <button id="resumeButton" class="button ghost" type="button" disabled data-i18n="controls.resume">Resume</button>
+            <button id="stopButton" class="button danger" type="button" disabled data-i18n="controls.stop">Stop</button>
+            <button id="resetButton" class="button ghost" type="button" data-i18n="controls.reset">Reset</button>
+          </div>
+          <p class="control-note" data-i18n="controls.note">Mining never starts automatically. The default leaves at least one logical core available for the page.</p>
+        </aside>
+
+        <div class="results-panel">
+          <div class="panel-label"><span data-i18n="metrics.liveVerification">Live verification</span><span aria-hidden="true">02</span></div>
+          <div class="metric-grid">
+            <article><span data-i18n="metrics.incumbent">Incumbent</span><strong id="incumbentBytes">-</strong><small data-i18n="metrics.storedBytes">stored bytes</small></article>
+            <article><span data-i18n="metrics.currentBest">Current best</span><strong id="candidateBytes">-</strong><small data-i18n="metrics.totalBytes">total bytes</small></article>
+            <article><span data-i18n="metrics.saved">Saved</span><strong id="savedBytes">-</strong><small id="savedPercent">-</small></article>
+            <article><span data-i18n="metrics.attempts">Attempts</span><strong id="attempts">0</strong><small id="attemptRate" data-i18n="runtime.initialRate">0/s</small></article>
+            <article><span data-i18n="metrics.elapsed">Elapsed</span><strong id="elapsed" data-i18n="runtime.initialSeconds">0.0s</strong><small id="workerStatus" data-i18n="runtime.noWorkers">0 workers</small></article>
+            <article><span data-i18n="metrics.decodeCost">Decode cost</span><strong id="decodeUnits">-</strong><small data-i18n="metrics.deterministicUnits">deterministic units</small></article>
+          </div>
+
+          <div class="byte-breakdown" aria-label="Candidate byte breakdown" data-i18n-aria-label="metrics.breakdownAria">
+            <span class="program-part"><b id="programBytes">0</b> <span data-i18n="metrics.program">program</span></span>
+            <span class="residual-part"><b id="residualBytes">0</b> <span data-i18n="metrics.residual">residual</span></span>
+            <span class="overhead-part"><b id="overheadBytes">0</b> <span data-i18n="metrics.overhead">overhead</span></span>
+          </div>
+
+          <div class="root-grid">
+            <div><span data-i18n="metrics.targetRoot">Target semantic root</span><code id="targetRoot">-</code></div>
+            <div><span data-i18n="metrics.candidateRoot">Candidate semantic root</span><code id="candidateRoot">-</code></div>
+            <div><span data-i18n="metrics.mismatch">Mismatch count</span><code id="mismatchCount">-</code></div>
+            <div><span data-i18n="metrics.verification">Verification</span><code id="exactStatus" data-i18n="metrics.notRun">Not run</code></div>
+          </div>
+
+          <figure class="curve-card">
+            <figcaption data-i18n="metrics.curve">Best stored bytes over real verified attempts</figcaption>
+            <canvas id="curveCanvas" width="900" height="220" data-i18n="metrics.chartFallback">Compression history chart</canvas>
+          </figure>
+
+          <div class="result-actions">
+            <button id="downloadCandidate" class="button compact secondary" type="button" disabled data-i18n="actions.candidate">Candidate binary</button>
+            <button id="downloadResult" class="button compact secondary" type="button" disabled data-i18n="actions.result">Result file</button>
+            <button id="downloadTask" class="button compact secondary" type="button" disabled data-i18n="actions.task">Task file</button>
+            <button id="downloadReport" class="button compact secondary" type="button" disabled data-i18n="actions.report">JSON report</button>
+            <button id="copyCommand" class="button compact ghost" type="button" disabled data-i18n="actions.copy">Copy CLI verify command</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="privacy-strip">
+        <strong data-i18n="privacy.preview">Local research preview</strong>
+        <span data-i18n="privacy.noTransactions">No transactions, rewards, wallet, RPC, or telemetry.</span>
+        <span data-i18n="privacy.local">Your files never leave this browser.</span>
+      </div>
+    </section>
+
+    <section id="how" class="section how-section" aria-labelledby="howTitle">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker" data-i18n="how.kicker">Useful work / checked byte for byte</p>
+          <h2 id="howTitle" data-i18n="how.title">Shorter syntax. Identical world.</h2>
+        </div>
+      </div>
+      <div class="step-grid">
+        <article><span>01</span><h3 data-i18n="how.step1Title">Lock the target</h3><p data-i18n="how.step1Body">Import the current format, canonicalize final semantics, and bind it to a domain-separated SHA-256 semantic root.</p></article>
+        <article><span>02</span><h3 data-i18n="how.step2Title">Search the VM</h3><p data-i18n="how.step2Body">Typed mutations and spatial crossover rearrange bounded BOX, RUN, EXTRUDE, symmetry, and related instructions.</p></article>
+        <article><span>03</span><h3 data-i18n="how.step3Title">Patch exactly</h3><p data-i18n="how.step3Body">A canonical residual adds, restores, clears, or repaints every remaining mismatch, never a visual approximation.</p></article>
+        <article><span>04</span><h3 data-i18n="how.step4Title">Verify independently</h3><p data-i18n="how.step4Body">The verifier re-decodes bytes, costs, hashes, limits, and every voxel. Only an exact, strictly smaller result is accepted.</p></article>
+      </div>
+    </section>
+
+    <section id="downloads" class="section download-section" aria-labelledby="downloadTitle">
+      <div class="download-copy">
+        <p class="section-kicker" data-i18n="downloads.kicker">Native multicore miner</p>
+        <h2 id="downloadTitle" data-i18n="downloads.title">Continue in the CLI</h2>
+        <p><span data-i18n="downloads.bodyBefore">The same Rust verifier powers the browser and native CLI. Release files appear only after each platform artifact passes</span> <code>nicechunk-miner self-test</code> <span data-i18n="downloads.bodyAfter">and its SHA-256 is published.</span></p>
+        <pre><code>nicechunk-miner mine --task task.ncpow --threads auto --time-limit 10m \
+  --seed 123 --checkpoint state.chk --out result.ncpow
+
+nicechunk-miner verify --task task.ncpow --result result.ncpow</code></pre>
+      </div>
+      <div id="releasePanel" class="release-panel" aria-live="polite">
+        <h3 data-i18n="release.status">Release status</h3>
+        <p data-i18n="release.reading">Reading the signed-off static release manifest...</p>
+      </div>
+    </section>
+
+    <section id="spec" class="section spec-section" aria-labelledby="specTitle">
+      <p class="section-kicker" data-i18n="spec.kicker">Protocol v1 / honest boundary</p>
+      <h2 id="specTitle" data-i18n="spec.title">A bounded codec, not a hash lottery</h2>
+      <div class="spec-grid">
+        <article><h3 data-i18n="spec.profilesTitle">Three exact profiles</h3><p><strong>terrain_delta</strong> <span data-i18n="spec.terrainBody">preserves the sorted ChunkBroken deletion set.</span> <strong>building</strong> <span data-i18n="spec.buildingBody">preserves the final NCM voxel/material map.</span> <strong>forged_item</strong> <span data-i18n="spec.forgedBody">preserves equipment identity, full geometry, paint, and grip.</span></p></article>
+        <article><h3 data-i18n="spec.identitiesTitle">Two separate identities</h3><p><code>semanticRoot</code> <span data-i18n="spec.semanticBody">hashes canonical final meaning.</span> <code>encodingHash</code> <span data-i18n="spec.encodingBody">hashes one particular byte representation. Different exact encodings can share the former and must differ in the latter.</span></p></article>
+        <article><h3 data-i18n="spec.limitsTitle">Hard resource limits</h3><p data-i18n="spec.limitsBody">No floating point, recursion, jumps, unbounded loops, dynamic code, clocks, or trusted result statistics. Canonical varints and checked arithmetic are mandatory.</p></article>
+        <article><h3 data-i18n="spec.boundaryTitle">Honest boundary</h3><p data-i18n="spec.boundaryBody">This preview has no wallet, RPC, reward, pool, leaderboard, or deployed Solana PoUW verifier. A chain adapter interface is reserved; chain claims are not.</p></article>
+      </div>
+    </section>
+
+    <section class="section lower-section" aria-label="Questions and source" data-i18n-aria-label="faq.sectionAria">
+      <div class="faq-section" aria-labelledby="faqTitle">
+        <h2 id="faqTitle" data-i18n="faq.title">FAQ</h2>
+        <details><summary data-i18n="faq.exactQuestion">Does exact mean visually similar?</summary><p data-i18n="faq.exactAnswer">No. The verifier compares canonical semantics and every coordinate/material identity. One changed voxel, material, immutable forge field, or grip changes the result.</p></details>
+        <details><summary data-i18n="faq.optimalQuestion">Does the miner prove a globally shortest encoding?</summary><p data-i18n="faq.optimalAnswer">No. It proves that one candidate is exact, bounded, and strictly shorter than the incumbent. No improvement found is a valid result.</p></details>
+        <details><summary data-i18n="faq.uploadQuestion">Are local files uploaded?</summary><p data-i18n="faq.uploadAnswer">No. Files are passed directly to local Web Workers. The page includes no upload endpoint, telemetry, third-party CDN, GitHub API request, wallet, or RPC client.</p></details>
+        <details><summary data-i18n="faq.negativeQuestion">Why can a profile show negative savings?</summary><p data-i18n="faq.negativeAnswer">Some existing NCM3 or NCF1 assets are already highly compact. The demo reports that honestly and never relabels equal or larger bytes as storage savings.</p></details>
+      </div>
+
+      <div class="source-section" aria-labelledby="sourceTitle">
+        <p class="section-kicker" data-i18n="source.kicker">Open implementation</p>
+        <h2 id="sourceTitle" data-i18n="source.title">Read, test, and challenge it</h2>
+        <div class="source-links">
+          <a data-link="source" href="https://github.com/nicechunk/miner" rel="noreferrer" data-i18n="source.source">Source</a>
+          <a data-link="docs" href="https://github.com/nicechunk/miner/tree/main/docs" rel="noreferrer" data-i18n="source.docs">Protocol docs</a>
+          <a data-link="issues" href="https://github.com/nicechunk/miner/issues" rel="noreferrer" data-i18n="source.issues">Issues</a>
+          <a data-link="releases" href="https://github.com/nicechunk/miner/releases" rel="noreferrer" data-i18n="source.releases">Releases</a>
+          <a data-link="organization" href="https://github.com/nicechunk" rel="noreferrer" data-i18n="source.organization">NiceChunk organization</a>
+        </div>
+        <p id="sourceNote" class="source-note" data-i18n="source.note">The dedicated Miner source and protocol documentation are public. CLI downloads stay hidden until verified release artifacts exist.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <a class="brand" href="https://nicechunk.com/" aria-label="NiceChunk home" data-i18n-aria-label="nav.homeAria"><img src="__LOGO_URL__" width="52" height="52" alt="NiceChunk" data-i18n-alt="nav.logoAlt"><span class="brand-name" data-i18n="nav.brand">NiceChunk</span></a>
+      <p data-i18n="footer.tagline">A seeded voxel world protocol on Solana.</p>
+    </div>
+    <nav aria-label="Footer navigation" data-i18n-aria-label="footer.navigationAria">
+      <a href="https://nicechunk.com/" data-i18n="nav.home">Home</a>
+      <a href="https://nicechunk.com/play/" data-i18n="nav.play">Play</a>
+      <a href="https://nicechunk.com/roadmap/" data-i18n="nav.roadbook">Roadbook</a>
+      <a href="https://nicechunk.com/docs/" data-i18n="nav.docs">Docs</a>
+      <a href="https://nicechunk.com/guardian/" data-i18n="nav.guardians">Guardians</a>
+      <a href="https://nicechunk.com/contracts/" data-i18n="nav.contracts">Contracts</a>
+    </nav>
+    <nav class="footer-social" aria-label="NiceChunk social links" data-i18n-aria-label="footer.socialAria">
+      <a data-link="organization" href="https://github.com/nicechunk" rel="noreferrer" data-i18n="footer.github">GitHub</a>
+      <a href="https://x.com/nicechunk" rel="noreferrer" data-i18n="footer.x">X</a>
+    </nav>
+    <p class="footer-meta"><span data-i18n="footer.text">NiceChunk PoUW Miner v1 / deterministic research software</span><br><span data-i18n="footer.copyright">2026 NiceChunk. All rights reserved.</span></p>
+  </footer>
+
+  <script type="module" src="__APP_URL__"></script>
+</body>
+</html>

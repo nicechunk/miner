@@ -1,0 +1,173 @@
+name: NiceChunk PoUW Miner release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: "1.88.0"
+  NICECHUNK_CHUNK_JS_ROOT: ${{ github.workspace }}/.dependencies/chunk.js
+
+jobs:
+  quality:
+    name: Protocol, WASM, and browser tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Check out pinned Chunk.js browser runtime
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: nicechunk/chunk.js
+          ref: f3113bf0e376b3ccca59fe773d3995bb18e656ee
+          path: .dependencies/chunk.js
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup default "$RUST_VERSION"
+          rustup target add wasm32-unknown-unknown
+          rustup component add rustfmt clippy
+      - name: Install JavaScript test dependencies
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+        run: npm ci --ignore-scripts
+      - name: Install pinned wasm-bindgen CLI
+        run: cargo install wasm-bindgen-cli --version 0.2.126 --locked --root .toolchains/wasm-bindgen
+      - name: Rust formatting, lint, tests, and no-std check
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace
+          cargo check -p pouw-core --no-default-features
+          cargo build -p pouw-cli
+          target/debug/nicechunk-miner self-test
+      - name: Build and compare native/WASM output
+        run: |
+          node scripts/build-web.mjs
+          node scripts/check-web.mjs
+          node scripts/test-wasm-consistency.mjs
+      - name: Compare source JavaScript codecs when present
+        run: |
+          if [ -f ../chunk.js/ncm/blueprint-codec.js ] && [ -f ../sdk/nicechunk-chunk.ts ]; then
+            NODE_NO_WARNINGS=1 node scripts/test-js-codec-compatibility.mjs
+          else
+            echo "Source codec differential test is performed in the NiceChunk source-of-truth workflow."
+          fi
+      - name: Install browser engines
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Run responsive local-only browser smoke
+        env:
+          POUW_BROWSER_TARGETS: chromium,firefox,webkit
+        run: node scripts/test-browser.mjs
+
+  build:
+    name: ${{ matrix.label }}
+    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Linux x86_64
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            platform: linux-x86_64
+            binary: nicechunk-miner
+          - label: Linux ARM64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            platform: linux-aarch64
+            binary: nicechunk-miner
+          - label: Windows x86_64
+            runner: windows-2022
+            target: x86_64-pc-windows-msvc
+            platform: windows-x86_64
+            binary: nicechunk-miner.exe
+          - label: macOS Apple Silicon
+            runner: macos-15
+            target: aarch64-apple-darwin
+            platform: macos-aarch64
+            binary: nicechunk-miner
+          - label: macOS Intel
+            runner: macos-15-intel
+            target: x86_64-apple-darwin
+            platform: macos-x86_64
+            binary: nicechunk-miner
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install pinned Rust toolchain
+        shell: bash
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal --target "${{ matrix.target }}"
+          rustup default "$RUST_VERSION"
+      - name: Build and test native binary
+        shell: bash
+        run: |
+          cargo test --workspace --target "${{ matrix.target }}"
+          cargo build --release -p pouw-cli --target "${{ matrix.target }}"
+          "target/${{ matrix.target }}/release/${{ matrix.binary }}" self-test
+      - name: Package direct-run archive and checksums
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            VERSION="$(node -p "require('./package.json').version")"
+          fi
+          node scripts/package-cli-release.mjs \
+            --platform "${{ matrix.platform }}" \
+            --version "$VERSION" \
+            --binary "target/${{ matrix.target }}/release/${{ matrix.binary }}" \
+            --output artifacts
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: nicechunk-miner-${{ matrix.platform }}
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish verified GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Validate all artifacts and generate static manifest
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          EXPECTED="$(node -p "require('./package.json').version")"
+          test "$VERSION" = "$EXPECTED"
+          node scripts/generate-release-manifest.mjs \
+            --repository "$GITHUB_REPOSITORY" \
+            --tag "$GITHUB_REF_NAME" \
+            --version "$VERSION" \
+            --commit "$GITHUB_SHA" \
+            --artifacts artifacts \
+            --output release-manifest.json \
+            --notes release-notes.md
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            artifacts/* release-manifest.json \
+            --verify-tag \
+            --title "NiceChunk PoUW Miner ${GITHUB_REF_NAME#v}" \
+            --notes-file release-notes.md
+          gh release view "$GITHUB_REF_NAME" --json url,assets
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-manifest
+          path: release-manifest.json
+          if-no-files-found: error
+          retention-days: 30
