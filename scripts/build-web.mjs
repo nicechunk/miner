@@ -23,7 +23,7 @@ const commandEnv = useLocalRust
   : process.env;
 
 execFileSync(process.execPath, [resolve(root, "scripts", "update-locales.mjs")], { cwd: root, env: commandEnv, stdio: "inherit" });
-if (await exists(resolve(root, "..", "chunk.js", "ncm", "blueprint-codec.js"))) {
+if (await exists(resolve(chunkJsRoot, "ncm", "blueprint-codec.js"))) {
   execFileSync(process.execPath, [resolve(root, "scripts", "generate-vectors.mjs")], { cwd: root, env: commandEnv, stdio: "inherit" });
 } else {
   console.warn("Source JavaScript codecs are unavailable; using the committed audited test vectors.");
@@ -131,13 +131,18 @@ const scene = await readFile(sceneBundle, "utf8");
 const sceneName = `miner-world-scene.${hash(scene)}.js`;
 await writeFile(resolve(assets, sceneName), scene);
 
+let i18n = await readFile(resolve(web, "i18n.js"), "utf8");
+i18n = i18n.replace("__LOCALE_URLS__", JSON.stringify(localeUrls));
+const i18nName = `i18n.${hash(i18n)}.js`;
+await writeFile(resolve(assets, i18nName), i18n);
+
 let app = await readFile(resolve(web, "app.js"), "utf8");
 app = app
+  .replace("__I18N_URL__", `./${i18nName}`)
   .replace("__WORKER_URL__", `./${workerName}`)
   .replace("__SCENE_URL__", `./${sceneName}`)
   .replace("__SITE_CONFIG_URL__", `./${configName}`)
-  .replace("__SAMPLE_URLS__", JSON.stringify(sampleUrls))
-  .replace("__LOCALE_URLS__", JSON.stringify(localeUrls));
+  .replace("__SAMPLE_URLS__", JSON.stringify(sampleUrls));
 const appName = `app.${hash(app)}.js`;
 await writeFile(resolve(assets, appName), app);
 
@@ -167,6 +172,7 @@ const manifest = {
   basePath: "/miner/",
   assets: {
     app: `assets/${appName}`,
+    i18n: `assets/${i18nName}`,
     scene: `assets/${sceneName}`,
     worker: `assets/${workerName}`,
     wasmGlue: `assets/${glueName}`,

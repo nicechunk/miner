@@ -9,6 +9,7 @@ const manifest = JSON.parse(await readFile(resolve(dist, "asset-manifest.json"),
 const release = JSON.parse(await readFile(resolve(dist, "release-manifest.json"), "utf8"));
 const html = await readFile(resolve(dist, "index.html"), "utf8");
 const sourceApp = await readFile(resolve(root, "web", "app.js"), "utf8");
+const sourceI18n = await readFile(resolve(root, "web", "i18n.js"), "utf8");
 const sourceScene = await readFile(resolve(root, "web", "miner-world-scene.js"), "utf8");
 const sourceStyles = await readFile(resolve(root, "web", "styles.css"), "utf8");
 const sourceConfig = JSON.parse(await readFile(resolve(root, "web", "site-config.json"), "utf8"));
@@ -71,8 +72,15 @@ for (const locale of expectedLocales) {
   for (const [key, englishValue] of english) {
     const value = flattened.get(key);
     if (!value.trim()) throw new Error(`${locale}.${key} is empty`);
+    if (/NCK(?:TERM|VAR)|__NCK_/u.test(value)) throw new Error(`${locale}.${key} contains an unresolved translation token`);
     if (JSON.stringify(placeholders(value)) !== JSON.stringify(placeholders(englishValue))) {
       throw new Error(`${locale}.${key} has a placeholder mismatch`);
+    }
+  }
+  if (locale !== "en") {
+    const copied = [...english].filter(([key, value]) => !key.startsWith("languages.") && flattened.get(key) === value);
+    if (copied.length > Math.ceil(english.size * 0.25)) {
+      throw new Error(`${locale} still copies too much English text (${copied.length}/${english.size} keys)`);
     }
   }
 }
@@ -87,6 +95,15 @@ const missingEnglishKeys = [...referencedKeys].filter((key) => !english.has(key)
 if (missingEnglishKeys.length) throw new Error(`English locale is missing referenced keys: ${missingEnglishKeys.join(", ")}`);
 if (/[^\x00-\x7f]*(?:[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Cyrillic}])/u.test(await readFile(resolve(root, "web", "index.html"), "utf8"))) {
   throw new Error("Fallback HTML contains non-English script text outside locale catalogs");
+}
+if (!manifest.assets.i18n || !sourceApp.includes('from "__I18N_URL__"')) {
+  throw new Error("Miner i18n must be emitted as an independent browser module");
+}
+if (sourceApp.includes("LOCALE_URLS") || sourceApp.includes('localStorage.setItem("nicechunk.language"')) {
+  throw new Error("Miner app still owns locale loading or persistence instead of the i18n module");
+}
+if (!sourceI18n.includes('const STORAGE_KEY = "nicechunk.language"') || !sourceI18n.includes("nicechunk:minerlanguagechange")) {
+  throw new Error("Miner i18n module is missing shared preference persistence or its locale event");
 }
 
 for (const name of (await readdir(resolve(dist, "assets"))).filter((value) => value.endsWith(".js"))) {

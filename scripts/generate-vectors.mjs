@@ -1,15 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
-import { createBlueprint, encodeNcm3 } from "../../chunk.js/ncm/blueprint-codec.js";
-import {
-  createForgeDesign,
-  encodeNcf1Bytes,
-  forgeVoxelIndex,
-} from "../../chunk.js/forge/forge-core.js";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const chunkJsRoot = resolve(process.env.NICECHUNK_CHUNK_JS_ROOT || resolve(root, "..", "chunk.js"));
+const blueprintCodec = await import(pathToFileURL(resolve(chunkJsRoot, "ncm", "blueprint-codec.js")).href);
+const forgeCodec = await import(pathToFileURL(resolve(chunkJsRoot, "forge", "forge-core.js")).href);
+const { createBlueprint, encodeNcm3 } = blueprintCodec;
+const { createForgeDesign, encodeNcf1Bytes, forgeVoxelIndex } = forgeCodec;
 const vectors = resolve(root, "test-vectors");
 
 await Promise.all([

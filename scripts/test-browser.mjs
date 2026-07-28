@@ -103,10 +103,21 @@ async function testBrowser(browser, label, origin, requests) {
   await page.waitForFunction(() => document.getElementById("engineBadge")?.classList.contains("ready"), null, { timeout: 30_000 });
   assert(await page.locator("#incumbentBytes").textContent() !== "—", "sample inspection should populate bytes");
   const englishHero = await page.locator(".hero-lede").textContent();
-  await page.locator("#localeSelect").selectOption("zh-Hans");
+  const englishStatus = await page.locator("#statusBanner").textContent();
+  const englishEngine = await page.locator("#engineBadge").textContent();
+  for (const locale of ["es", "fr", "de", "ja", "ru", "ko", "zh-Hant", "zh-Hans"]) {
+    await page.locator("#localeSelect").selectOption(locale);
+    await page.waitForFunction((language) => document.documentElement.lang === language, locale);
+    assert(await page.locator(".hero-lede").textContent() !== englishHero, `${label} ${locale} did not translate the Miner page`);
+    assert(await page.locator("#statusBanner").textContent() !== englishStatus, `${label} ${locale} did not re-render dynamic Miner status text`);
+    assert(await page.locator("#engineBadge").textContent() !== englishEngine, `${label} ${locale} did not re-render dynamic engine text`);
+    assert(await page.evaluate(() => localStorage.getItem("nicechunk.language")) === locale, `${label} ${locale} selection was not persisted`);
+  }
+  await page.reload({ waitUntil: "networkidle" });
   await page.waitForFunction(() => document.documentElement.lang === "zh-Hans");
-  assert(await page.locator(".hero-lede").textContent() !== englishHero, `${label} locale switch did not update translated text`);
-  assert(await page.evaluate(() => localStorage.getItem("nicechunk.language")) === "zh-Hans", `${label} locale selection was not persisted`);
+  assert(await page.locator("#localeSelect").inputValue() === "zh-Hans", `${label} persisted Miner locale was not restored`);
+  await page.waitForFunction(() => document.getElementById("engineBadge")?.classList.contains("ready"), null, { timeout: 30_000 });
+  await page.waitForFunction(() => document.getElementById("incumbentBytes")?.textContent !== "—", null, { timeout: 30_000 });
   await page.locator("#localeSelect").selectOption("en");
   await page.waitForFunction(() => document.documentElement.lang === "en");
 
@@ -119,7 +130,18 @@ async function testBrowser(browser, label, origin, requests) {
       await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.sceneActorRoles === "forged-item");
       assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-actor-count") === "1", `${label} forge view must isolate one forged item`);
     }
-    await page.waitForFunction(() => document.getElementById("statusBanner")?.textContent.includes("Ready"), null, { timeout: 30_000 });
+    try {
+      await page.waitForFunction(() => document.getElementById("statusBanner")?.textContent.includes("Ready"), null, { timeout: 30_000 });
+    } catch (error) {
+      console.error("profile load diagnostics", {
+        profile,
+        language: await page.locator("html").getAttribute("lang"),
+        status: await page.locator("#statusBanner").textContent(),
+        engine: await page.locator("#engineBadge").textContent(),
+        errors,
+      });
+      throw error;
+    }
     await page.locator("#timeBudget").fill(profile === "terrain_delta" ? "10" : "2");
     await page.locator("#workerCount").fill("2");
     await page.locator("#populationInput").fill("8");
@@ -153,6 +175,7 @@ async function testBrowser(browser, label, origin, requests) {
   }
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+  await mobile.addInitScript(() => localStorage.setItem("nicechunk.language", "zh-Hans"));
   mobile.on("console", (message) => {
     if (message.type() === "error") errors.push(`mobile: ${message.text()}`);
   });
@@ -162,9 +185,11 @@ async function testBrowser(browser, label, origin, requests) {
     if (request.method() !== "GET") errors.push(`mobile unexpected ${request.method()} request: ${request.url()}`);
   });
   await mobile.goto(`${origin}/miner/`, { waitUntil: "networkidle" });
+  await mobile.waitForFunction(() => document.documentElement.lang === "zh-Hans");
   await mobile.locator('#minerWorldCanvas[data-scene-ready="true"]').waitFor({ state: "attached" });
   await mobile.waitForFunction(() => Number(document.getElementById("minerWorldCanvas")?.dataset.sceneTerrainChunks) >= 9);
   assert(await mobile.locator("#minerWorldCanvas").getAttribute("data-scene-renderer") === "chunk.js-webgl2", `${label} mobile scene must use the Chunk.js WebGL2 renderer`);
+  assert(/\p{Script=Han}/u.test(await mobile.locator(".hero-lede").textContent()), `${label} mobile Miner locale was not applied`);
   assert(await mobile.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${label} mobile page overflows horizontally`);
   await mobile.locator("#headerMenuButton").click();
   assert(await mobile.locator("#primaryNav").getAttribute("data-open") === "true", `${label} mobile menu did not open`);

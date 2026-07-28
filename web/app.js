@@ -1,10 +1,10 @@
+import { getLocale, initI18n, setLocale, t } from "__I18N_URL__";
+
 const WORKER_URL = new URL("__WORKER_URL__", import.meta.url);
 const SCENE_URL = new URL("__SCENE_URL__", import.meta.url);
 const SITE_CONFIG_URL = new URL("__SITE_CONFIG_URL__", import.meta.url);
 const RELEASE_MANIFEST_URL = new URL("../release-manifest.json", import.meta.url);
 const SAMPLE_URLS = __SAMPLE_URLS__;
-const LOCALE_URLS = __LOCALE_URLS__;
-let localeMessages = {};
 let worldScene = null;
 
 const elements = Object.fromEntries([
@@ -34,6 +34,9 @@ const state = {
   autoPaused: false,
   releaseManifest: null,
   releaseLoadError: null,
+  engineVersion: null,
+  engineFailed: false,
+  statusView: null,
 };
 
 initialize().catch((error) => fail(error));
@@ -44,6 +47,7 @@ async function initialize() {
   bindEvents();
   void initializeWorldScene();
   await initI18n();
+  elements.localeSelect.value = getLocale();
   await loadSiteConfig();
   await loadReleaseManifest();
   await probeEngine();
@@ -55,7 +59,7 @@ function bindEvents() {
   bindHeaderMenu();
   document.querySelectorAll("[data-profile]").forEach((button) => {
     button.addEventListener("click", async () => {
-      if (state.phase === "running" || state.phase === "paused") stopWorkers(t("status.profileChanged"));
+      if (state.phase === "running" || state.phase === "paused") stopWorkers("status.profileChanged");
       state.profile = button.dataset.profile;
       document.querySelectorAll("[data-profile]").forEach((item) => {
         item.setAttribute("aria-selected", String(item === button));
@@ -75,9 +79,9 @@ function bindEvents() {
   elements.startButton.addEventListener("click", () => startMining().catch(fail));
   elements.pauseButton.addEventListener("click", pauseMining);
   elements.resumeButton.addEventListener("click", resumeMining);
-  elements.stopButton.addEventListener("click", () => stopWorkers(t("status.stoppedByUser")));
+  elements.stopButton.addEventListener("click", () => stopWorkers("status.stoppedByUser"));
   elements.resetButton.addEventListener("click", () => reset().catch(fail));
-  elements.localeSelect.addEventListener("change", () => loadLocale(elements.localeSelect.value).catch(fail));
+  elements.localeSelect.addEventListener("change", () => changeLocale(elements.localeSelect.value).catch(fail));
   elements.downloadCandidate.addEventListener("click", () => downloadBase64(state.best?.candidateBase64, "candidate.ncpow-vm", "application/octet-stream"));
   elements.downloadResult.addEventListener("click", () => downloadBase64(state.best?.resultBase64, "browser-result.ncpow", "application/octet-stream"));
   elements.downloadTask.addEventListener("click", () => downloadBase64(state.best?.taskBase64, "browser-task.ncpow", "application/octet-stream"));
@@ -87,11 +91,11 @@ function bindEvents() {
     if (document.hidden && state.phase === "running") {
       state.autoPaused = true;
       pauseMining();
-      setStatus("paused", t("status.paused"), t("status.hiddenPaused"));
+      setTranslatedStatus("paused", "status.paused", "status.hiddenPaused");
     }
   });
   window.addEventListener("pagehide", () => {
-    stopWorkers(t("status.pageClosed"), false);
+    stopWorkers("status.pageClosed", false);
     worldScene?.destroy();
     worldScene = null;
   });
@@ -146,13 +150,24 @@ function bindHeaderMenu() {
 
 async function probeEngine() {
   const response = await oneShotWorker({ type: "version" });
+  state.engineVersion = response;
+  state.engineFailed = false;
+  renderEngineBadge();
+}
+
+function renderEngineBadge() {
   elements.engineBadge.removeAttribute("data-i18n");
-  elements.engineBadge.textContent = t("runtime.engineReady", {
-    software: response.softwareVersion,
-    protocol: response.protocolVersion,
-    vm: response.vmVersion,
-  });
-  elements.engineBadge.className = "engine-badge ready";
+  if (state.engineFailed) {
+    elements.engineBadge.textContent = t("errors.engine");
+    elements.engineBadge.className = "engine-badge error";
+  } else if (state.engineVersion) {
+    elements.engineBadge.textContent = t("runtime.engineReady", {
+      software: state.engineVersion.softwareVersion,
+      protocol: state.engineVersion.protocolVersion,
+      vm: state.engineVersion.vmVersion,
+    });
+    elements.engineBadge.className = "engine-badge ready";
+  }
 }
 
 async function loadSample() {
@@ -173,7 +188,7 @@ async function loadLocalFile() {
 }
 
 async function setInput(input, name) {
-  stopWorkers(t("status.inputChanged"), false);
+  stopWorkers("status.inputChanged", false);
   state.input = input;
   state.inputName = name;
   state.best = null;
@@ -182,18 +197,20 @@ async function setInput(input, name) {
   state.elapsedBeforePause = 0;
   elements.fileName.removeAttribute("data-i18n");
   elements.fileName.textContent = name;
-  setStatus("idle", t("status.inspecting"), t("status.inspectingDetail"));
+  setTranslatedStatus("idle", "status.inspecting", "status.inspectingDetail");
   const response = await oneShotWorker({ type: "inspect", profile: state.profile, input }, [input.slice().buffer]);
   state.inspect = response;
   state.curve.push({ attempts: 0, bytes: response.incumbentBytes });
   updateButtons();
   render();
-  setStatus("idle", t("status.ready"), t("status.readyLoaded", { count: response.voxelCount.toLocaleString() }));
+  setTranslatedStatus("idle", "status.ready", "status.readyLoaded", {
+    detailParams: { count: () => formatNumber(response.voxelCount) },
+  });
 }
 
 async function startMining() {
   if (!state.input) throw new Error(t("status.loadFirst"));
-  stopWorkers(t("status.restarting"), false);
+  stopWorkers("status.restarting", false);
   state.best = null;
   state.workerAttempts.clear();
   state.curve = [{ attempts: 0, bytes: state.inspect.incumbentBytes }];
@@ -224,7 +241,7 @@ async function startMining() {
     }, [bytes.buffer]);
   }
   updateButtons();
-  setStatus("running", t("status.searching"), t("status.searchingDetail"));
+  setTranslatedStatus("running", "status.searching", "status.searchingDetail");
   state.timer = window.setInterval(tick, 100);
   render();
 }
@@ -236,7 +253,7 @@ function pauseMining() {
   dispatchScenePhase();
   for (const worker of state.workers.values()) worker.postMessage({ type: "pause" });
   updateButtons();
-  setStatus("paused", t("status.paused"), t("status.pausedDetail"));
+  setTranslatedStatus("paused", "status.paused", "status.pausedDetail");
   render();
 }
 
@@ -248,10 +265,10 @@ function resumeMining() {
   state.autoPaused = false;
   for (const worker of state.workers.values()) worker.postMessage({ type: "resume" });
   updateButtons();
-  setStatus("running", t("status.searching"), t("status.resumedDetail"));
+  setTranslatedStatus("running", "status.searching", "status.resumedDetail");
 }
 
-function stopWorkers(message = t("status.stopped"), showStatus = true) {
+function stopWorkers(messageKey = "status.stopped", showStatus = true) {
   if (state.timer) window.clearInterval(state.timer);
   state.timer = null;
   if (state.phase === "running") state.elapsedBeforePause += performance.now() - state.runStartedAt;
@@ -265,13 +282,13 @@ function stopWorkers(message = t("status.stopped"), showStatus = true) {
   updateButtons();
   render();
   if (showStatus) {
-    if (state.best?.exact) showBestStatus(message);
-    else setStatus("idle", t("status.stopped"), message);
+    if (state.best?.exact) showBestStatus(messageKey);
+    else setTranslatedStatus("idle", "status.stopped", messageKey);
   }
 }
 
 async function reset() {
-  stopWorkers(t("status.reset"), false);
+  stopWorkers("status.reset", false);
   state.phase = "idle";
   dispatchScenePhase();
   elements.fileInput.value = "";
@@ -282,7 +299,7 @@ function tick() {
   if (state.phase !== "running") return;
   const budgetMs = clampInteger(elements.timeBudget.value, 1, 300) * 1000;
   if (elapsedMs() >= budgetMs) {
-    stopWorkers(t("status.timeCompleted"));
+    stopWorkers("status.timeCompleted");
     return;
   }
   renderDynamicMetrics();
@@ -327,13 +344,13 @@ function render() {
   elements.candidateBytes.textContent = best ? formatBytes(best.candidateBytes) : "—";
   elements.savedBytes.textContent = best ? formatSignedBytes(best.savedBytes) : "—";
   elements.savedPercent.textContent = best ? `${(best.savedBps / 100).toFixed(2)}%` : "—";
-  elements.decodeUnits.textContent = best ? Number(best.decodeUnits).toLocaleString() : "—";
+  elements.decodeUnits.textContent = best ? formatNumber(best.decodeUnits) : "—";
   elements.programBytes.textContent = best?.programBytes ?? 0;
   elements.residualBytes.textContent = best?.residualBytes ?? 0;
   elements.overheadBytes.textContent = best?.overheadBytes ?? 0;
   elements.targetRoot.textContent = best?.targetSemanticRoot || inspect?.semanticRoot || "—";
   elements.candidateRoot.textContent = best?.candidateSemanticRoot || "—";
-  elements.mismatchCount.textContent = best ? Number(best.mismatchCount).toLocaleString() : "—";
+  elements.mismatchCount.textContent = best ? formatNumber(best.mismatchCount) : "—";
   elements.exactStatus.removeAttribute("data-i18n");
   elements.exactStatus.textContent = best ? (best.exact ? t("metrics.exactMatch") : t("metrics.failed")) : t("metrics.notRun");
   renderDynamicMetrics();
@@ -342,31 +359,54 @@ function render() {
 function renderDynamicMetrics() {
   const attempts = totalAttempts();
   const elapsed = elapsedMs();
-  elements.attempts.textContent = attempts.toLocaleString();
+  elements.attempts.textContent = formatNumber(attempts);
   elements.attemptRate.textContent = t("runtime.perSecond", { rate: elapsed > 0 ? (attempts * 1000 / elapsed).toFixed(2) : "0.00" });
   elements.elapsed.textContent = t("runtime.seconds", { seconds: (elapsed / 1000).toFixed(1) });
   elements.workerStatus.textContent = t(state.workers.size === 1 ? "runtime.workerOne" : "runtime.workerMany", { count: state.workers.size });
 }
 
-function showBestStatus(suffix = "") {
+function showBestStatus(suffixKey = "") {
   if (!state.best) return;
   if (!state.best.exact) {
-    setStatus("failed", t("status.verificationFailed"), t("status.mismatchDetail", { count: state.best.mismatchCount }));
+    setTranslatedStatus("failed", "status.verificationFailed", "status.mismatchDetail", {
+      detailParams: { count: () => formatNumber(state.best.mismatchCount) },
+    });
   } else if (state.best.improved) {
-    setStatus("exact", t("status.exactSmaller"), t("status.savedDetail", { saved: formatSignedBytes(state.best.savedBytes), suffix }).trim());
+    setTranslatedStatus("exact", "status.exactSmaller", "status.savedDetail", {
+      detailParams: {
+        saved: () => formatSignedBytes(state.best.savedBytes),
+        suffix: () => suffixKey ? t(suffixKey) : "",
+      },
+    });
   } else {
-    setStatus("exact", t("status.exactNoImprovement"), t("status.noImprovementDetail", { suffix }).trim());
+    setTranslatedStatus("exact", "status.exactNoImprovement", "status.noImprovementDetail", {
+      detailParams: { suffix: () => suffixKey ? t(suffixKey) : "" },
+    });
   }
 }
 
-function setStatus(kind, title, detail) {
+function setTranslatedStatus(kind, titleKey, detailKey, { titleParams = {}, detailParams = {} } = {}) {
+  state.statusView = { kind, titleKey, detailKey, titleParams, detailParams };
+  renderStatus();
+}
+
+function renderStatus() {
+  if (!state.statusView) return;
+  const { kind, titleKey, detailKey, titleParams, detailParams } = state.statusView;
   elements.statusBanner.className = `status-banner ${kind}`;
   const heading = elements.statusBanner.querySelector("strong");
   const body = elements.statusBanner.querySelector("span:last-child");
   heading.removeAttribute("data-i18n");
   body.removeAttribute("data-i18n");
-  heading.textContent = title;
-  body.textContent = detail;
+  heading.textContent = t(titleKey, resolveDynamicParameters(titleParams));
+  body.textContent = t(detailKey, resolveDynamicParameters(detailParams)).trim();
+}
+
+function resolveDynamicParameters(parameters) {
+  return Object.fromEntries(Object.entries(parameters).map(([key, value]) => [
+    key,
+    typeof value === "function" ? value() : value,
+  ]));
 }
 
 function updateButtons() {
@@ -501,52 +541,14 @@ function renderReleaseManifest(manifest) {
   }
 }
 
-async function initI18n() {
-  await loadLocale(initialLocale());
-}
-
-async function loadLocale(locale) {
-  const url = LOCALE_URLS[locale] || LOCALE_URLS.en;
-  if (!url) return;
-  const response = await fetch(new URL(url, import.meta.url), { cache: "force-cache" });
-  if (!response.ok) return;
-  localeMessages = await response.json();
-  document.documentElement.lang = locale;
-  elements.localeSelect.value = locale;
-  localStorage.setItem("nicechunk.language", locale);
-  document.querySelectorAll("[data-i18n]").forEach((element) => {
-    const value = readNested(localeMessages, element.dataset.i18n);
-    if (typeof value === "string") element.textContent = value;
-  });
-  for (const attribute of ["aria-label", "alt", "content", "placeholder", "title"]) {
-    const dataName = `i18n${attribute.split("-").map((part) => part[0].toUpperCase() + part.slice(1)).join("")}`;
-    document.querySelectorAll(`[data-i18n-${attribute}]`).forEach((element) => {
-      const value = readNested(localeMessages, element.dataset[dataName]);
-      if (typeof value === "string") element.setAttribute(attribute, value);
-    });
-  }
+async function changeLocale(locale) {
+  const resolvedLocale = await setLocale(locale);
+  elements.localeSelect.value = resolvedLocale;
+  renderEngineBadge();
+  renderStatus();
   if (state.releaseManifest) renderReleaseManifest(state.releaseManifest);
   else if (state.releaseLoadError) renderReleaseError();
   render();
-}
-
-function initialLocale() {
-  const saved = localStorage.getItem("nicechunk.language");
-  if (saved && LOCALE_URLS[saved]) return saved;
-  const browser = navigator.language;
-  if (LOCALE_URLS[browser]) return browser;
-  if (browser.startsWith("zh")) return browser.includes("TW") || browser.includes("HK") ? "zh-Hant" : "zh-Hans";
-  return Object.keys(LOCALE_URLS).find((value) => browser.startsWith(value)) || "en";
-}
-
-function t(path, parameters = {}) {
-  const value = readNested(localeMessages, path);
-  if (typeof value !== "string") return path;
-  return value.replace(/\{([A-Za-z0-9_]+)\}/gu, (match, key) => key in parameters ? String(parameters[key]) : match);
-}
-
-function readNested(value, path) {
-  return path.split(".").reduce((current, key) => current?.[key], value);
 }
 
 function downloadBase64(value, name, type) {
@@ -604,12 +606,16 @@ function totalAttempts() {
 }
 
 function formatBytes(value) {
-  return `${Number(value).toLocaleString()} B`;
+  return `${formatNumber(value)} B`;
 }
 
 function formatSignedBytes(value) {
   const numeric = Number(value);
-  return `${numeric > 0 ? "+" : ""}${numeric.toLocaleString()} B`;
+  return `${numeric > 0 ? "+" : ""}${formatNumber(numeric)} B`;
+}
+
+function formatNumber(value) {
+  return Number(value).toLocaleString(getLocale());
 }
 
 function clampInteger(value, minimum, maximum) {
@@ -625,9 +631,8 @@ function createTextElement(tag, text) {
 
 function fail(error) {
   console.error(error);
-  elements.engineBadge.removeAttribute("data-i18n");
-  elements.engineBadge.textContent = t("errors.engine");
-  elements.engineBadge.className = "engine-badge error";
-  setStatus("failed", t("errors.title"), t("errors.generic"));
-  stopWorkers(t("errors.stopped"), false);
+  state.engineFailed = true;
+  renderEngineBadge();
+  setTranslatedStatus("failed", "errors.title", "errors.generic");
+  stopWorkers("errors.stopped", false);
 }
