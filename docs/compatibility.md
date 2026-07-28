@@ -149,10 +149,13 @@ WASM, locale, sample, image, and configuration assets. NiceChunk's complete
 static-site build publishes that output at `/miner/`; it never publishes the
 Rust source tree, test tools, dependency checkout, or build cache.
 
-The production route now serves `/miner/` as strict static content. Missing
-JavaScript and WASM paths return 404 rather than homepage HTML. The reviewed
-standalone Nginx fixture continues to test MIME, cache, CSP, compression, atomic
-release switching, and rollback behavior without becoming a browser backend.
+The production route serves existing `/miner/` files, but its current generic
+fallback still returns homepage HTML with HTTP 200 for missing JavaScript and
+WASM paths. The browser refuses to execute that response because its MIME is
+`text/html`, yet the route still needs the reviewed administrator-installed
+static location to return a strict 404. The standalone Nginx fixture tests the
+intended MIME, cache, CSP, compression, atomic release switching, and rollback
+behavior without becoming a browser backend.
 
 ## Domain separation
 

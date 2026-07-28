@@ -125,10 +125,17 @@ after rollback.
 ## Current publication state
 
 The NiceChunk static-site build now publishes the verified `web/dist` output at
-`/miner/` as part of the complete content-addressed website release. Missing
-Miner assets return a strict 404 rather than the homepage. The standalone Nginx
-snippet and rollback test remain useful for a future Miner-only release channel;
-they are not a reason to bypass the complete-site release process.
+`/miner/` as part of the complete content-addressed website release. Existing
+hashed Miner assets are served correctly. The production Nginx route still
+falls back to the homepage with HTTP 200 for a missing `/miner/` asset, however,
+so the reviewed strict static location remains an administrator prerequisite.
+The website release process cannot modify `/etc/nginx` and must not bypass that
+boundary.
+
+Until the reviewed location is installed, a stale or mistyped module URL is
+rejected by the browser because the fallback response is `text/html`, but the
+HTTP status is not the intended 404. `scripts/test-nginx-release.mjs` proves the
+intended MIME, cache, 404, release-switch, and rollback behavior offline.
 
 The browser page and public source repository are available independently of a
 CLI release. CLI controls remain unavailable until all platform archives,
