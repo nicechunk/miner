@@ -130,6 +130,11 @@ async function smoke(origin, expectedRelease) {
   assert(index.headers.get("permissions-policy")?.includes("camera=()"), "Index is missing Permissions-Policy");
 
   const manifest = JSON.parse(await readFile(resolve(dist, "asset-manifest.json"), "utf8"));
+  const assetManifest = await fetch(`${origin}/miner/asset-manifest.json`);
+  assert(assetManifest.status === 200, "asset-manifest.json is unavailable");
+  assert(assetManifest.headers.get("cache-control")?.includes("no-cache"), "Asset manifest is not no-cache");
+  assert(assetManifest.headers.get("x-content-type-options") === "nosniff", "Asset manifest is missing nosniff");
+  assert(JSON.stringify(await assetManifest.json()) === JSON.stringify(manifest), "Published asset manifest does not match the release");
   const paths = [...Object.values(manifest.assets), ...Object.values(manifest.samples), ...Object.values(manifest.locales)]
     .map((path) => path.replace(/^\.\//u, "assets/"));
   for (const path of paths) {
@@ -143,6 +148,7 @@ async function smoke(origin, expectedRelease) {
   const releaseManifest = await fetch(`${origin}/miner/release-manifest.json`);
   assert(releaseManifest.status === 200, "release-manifest.json is unavailable");
   assert(releaseManifest.headers.get("cache-control")?.includes("no-cache"), "Release manifest is not no-cache");
+  assert(releaseManifest.headers.get("x-content-type-options") === "nosniff", "Release manifest is missing nosniff");
 
   for (const path of ["assets/missing.js", "assets/missing.wasm", "missing.json"]) {
     const response = await fetch(`${origin}/miner/${path}`);

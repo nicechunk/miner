@@ -11,10 +11,11 @@ versioned tree:
 ```
 
 The snippet does not alter `/`, `/play/`, `/forging/`, Docs, TLS, or any other
-site. `/miner` redirects with 308. HTML and `release-manifest.json` are
-no-cache; content-hashed assets are immutable for one year. Missing executable
-or JSON files return 404 and cannot reach the homepage SPA fallback. WASM is
-explicitly `application/wasm` and every response uses `nosniff`.
+site. `/miner` redirects with 308. HTML, `asset-manifest.json`, and
+`release-manifest.json` are no-cache; content-hashed assets are immutable for
+one year. Missing executable or JSON files return 404 and cannot reach the
+homepage SPA fallback. WASM is explicitly `application/wasm` and every response
+uses `nosniff`.
 
 The parent server must already include `/etc/nginx/mime.types` and gzip for JS,
 JSON, CSS, WASM, SVG, and text, as the audited NiceChunk server does. Include

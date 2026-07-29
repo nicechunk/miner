@@ -30,7 +30,7 @@ const server = createServer(async (request, response) => {
     if (!metadata.isFile()) throw new Error("not a file");
     response.writeHead(200, {
       "content-type": contentType(extname(file)),
-      "cache-control": file.endsWith("index.html") || file.endsWith("release-manifest.json") ? "no-cache" : "public, max-age=31536000, immutable",
+      "cache-control": file.endsWith("index.html") || file.endsWith("-manifest.json") ? "no-cache" : "public, max-age=31536000, immutable",
       "content-security-policy": "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
       "x-content-type-options": "nosniff",
       "referrer-policy": "no-referrer",

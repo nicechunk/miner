@@ -84,10 +84,10 @@ The reviewed location snippet is `nginx/miner-location.conf`. It expects:
 
 It does not change the website document root. It adds a 308 canonical redirect,
 strict static 404 behavior, explicit WASM MIME, immutable hashed assets,
-no-cache HTML/manifest, CSP, nosniff, Referrer-Policy, Permissions-Policy, and
-same-origin resource policy. The existing server supplies gzip. The separate
-Brotli snippet is used only when the installed Nginx actually has that module.
-COOP/COEP are intentionally absent.
+no-cache HTML and release/asset manifests, CSP, nosniff, Referrer-Policy,
+Permissions-Policy, and same-origin resource policy. The existing server
+supplies gzip. The separate Brotli snippet is used only when the installed
+Nginx actually has that module. COOP/COEP are intentionally absent.
 
 ## Authorized production procedure
 
