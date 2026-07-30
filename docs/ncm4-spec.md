@@ -3,7 +3,7 @@
 ## Status and compatibility
 
 This document specifies the experimental NCM4 PoUW version 1 implemented by
-`pouw-core` in Miner `0.2.0-alpha.6`. NCM4 is a new format. It does not modify
+`pouw-core` in Miner `0.2.0-alpha.7`. NCM4 is a new format. It does not modify
 the NCM3 prefix, opcodes, decoder, overwrite rules, limits, or semantic output.
 
 Chunk.js already assigns `NCM4:` to an incompatible character-animation

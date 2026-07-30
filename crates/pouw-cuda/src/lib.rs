@@ -278,7 +278,7 @@ pub fn devices() -> Result<Vec<CudaDeviceInfo>, CudaError> {
         for ordinal in 0..count {
             let mut device = 0;
             api.check("cuDeviceGet", (api.device_get)(&mut device, ordinal))?;
-            let mut name = [0_i8; 256];
+            let mut name = [c_char::default(); 256];
             api.check(
                 "cuDeviceGetName",
                 (api.device_get_name)(name.as_mut_ptr(), name.len() as c_int, device),

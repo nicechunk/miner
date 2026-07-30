@@ -124,7 +124,7 @@ has fewer hardware threads.
 
 ## RTX 4090 CUDA evaluator
 
-CUDA measurements were repeated for `0.2.0-alpha.6` on an NVIDIA GeForce RTX
+CUDA measurements were repeated for `0.2.0-alpha.7` on an NVIDIA GeForce RTX
 4090 (24 GB, compute capability 8.9), driver 580.173.02, CUDA Toolkit 12.0, and
 an Intel Xeon E5-2697A v4 host with 32 logical CPUs. The release binary does not
 require the Toolkit at runtime: it dynamically loads the NVIDIA driver and

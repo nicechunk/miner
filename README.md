@@ -1,7 +1,7 @@
 # NiceChunk Proof of Useful Work Miner
 
 This repository is the source of truth for the NiceChunk Proof of Useful Work
-Miner. Version `0.2.0-alpha.6` adds an optional CUDA batch evaluator to the
+Miner. Version `0.2.0-alpha.7` adds an optional CUDA batch evaluator to the
 experimental NCM4 PoUW codec and persistent multi-island search session while
 preserving NCM3 byte-for-byte.
 It contains the deterministic core and verifier, native CLI, WASM bindings,

@@ -74,7 +74,7 @@ attempt order.
 
 ## RTX 4090 evidence
 
-The Alpha 6 validation host used an RTX 4090 24 GB (compute capability 8.9),
+The Alpha 7 validation host used an RTX 4090 24 GB (compute capability 8.9),
 NVIDIA driver 580.173.02, and 32 logical CPU threads. With 12 islands,
 population 64, 20 generations, seed 123, batch 2,048, and eight survivors:
 

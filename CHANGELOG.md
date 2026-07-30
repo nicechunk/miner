@@ -6,6 +6,13 @@ independently.
 
 ## Unreleased
 
+## 0.2.0-alpha.7 - 2026-07-30
+
+### Fixed
+
+- Use the platform-native CUDA `c_char` device-name buffer so the optional CUDA
+  crate compiles on Linux ARM64 as well as x86_64.
+
 ## 0.2.0-alpha.6 - 2026-07-30
 
 ### Added
