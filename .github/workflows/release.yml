@@ -74,10 +74,12 @@ jobs:
           POUW_BROWSER_TARGETS: chromium,firefox,webkit
         run: node scripts/test-browser.mjs
       - name: Package Web/WASM test bundle
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         run: |
           VERSION="$(node -p "require('./package.json').version")"
           node scripts/build-web-release.mjs --version "$VERSION" --dist web/dist --output artifacts/web
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         with:
           name: nicechunk-miner-web-wasm
           path: |
@@ -102,6 +104,7 @@ jobs:
 
   build:
     name: ${{ matrix.label }}
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     needs: quality
     strategy:
       fail-fast: false

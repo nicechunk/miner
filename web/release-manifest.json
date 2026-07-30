@@ -4,10 +4,63 @@
   "protocolVersion": 1,
   "vmVersion": 1,
   "costModelVersion": 1,
-  "commit": "unreleased",
-  "available": false,
-  "repository": null,
-  "releaseUrl": null,
-  "artifacts": [],
-  "message": "No public NiceChunk Miner release has been published. Download controls remain disabled until real, tested release assets exist."
+  "commit": "f5a09d7e786be29f17c34c26f5fd8f405bec150a",
+  "available": true,
+  "repository": "https://github.com/nicechunk/miner",
+  "releaseUrl": "https://github.com/nicechunk/miner/releases/tag/v0.2.0-alpha.3",
+  "artifacts": [
+    {
+      "platform": "Linux x86_64",
+      "platformId": "linux-x86_64",
+      "target": "x86_64-unknown-linux-gnu",
+      "archive": "nicechunk-miner-0.2.0-alpha.3-linux-x86_64.tar.gz",
+      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-linux-x86_64.tar.gz",
+      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-linux-x86_64.tar.gz.sha256",
+      "sha256": "a687fb1d3bbacd9097e4922673bdbaee4166ed1135d99f843c16add178374e6b"
+    },
+    {
+      "platform": "Linux ARM64",
+      "platformId": "linux-aarch64",
+      "target": "aarch64-unknown-linux-gnu",
+      "archive": "nicechunk-miner-0.2.0-alpha.3-linux-aarch64.tar.gz",
+      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-linux-aarch64.tar.gz",
+      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-linux-aarch64.tar.gz.sha256",
+      "sha256": "0167ceab30adca420dd52f93844c712263e2a7365f58efb31e1c99db57894cb1"
+    },
+    {
+      "platform": "Windows x86_64",
+      "platformId": "windows-x86_64",
+      "target": "x86_64-pc-windows-msvc",
+      "archive": "nicechunk-miner-0.2.0-alpha.3-windows-x86_64.zip",
+      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-windows-x86_64.zip",
+      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-windows-x86_64.zip.sha256",
+      "sha256": "8df7d0cc156f1d2d52ba0045f64fb3062cc9c076e3aef194d99c5731a20331c9"
+    },
+    {
+      "platform": "macOS Apple Silicon",
+      "platformId": "macos-aarch64",
+      "target": "aarch64-apple-darwin",
+      "archive": "nicechunk-miner-0.2.0-alpha.3-macos-aarch64.tar.gz",
+      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-macos-aarch64.tar.gz",
+      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-macos-aarch64.tar.gz.sha256",
+      "sha256": "b01ddcceba348544faba9fb6268067faa7e9d75abcfd0289cddc2795a5ef000b"
+    },
+    {
+      "platform": "macOS Intel",
+      "platformId": "macos-x86_64",
+      "target": "x86_64-apple-darwin",
+      "archive": "nicechunk-miner-0.2.0-alpha.3-macos-x86_64.tar.gz",
+      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-macos-x86_64.tar.gz",
+      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-macos-x86_64.tar.gz.sha256",
+      "sha256": "1d818ad47d42e870f315e0f315dc7220f27e305ea6ba3b6056ce9fc21e69ec9f"
+    }
+  ],
+  "webBundle": {
+    "platform": "Web/WASM static bundle",
+    "archive": "miner-0.2.0-alpha.3-0eca71a61707dc0a.tar.gz",
+    "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/miner-0.2.0-alpha.3-0eca71a61707dc0a.tar.gz",
+    "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/miner-0.2.0-alpha.3-0eca71a61707dc0a.sha256",
+    "sha256": "26c55512022695c3edede23f68e49f68936b335a56e59b76fad5ad61fb8c0826"
+  },
+  "message": "Every CLI archive passed its native self-test; the Web/WASM bundle passed native/WASM consistency and browser smoke tests before publication."
 }

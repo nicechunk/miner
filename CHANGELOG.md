@@ -4,6 +4,14 @@ All notable Miner changes are documented here. The project uses Semantic
 Versioning while protocol, VM, cost-model, and codec versions are tracked
 independently.
 
+## Unreleased
+
+### Changed
+
+- Package cross-platform CLI and Web/WASM release archives only for version
+  tags or an explicit manual workflow run; ordinary Git pushes remain
+  validation-only.
+
 ## 0.2.0-alpha.3 - 2026-07-30
 
 ### Fixed
