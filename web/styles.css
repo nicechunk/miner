@@ -688,6 +688,8 @@ h3 { margin: 0; }
 .ncm-preview-frame[data-preview-state="ready"] #ncmPreviewCanvas { opacity: 1; }
 .ncm-preview-frame[data-preview-state="ready"] .ncm-preview-fallback,
 .ncm-preview-frame[data-preview-state="ready"] .ncm-preview-horizon { visibility: hidden; opacity: 0; }
+.ncm-preview-frame[data-preview-state="unavailable"] { border-color: rgba(135, 207, 255, .3); }
+.ncm-preview-frame[data-preview-state="unavailable"] .ncm-preview-fallback strong { color: var(--blue); }
 .ncm-preview-frame[data-preview-state="error"] { border-color: rgba(255, 141, 135, .36); }
 .ncm-preview-frame[data-preview-state="error"] .ncm-preview-fallback strong { color: var(--red); }
 .ncm-preview-facts {

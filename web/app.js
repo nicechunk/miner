@@ -5,6 +5,11 @@ const SCENE_URL = new URL("__SCENE_URL__", import.meta.url);
 const SITE_CONFIG_URL = new URL("__SITE_CONFIG_URL__", import.meta.url);
 const RELEASE_MANIFEST_URL = new URL("../release-manifest.json", import.meta.url);
 const ENGINE_REQUEST_TIMEOUT_MS = 120_000;
+const PROFILE_SCENE_VIEWS = Object.freeze({
+  terrain_delta: "terrain",
+  building: "building",
+  forged_item: "forged",
+});
 let worldScene = null;
 let ncmPreviewScene = null;
 let engineWorker = null;
@@ -67,9 +72,9 @@ async function initialize() {
   elements.workerCount.value = String(webKit ? 1 : Math.min(8, logical));
   bindEvents();
   updateButtons();
-  void initializeWorldScene();
   await initI18n();
   elements.localeSelect.value = getLocale();
+  void initializeWorldScene();
   await loadSiteConfig();
   await loadReleaseManifest();
   await probeEngine();
@@ -140,34 +145,108 @@ function bindEvents() {
 
 async function initializeWorldScene() {
   const canvas = document.getElementById("minerWorldCanvas");
+  if (!supportsWebGl2()) {
+    activateGraphicsFallback("webgl2-unavailable");
+    return;
+  }
+
+  let sceneModule;
   try {
-    const { createMinerWorldScene, createNcmPreviewScene } = await import(SCENE_URL);
-    if (canvas) {
-      worldScene = createMinerWorldScene(canvas);
+    sceneModule = await import(SCENE_URL);
+  } catch (error) {
+    activateGraphicsFallback("scene-module-unavailable");
+    console.warn("NiceChunk 3D scene module is unavailable; using the static fallback.", error);
+    return;
+  }
+
+  if (canvas) {
+    canvas.dataset.sceneCapability = "webgl2-detected";
+    try {
+      worldScene = sceneModule.createMinerWorldScene(canvas, {
+        onUnavailable: (error) => {
+          activateWorldFallback(isWebGl2UnavailableError(error)
+            ? "webgl2-unavailable"
+            : "scene-initialization-failed");
+        },
+      });
       dispatchScenePhase();
+    } catch (error) {
+      activateWorldFallback("scene-initialization-failed");
+      console.warn("NiceChunk 3D world scene is unavailable; using the static fallback.", error);
     }
-    if (elements.ncmPreviewCanvas) {
-      ncmPreviewScene = createNcmPreviewScene(elements.ncmPreviewCanvas, {
+  }
+
+  if (elements.ncmPreviewCanvas) {
+    try {
+      ncmPreviewScene = sceneModule.createNcmPreviewScene(elements.ncmPreviewCanvas, {
         onUnavailable: () => {
           elements.ncmPreviewMessage.removeAttribute("data-i18n");
           elements.ncmPreviewMessage.textContent = t("preview.webglUnavailable");
         },
       });
       ncmPreviewScene.setInspection(state.inspect);
+    } catch (error) {
+      activatePreviewFallback("preview-initialization-failed", true);
+      console.warn("NiceChunk NCM model preview is unavailable; showing canonical model data instead.", error);
     }
-  } catch (error) {
-    document.documentElement.classList.add("miner-scene-fallback");
-    console.warn("NiceChunk 3D world scene is unavailable; using the static fallback.", error);
   }
 }
 
+function supportsWebGl2() {
+  if (!("WebGL2RenderingContext" in window)) return false;
+  try {
+    return Boolean(document.createElement("canvas").getContext("webgl2"));
+  } catch {
+    return false;
+  }
+}
+
+function activateGraphicsFallback(reason) {
+  activateWorldFallback(reason);
+  activatePreviewFallback(reason);
+}
+
+function activateWorldFallback(reason) {
+  document.documentElement.classList.remove("miner-scene-ready");
+  document.documentElement.classList.add("miner-scene-fallback");
+  const canvas = document.getElementById("minerWorldCanvas");
+  if (!canvas) return;
+  canvas.dataset.sceneReady = "false";
+  canvas.dataset.sceneRenderer = "static-fallback";
+  canvas.dataset.sceneCapability = reason;
+  canvas.dataset.sceneView ||= "overview";
+  canvas.dataset.scenePhase = state.phase;
+}
+
+function activatePreviewFallback(reason, unexpected = false) {
+  const canvas = elements.ncmPreviewCanvas;
+  if (!canvas) return;
+  canvas.dataset.previewReady = "false";
+  canvas.dataset.previewRenderer = "static-fallback";
+  canvas.dataset.previewFallback = reason;
+  if (unexpected) canvas.dataset.previewError = reason;
+  else delete canvas.dataset.previewError;
+  elements.ncmPreviewFrame.dataset.previewState = unexpected ? "error" : "unavailable";
+  elements.ncmPreviewMessage.removeAttribute("data-i18n");
+  elements.ncmPreviewMessage.textContent = t("preview.webglUnavailable");
+}
+
+function isWebGl2UnavailableError(error) {
+  return /webgl\s*2[^.]*?(?:unavailable|not available|unsupported|not supported)/iu
+    .test(String(error?.message || error || ""));
+}
+
 function dispatchSceneProfile() {
+  const canvas = document.getElementById("minerWorldCanvas");
+  if (canvas) canvas.dataset.sceneView = PROFILE_SCENE_VIEWS[state.profile] || "overview";
   window.dispatchEvent(new CustomEvent("nicechunk:minerprofile", {
     detail: { profile: state.profile },
   }));
 }
 
 function dispatchScenePhase() {
+  const canvas = document.getElementById("minerWorldCanvas");
+  if (canvas) canvas.dataset.scenePhase = state.phase;
   window.dispatchEvent(new CustomEvent("nicechunk:minerphase", {
     detail: { phase: state.phase },
   }));
@@ -608,6 +687,15 @@ function updateNcmPreview() {
   const inspect = state.inspect;
   const semantics = inspect?.semantics;
   const building = semantics?.profile === "building" ? semantics.semantics : null;
+  elements.ncmPreviewCanvas.dataset.previewProfile = String(semantics?.profile || "");
+  elements.ncmPreviewCanvas.dataset.previewFormat = String(inspect?.format || "");
+  elements.ncmPreviewCanvas.dataset.previewSemanticRoot = String(inspect?.semanticRoot || "");
+  elements.ncmPreviewCanvas.dataset.previewVoxelCount = String(inspect?.voxelCount ?? "");
+  if (Array.isArray(building?.size)) {
+    elements.ncmPreviewCanvas.dataset.previewDimensions = building.size.join("x");
+  } else {
+    delete elements.ncmPreviewCanvas.dataset.previewDimensions;
+  }
   elements.ncmPreviewFormat.textContent = inspect?.format || "—";
   elements.ncmPreviewDimensions.textContent = Array.isArray(building?.size)
     ? building.size.join(" × ")
@@ -615,7 +703,7 @@ function updateNcmPreview() {
   elements.ncmPreviewVoxels.textContent = inspect ? formatNumber(inspect.voxelCount) : "—";
   elements.ncmPreviewRoot.textContent = inspect?.semanticRoot || "—";
   elements.ncmPreviewMessage.removeAttribute("data-i18n");
-  if (elements.ncmPreviewCanvas.dataset.previewError) {
+  if (elements.ncmPreviewCanvas.dataset.previewFallback || elements.ncmPreviewCanvas.dataset.previewError) {
     elements.ncmPreviewMessage.textContent = t("preview.webglUnavailable");
   } else if (building) {
     elements.ncmPreviewMessage.textContent = t("preview.loading");

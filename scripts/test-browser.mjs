@@ -19,6 +19,7 @@ const buildingInputs = Object.fromEntries(await Promise.all(
   ]),
 ));
 const wasmDelayMs = Math.max(0, Number(process.env.POUW_WASM_DELAY_MS || 0));
+const noWebGlOnly = process.env.POUW_NO_WEBGL_ONLY === "1";
 const requestedBrowserNames = String(process.env.POUW_BROWSER_TARGETS || "")
   .split(",")
   .map((value) => value.trim().toLowerCase())
@@ -90,7 +91,8 @@ try {
       continue;
     }
     try {
-      await testBrowser(browser, target.label, origin, requests);
+      if (!noWebGlOnly) await testBrowser(browser, target.label, origin, requests);
+      await testNoWebGlMining(browser, target.label, origin, requests);
       completed += 1;
     } finally {
       await browser.close();
@@ -177,7 +179,9 @@ async function testBrowser(browser, label, origin, requests) {
     await page.waitForFunction(() => {
       const canvas = document.getElementById("ncmPreviewCanvas");
       return canvas?.dataset.previewProfile === "building"
-        && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
+        && (canvas.dataset.previewReady === "true"
+          || Boolean(canvas.dataset.previewFallback)
+          || Boolean(canvas.dataset.previewError));
     }, null, { timeout: 30_000 });
   } catch (error) {
     console.error(`${label} default NCM preview diagnostics`, {
@@ -242,7 +246,9 @@ async function testBrowser(browser, label, origin, requests) {
         && Boolean(canvas.dataset.previewSemanticRoot)
         && canvas.dataset.previewSemanticRoot !== previousRoot
         && document.getElementById("targetRoot")?.textContent === canvas.dataset.previewSemanticRoot
-        && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
+        && (canvas.dataset.previewReady === "true"
+          || Boolean(canvas.dataset.previewFallback)
+          || Boolean(canvas.dataset.previewError));
     }, defaultPreview.root, { timeout: 30_000 });
     const variantPreview = await previewSnapshot(page);
     assert(variantPreview.root !== defaultPreview.root, `${label} ${variant} reused the default cottage semantic root`);
@@ -256,7 +262,9 @@ async function testBrowser(browser, label, origin, requests) {
   await page.waitForFunction(() => {
     const canvas = document.getElementById("ncmPreviewCanvas");
     return canvas?.dataset.previewProfile === "building"
-      && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
+      && (canvas.dataset.previewReady === "true"
+        || Boolean(canvas.dataset.previewFallback)
+        || Boolean(canvas.dataset.previewError));
   }, null, { timeout: 30_000 });
   assert(await page.locator("#ncmPreviewFormat").textContent() === "ncm3-v1", `${label} building preview must identify the real NCM3 source`);
   assert(/^\d+ × \d+ × \d+$/u.test(await page.locator("#ncmPreviewDimensions").textContent()), `${label} building preview dimensions are missing`);
@@ -266,7 +274,7 @@ async function testBrowser(browser, label, origin, requests) {
     assert(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-ready") === "true", `${label} NCM preview did not render through Chunk.js WebGL2`);
     assert(Number(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-chunks")) > 0, `${label} NCM preview has no rendered chunks`);
   } else {
-    assert(await page.locator("#ncmPreviewFrame").getAttribute("data-preview-state") === "error", `${label} NCM preview did not expose its WebGL fallback`);
+    assert(["unavailable", "error"].includes(await page.locator("#ncmPreviewFrame").getAttribute("data-preview-state")), `${label} NCM preview did not expose its WebGL fallback`);
     assert(await page.locator(".ncm-preview-fallback").isVisible(), `${label} NCM preview fallback is hidden`);
   }
   if (observeWorkers) {
@@ -347,7 +355,9 @@ async function testBrowser(browser, label, origin, requests) {
     await page.waitForFunction(() => {
       const canvas = document.getElementById("ncmPreviewCanvas");
       return canvas?.dataset.previewFormat === "ncm4-pouw-v1"
-        && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
+        && (canvas.dataset.previewReady === "true"
+          || Boolean(canvas.dataset.previewFallback)
+          || Boolean(canvas.dataset.previewError));
     });
     assert(await page.locator("#ncmPreviewRoot").textContent() === await page.locator("#targetRoot").textContent(), `${label} imported NCM4 preview root differs from verification`);
     assert(await page.locator("#candidateBytes").textContent() === "57 B", `${label} imported NCM4P text changed size`);
@@ -399,12 +409,14 @@ async function testBrowser(browser, label, origin, requests) {
   await mobile.waitForFunction(() => {
     const canvas = document.getElementById("ncmPreviewCanvas");
     return canvas?.dataset.previewProfile === "building"
-      && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
+      && (canvas.dataset.previewReady === "true"
+        || Boolean(canvas.dataset.previewFallback)
+        || Boolean(canvas.dataset.previewError));
   }, null, { timeout: 30_000 });
   if (mobileHasWebGlScene) {
     assert(await mobile.locator("#ncmPreviewCanvas").getAttribute("data-preview-ready") === "true", `${label} mobile NCM preview did not render`);
   } else {
-    assert(await mobile.locator("#ncmPreviewFrame").getAttribute("data-preview-state") === "error", `${label} mobile NCM fallback state is missing`);
+    assert(["unavailable", "error"].includes(await mobile.locator("#ncmPreviewFrame").getAttribute("data-preview-state")), `${label} mobile NCM fallback state is missing`);
   }
   assert(await mobile.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${label} mobile NCM preview overflows horizontally`);
   assert(await mobile.locator(".scene-dock").isVisible(), `${label} mobile camera dock is hidden`);
@@ -434,6 +446,87 @@ async function previewSnapshot(page) {
       chunks: Number(canvas?.dataset.previewChunks || 0),
     };
   });
+}
+
+async function testNoWebGlMining(browser, label, origin, requests) {
+  const requestStart = requests.length;
+  const page = await browser.newPage();
+  const initializationTimeout = Math.max(60_000, wasmDelayMs + 30_000);
+  page.setDefaultTimeout(initializationTimeout);
+  page.setDefaultNavigationTimeout(initializationTimeout);
+  await page.addInitScript(() => {
+    const nativeGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function getContext(type, ...options) {
+      if (String(type).toLowerCase() === "webgl2") return null;
+      return nativeGetContext.call(this, type, ...options);
+    };
+  });
+
+  const errors = [];
+  const warnings = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+    if (message.type() === "warning") warnings.push(message.text());
+  });
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("request", (request) => {
+    if (!request.url().startsWith(origin)) errors.push(`external request: ${request.url()}`);
+    if (request.method() !== "GET") errors.push(`unexpected ${request.method()} request: ${request.url()}`);
+  });
+
+  await page.goto(`${origin}/miner/`, { waitUntil: "networkidle" });
+  await page.waitForFunction(() => (
+    document.documentElement.classList.contains("miner-scene-fallback")
+    && document.getElementById("minerWorldCanvas")?.dataset.sceneCapability === "webgl2-unavailable"
+  ));
+  await page.waitForFunction(() => document.getElementById("engineBadge")?.classList.contains("ready"));
+  await page.waitForFunction(() => document.getElementById("inputFormat")?.textContent === "ncm3-v1");
+  await page.waitForFunction(() => {
+    const canvas = document.getElementById("ncmPreviewCanvas");
+    return canvas?.dataset.previewProfile === "building"
+      && Boolean(canvas.dataset.previewSemanticRoot)
+      && Number(canvas.dataset.previewVoxelCount) > 0;
+  });
+
+  assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-renderer") === "static-fallback", `${label} no-WebGL world did not use the static renderer`);
+  assert(await page.locator(".miner-world-fallback").isVisible(), `${label} no-WebGL world fallback is hidden`);
+  assert(await page.locator("#ncmPreviewFrame").getAttribute("data-preview-state") === "unavailable", `${label} no-WebGL NCM preview was treated as an application error`);
+  assert(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-renderer") === "static-fallback", `${label} no-WebGL NCM preview renderer is incorrect`);
+  assert(await page.locator(".ncm-preview-fallback").isVisible(), `${label} no-WebGL canonical summary is hidden`);
+  assert(await page.locator("#ncmPreviewRoot").textContent() === await page.locator("#targetRoot").textContent(), `${label} no-WebGL semantic root differs from the WASM result`);
+  assert(Number((await page.locator("#ncmPreviewVoxels").textContent()).replaceAll(/\D/gu, "")) > 0, `${label} no-WebGL voxel summary is empty`);
+
+  await page.locator("#workerCount").fill("1");
+  await page.locator("#populationInput").fill("4");
+  await page.locator("#startButton").click();
+  await page.waitForFunction(() => (
+    document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "running"
+    && Number(document.getElementById("generation")?.textContent.replaceAll(/\D/gu, "") || 0) > 0
+    && Number(document.getElementById("attempts")?.textContent.replaceAll(/\D/gu, "") || 0) > 0
+  ));
+  assert(await page.locator("#mismatchCount").textContent() === "0", `${label} no-WebGL mining lost exactness`);
+
+  await page.locator("#pauseButton").click();
+  await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "paused");
+  const generationBeforeResume = Number((await page.locator("#generation").textContent()).replaceAll(/\D/gu, ""));
+  await page.locator("#resumeButton").click();
+  await page.waitForFunction((previous) => (
+    document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "running"
+    && Number(document.getElementById("generation")?.textContent.replaceAll(/\D/gu, "") || 0) > previous
+  ), generationBeforeResume);
+  await page.locator("#stopButton").click();
+  await page.waitForFunction(() => (
+    document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "stopped"
+    && document.getElementById("islandCount")?.textContent === "0"
+  ));
+
+  const browserRequests = requests.slice(requestStart);
+  assert(!browserRequests.some((request) => request.url.includes("miner-world-scene")), `${label} loaded the WebGL scene module without WebGL2 support`);
+  assert(errors.length === 0, `${label} no-WebGL browser errors: ${errors.join(" | ")}`);
+  assert(!warnings.some((warning) => /webgl\s*2|scene initialization/iu.test(warning)), `${label} no-WebGL capability fallback emitted an exception warning: ${warnings.join(" | ")}`);
+  assert(browserRequests.every((request) => request.method === "GET"), `${label} no-WebGL run observed a non-GET request`);
+  await page.close();
+  console.log(`${label} no-WebGL CPU mining smoke passed without loading the 3D module`);
 }
 
 function browserTargets() {

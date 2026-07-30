@@ -1,7 +1,7 @@
 # NiceChunk Proof of Useful Work Miner
 
 This repository is the source of truth for the NiceChunk Proof of Useful Work
-Miner. Version `0.2.0-alpha.3` adds the experimental NCM4 PoUW codec and a
+Miner. Version `0.2.0-alpha.4` adds the experimental NCM4 PoUW codec and a
 persistent multi-island search session while preserving NCM3 byte-for-byte.
 It contains the deterministic core and verifier, native CLI, WASM bindings,
 static browser miner, schemas, vectors, benchmarks, and release automation.
@@ -95,6 +95,13 @@ nicechunk-miner mine test-vectors/building/complex-cottage.ncm3 \
   --out cottage-best.nc4p
 nicechunk-miner resume cottage.nc4s.chk --out cottage-resumed.nc4p
 ```
+
+`mine` accepts an NCM3 file directly, including the conventional `.ncm` or
+`.ncm3` extension. `--threads N` selects an exact native worker count, while
+`--threads auto` leaves one logical core available for the operating system.
+Live search status is written to stderr. Every newly shorter exact witness is
+labelled `status=improved` and includes source/candidate bytes, saved bytes and
+percentage, body/residual cost, decode units, semantic root, and exactness.
 
 `mine` accepts `--shard-index` and `--shard-count` for deterministic,
 non-overlapping search streams. Checkpoints contain the complete population,

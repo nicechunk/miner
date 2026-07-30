@@ -398,7 +398,10 @@ export function createMinerWorldScene(canvas, options = {}) {
       chunks = null;
       document.documentElement.classList.remove("miner-scene-ready");
       document.documentElement.classList.add("miner-scene-fallback");
-      console.warn("NiceChunk Chunk.js scene initialization failed; using the static fallback.", error);
+      options.onUnavailable?.(error);
+      if (!isWebGl2UnavailableError(error)) {
+        console.warn("NiceChunk Chunk.js scene initialization failed; using the static fallback.", error);
+      }
     }
   }
 
@@ -510,15 +513,22 @@ export function createNcmPreviewScene(canvas, options = {}) {
 
   const markUnavailable = (error) => {
     if (destroyed) return;
+    const expectedCapabilityFallback = isWebGl2UnavailableError(error);
     if (animationFrame) cancelAnimationFrame(animationFrame);
     animationFrame = 0;
     canvas.dataset.previewReady = "false";
-    canvas.dataset.previewError = String(error?.message || error || "WebGL2 unavailable").slice(0, 180);
-    setFrameState("error");
+    canvas.dataset.previewFallback = expectedCapabilityFallback
+      ? "webgl2-unavailable"
+      : "preview-rendering-failed";
+    if (expectedCapabilityFallback) delete canvas.dataset.previewError;
+    else canvas.dataset.previewError = String(error?.message || error || "Preview unavailable").slice(0, 180);
+    setFrameState(expectedCapabilityFallback ? "unavailable" : "error");
     renderer?.dispose();
     renderer = null;
     options.onUnavailable?.(error);
-    console.warn("NiceChunk NCM model preview is unavailable; showing canonical model data instead.", error);
+    if (!expectedCapabilityFallback) {
+      console.warn("NiceChunk NCM model preview is unavailable; showing canonical model data instead.", error);
+    }
   };
 
   async function initialize() {
@@ -698,6 +708,11 @@ function createCanonicalBuildingPlacement(inspection) {
     width: sizeX,
     depth: sizeZ,
   }, { placementId: `ncm-preview-${rootId}` });
+}
+
+function isWebGl2UnavailableError(error) {
+  return /webgl\s*2[^.]*?(?:unavailable|not available|unsupported|not supported)/iu
+    .test(String(error?.message || error || ""));
 }
 
 function previewCameraState(bounds, aspect) {

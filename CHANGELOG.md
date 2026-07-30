@@ -6,6 +6,23 @@ independently.
 
 ## Unreleased
 
+## 0.2.0-alpha.4 - 2026-07-30
+
+### Added
+
+- Accept NCM3 `.ncm`/`.ncm3` assets directly in `mine`, honor an explicit
+  native `--threads` count, and emit detailed start/search/improvement/complete
+  status records on stderr.
+- Report source/candidate bytes, savings, byte layout, decode units, semantic
+  root, exactness, worker configuration, and throughput whenever a shorter
+  NCM4 witness is found.
+
+### Fixed
+
+- Treat missing WebGL2 as an expected graphics capability fallback so the
+  static scene, canonical WASM model summary, and CPU mining Workers continue
+  without an exception stack or the 3D bundle.
+
 ### Changed
 
 - Package cross-platform CLI and Web/WASM release archives only for version

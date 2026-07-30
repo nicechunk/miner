@@ -47,6 +47,8 @@ fn ncm4_cli_analyzes_encodes_decodes_verifies_and_mines() {
     let mined = temporary.join("mined.nc4p");
     let checkpoint = temporary.join("state.nc4s.chk");
     let source = "test-vectors/building/complex-cottage.ncm3";
+    let direct_ncm = temporary.join("pasted-building.ncm");
+    fs::copy(repository_root().join(source), &direct_ncm).unwrap();
 
     let analysis = successful_json(&["--json", "ncm4", "analyze", source]);
     assert_eq!(analysis["exact"], true);
@@ -90,10 +92,10 @@ fn ncm4_cli_analyzes_encodes_decodes_verifies_and_mines() {
     assert_eq!(verified["improved"], true);
     assert_eq!(verified["mismatchCount"], 0);
 
-    let mined_report = successful_json(&[
+    let mined_output = run(&[
         "--json",
         "mine",
-        source,
+        direct_ncm.to_str().unwrap(),
         "--threads",
         "2",
         "--islands",
@@ -109,9 +111,29 @@ fn ncm4_cli_analyzes_encodes_decodes_verifies_and_mines() {
         "--out",
         mined.to_str().unwrap(),
     ]);
+    assert!(
+        mined_output.status.success(),
+        "direct NCM search failed: {}",
+        String::from_utf8_lossy(&mined_output.stderr)
+    );
+    let mined_report: Value = serde_json::from_slice(&mined_output.stdout).unwrap();
+    let progress = String::from_utf8_lossy(&mined_output.stderr);
     assert_eq!(mined_report["exact"], true);
+    assert_eq!(mined_report["improved"], true);
     assert_eq!(mined_report["threads"], 2);
     assert_eq!(mined_report["islands"], 2);
+    assert_eq!(mined_report["sourceFormat"], "ncm3-v1");
+    assert_eq!(mined_report["mismatchCount"], 0);
+    assert!(mined_report["savedBytes"].as_i64().unwrap() > 0);
+    assert!(progress.contains("status=starting"));
+    assert!(progress.contains("threads=2"));
+    assert!(progress.contains("status=improved"));
+    assert!(progress.contains("sourceBytes=64"));
+    assert!(progress.contains("candidateBytes=57"));
+    assert!(progress.contains("savedPercent="));
+    assert!(progress.contains("semanticRoot="));
+    assert!(progress.contains("exact=true"));
+    assert!(progress.contains("status=complete"));
     assert!(mined.exists());
     assert!(checkpoint.exists());
 

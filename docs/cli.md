@@ -51,6 +51,20 @@ nicechunk-miner mine asset.ncm3 --threads auto --islands 12 \
 nicechunk-miner resume state.nc4s.chk --out resumed.nc4p
 ```
 
+The positional input is read directly, so both `building.ncm` and
+`building.ncm3` work without creating a TaskV1 wrapper. Use `--threads 16` for
+exactly 16 native search threads or `--threads auto` to leave one logical core
+free. Human-readable status is emitted on stderr, for example:
+
+```text
+status=starting input=building.ncm profile=building sourceFormat=ncm3-v1 threads=16 islands=16 ...
+status=improved ... sourceBytes=64 candidateBytes=57 savedBytes=7 savedPercent=10.94% ... exact=true
+status=complete exact=true improved=true selectedFormat=ncm4-pouw-v1 ...
+```
+
+Use global `--json-progress` for equivalent newline-delimited JSON status
+records while keeping the final machine-readable report on stdout.
+
 `ncm4 verify` returns validation exit code 4 when a candidate is exact but not
 strictly smaller. `selectedFormat` then remains NCM3. The NCM4 checkpoint binds
 both semantic root and source encoding hash and contains full island

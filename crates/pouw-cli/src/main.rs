@@ -647,6 +647,20 @@ fn mine_ncm4_command(
     let started = Instant::now();
     let start_generation = session.generation();
     let target_generation = start_generation.saturating_add(session.config().generations);
+    let source_bytes = session.source_bytes();
+    let initial_progress = session.progress();
+    print_ncm4_start(
+        args.input.as_deref().or(args.resume.as_deref()),
+        session.source_format().as_str(),
+        session.config(),
+        &initial_progress,
+        json_progress,
+    );
+    let mut reported_witness_bytes = None;
+    if initial_progress.witness_exists {
+        print_ncm4_progress(&initial_progress, json_progress, 0, source_bytes, true);
+        reported_witness_bytes = Some(initial_progress.best_bytes);
+    }
     while session.generation() < target_generation && !control.is_stopped() {
         if session
             .config()
@@ -662,7 +676,18 @@ fn mine_ncm4_command(
         let remaining = target_generation - session.generation();
         let epoch = u32::from(session.config().epoch_generations).min(remaining);
         session.step(epoch, |progress| {
-            print_ncm4_progress(progress, json_progress, elapsed_ms(started));
+            let new_witness = progress.witness_exists
+                && reported_witness_bytes.is_none_or(|previous| progress.best_bytes < previous);
+            print_ncm4_progress(
+                progress,
+                json_progress,
+                elapsed_ms(started),
+                source_bytes,
+                new_witness,
+            );
+            if new_witness {
+                reported_witness_bytes = Some(progress.best_bytes);
+            }
         })?;
     }
     let checkpoint = session.checkpoint()?;
@@ -686,16 +711,27 @@ fn mine_ncm4_command(
     } else {
         None
     };
-    let source_bytes = session.source_bytes();
     let saved_bytes = i64::from(source_bytes) - i64::from(best.stats.total_bytes);
     let improved = best.stats.total_bytes < source_bytes;
+    let saved_bps = if source_bytes == 0 {
+        0
+    } else {
+        saved_bytes * 10000 / i64::from(source_bytes)
+    };
+    let saved_percent = savings_percent(saved_bytes, source_bytes);
     let report = json!({
         "format": "ncm4-pouw-v1",
+        "profile": "building",
+        "sourceFormat": session.source_format().as_str(),
         "exact": best.exact,
         "improved": improved,
         "witnessExists": improved,
         "selectedFormat": if improved { "ncm4-pouw-v1" } else { session.source_format().as_str() },
         "semanticRoot": hash_hex(&best.semantic_root),
+        "targetSemanticRoot": hash_hex(&best.semantic_root),
+        "candidateSemanticRoot": hash_hex(&independently_decoded.semantic_root),
+        "mismatchCount": 0,
+        "sourceEncodingHash": hash_hex(&session.source_encoding_hash()),
         "encodingHash": hash_hex(&best.encoding_hash),
         "sourceBytes": source_bytes,
         "fixedHeaderBytes": best.stats.fixed_header_bytes,
@@ -704,7 +740,8 @@ fn mine_ncm4_command(
         "residualBytes": best.stats.residual_bytes,
         "candidateBytes": best.stats.total_bytes,
         "savedBytes": saved_bytes,
-        "savedBps": if source_bytes == 0 { 0 } else { saved_bytes * 10000 / i64::from(source_bytes) },
+        "savedBps": saved_bps,
+        "savedPercent": saved_percent,
         "decodeUnits": best.stats.decode_units,
         "attempts": session.attempts(),
         "attemptsPerSecond": if elapsed_ms(started) == 0 { 0.0 } else { session.attempts() as f64 * 1000.0 / elapsed_ms(started) as f64 },
@@ -720,28 +757,94 @@ fn mine_ncm4_command(
         "checkpoint": checkpoint_path,
         "stopped": control.is_stopped(),
     });
+    print_ncm4_completion(&report, json_progress);
     print_report(&report, json_output)
 }
 
-fn print_ncm4_progress(progress: &Ncm4SearchProgress, json_progress: bool, elapsed: u64) {
+fn print_ncm4_start(
+    input: Option<&Path>,
+    source_format: &str,
+    config: &SearchConfig,
+    progress: &Ncm4SearchProgress,
+    json_progress: bool,
+) {
+    if json_progress {
+        eprintln!(
+            "{}",
+            json!({
+                "type": "ncm4-status",
+                "status": "starting",
+                "input": input.map(|path| path.display().to_string()),
+                "profile": "building",
+                "sourceFormat": source_format,
+                "threads": config.threads,
+                "islands": config.islands,
+                "population": config.population,
+                "seed": config.seed,
+                "generation": progress.generation,
+                "attempts": progress.attempts,
+                "semanticRoot": hash_hex(&progress.semantic_root),
+                "strategy": progress.strategy,
+            })
+        );
+    } else {
+        eprintln!(
+            "status=starting input={} profile=building sourceFormat={} threads={} islands={} population={} seed={} generation={} attempts={} semanticRoot={} strategy={}",
+            input
+                .map(|path| path.display().to_string())
+                .unwrap_or_else(|| "checkpoint".into()),
+            source_format,
+            config.threads,
+            config.islands,
+            config.population,
+            config.seed,
+            progress.generation,
+            progress.attempts,
+            hash_hex(&progress.semantic_root),
+            progress.strategy,
+        );
+    }
+}
+
+fn print_ncm4_progress(
+    progress: &Ncm4SearchProgress,
+    json_progress: bool,
+    elapsed: u64,
+    source_bytes: u32,
+    new_witness: bool,
+) {
     let rate = if elapsed == 0 {
         0.0
     } else {
         progress.attempts as f64 * 1000.0 / elapsed as f64
     };
+    let saved_bytes = i64::from(source_bytes) - i64::from(progress.best_bytes);
+    let saved_bps = if source_bytes == 0 {
+        0
+    } else {
+        saved_bytes * 10000 / i64::from(source_bytes)
+    };
+    let saved_percent = savings_percent(saved_bytes, source_bytes);
+    let status = if new_witness { "improved" } else { "searching" };
     if json_progress {
         eprintln!(
             "{}",
             json!({
                 "type": "ncm4-progress",
+                "status": status,
                 "generation": progress.generation,
                 "attempts": progress.attempts,
                 "attemptsPerSecond": rate,
                 "elapsedMs": elapsed,
+                "sourceBytes": source_bytes,
                 "headerBytes": progress.header_bytes,
                 "bodyBytes": progress.body_bytes,
                 "residualBytes": progress.residual_bytes,
+                "candidateBytes": progress.best_bytes,
                 "totalBytes": progress.best_bytes,
+                "savedBytes": saved_bytes,
+                "savedBps": saved_bps,
+                "savedPercent": saved_percent,
                 "decodeUnits": progress.decode_units,
                 "semanticRoot": hash_hex(&progress.semantic_root),
                 "exact": true,
@@ -751,17 +854,60 @@ fn print_ncm4_progress(progress: &Ncm4SearchProgress, json_progress: bool, elaps
         );
     } else {
         eprintln!(
-            "generation={} attempts={} rate={:.2}/s elapsed={:.3}s bytes={} (header={}, body={}, residual={}) decodeUnits={} exact=true strategy={}",
+            "status={} generation={} attempts={} rate={:.2}/s elapsed={:.3}s sourceBytes={} candidateBytes={} savedBytes={} savedPercent={:.2}% headerBytes={} bodyBytes={} residualBytes={} decodeUnits={} semanticRoot={} exact=true witness={} strategy={}",
+            status,
             progress.generation,
             progress.attempts,
             rate,
             elapsed as f64 / 1000.0,
+            source_bytes,
             progress.best_bytes,
+            saved_bytes,
+            saved_percent,
             progress.header_bytes,
             progress.body_bytes,
             progress.residual_bytes,
             progress.decode_units,
+            hash_hex(&progress.semantic_root),
+            progress.witness_exists,
             progress.strategy,
+        );
+    }
+}
+
+fn savings_percent(saved_bytes: i64, source_bytes: u32) -> f64 {
+    if source_bytes == 0 {
+        0.0
+    } else {
+        saved_bytes as f64 * 100.0 / f64::from(source_bytes)
+    }
+}
+
+fn print_ncm4_completion(report: &Value, json_progress: bool) {
+    if json_progress {
+        eprintln!(
+            "{}",
+            merge_json(
+                json!({ "type": "ncm4-status", "status": "complete" }),
+                report.clone(),
+            )
+        );
+    } else {
+        eprintln!(
+            "status=complete exact={} improved={} selectedFormat={} sourceBytes={} candidateBytes={} savedBytes={} savedPercent={:.2}% decodeUnits={} attempts={} rate={:.2}/s elapsed={:.3}s semanticRoot={} output={}",
+            report["exact"].as_bool().unwrap_or(false),
+            report["improved"].as_bool().unwrap_or(false),
+            report["selectedFormat"].as_str().unwrap_or("unknown"),
+            report["sourceBytes"].as_u64().unwrap_or(0),
+            report["candidateBytes"].as_u64().unwrap_or(0),
+            report["savedBytes"].as_i64().unwrap_or(0),
+            report["savedPercent"].as_f64().unwrap_or(0.0),
+            report["decodeUnits"].as_u64().unwrap_or(0),
+            report["attempts"].as_u64().unwrap_or(0),
+            report["attemptsPerSecond"].as_f64().unwrap_or(0.0),
+            report["elapsedMs"].as_u64().unwrap_or(0) as f64 / 1000.0,
+            report["semanticRoot"].as_str().unwrap_or("unknown"),
+            report["output"].as_str().unwrap_or("unknown"),
         );
     }
 }
