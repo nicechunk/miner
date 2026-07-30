@@ -403,6 +403,8 @@ async function testBrowser(browser, label, origin, requests) {
   assert(await mobile.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${label} mobile page overflows horizontally`);
   await mobile.locator("#headerMenuButton").click();
   assert(await mobile.locator("#primaryNav").getAttribute("data-open") === "true", `${label} mobile menu did not open`);
+  await mobile.locator("#headerMenuButton").click();
+  assert(await mobile.locator("#primaryNav").getAttribute("data-open") === "false", `${label} mobile menu did not close`);
   await mobile.locator('[data-scene-view="building"][data-scene-profile="building"]').click();
   await mobile.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.sceneView === "building");
   await mobile.locator("#ncmPreviewFrame").scrollIntoViewIfNeeded();
