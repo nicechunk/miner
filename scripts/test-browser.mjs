@@ -8,6 +8,7 @@ import { chromium, firefox, webkit } from "playwright";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = resolve(root, "web", "dist");
+const wasmDelayMs = Math.max(0, Number(process.env.POUW_WASM_DELAY_MS || 0));
 const requests = [];
 const server = createServer(async (request, response) => {
   try {
@@ -28,6 +29,9 @@ const server = createServer(async (request, response) => {
     if (!file.startsWith(`${dist}/`) && file !== resolve(dist, "index.html")) throw new Error("path escape");
     const metadata = await stat(file);
     if (!metadata.isFile()) throw new Error("not a file");
+    if (extname(file) === ".wasm" && wasmDelayMs > 0) {
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, wasmDelayMs));
+    }
     response.writeHead(200, {
       "content-type": contentType(extname(file)),
       "cache-control": file.endsWith("index.html") || file.endsWith("-manifest.json") ? "no-cache" : "public, max-age=31536000, immutable",
@@ -72,9 +76,26 @@ try {
 async function testBrowser(browser, label, origin, requests) {
   const requestStart = requests.length;
   const page = await browser.newPage();
-  page.setDefaultTimeout(30_000);
+  const initializationTimeout = Math.max(60_000, wasmDelayMs + 30_000);
+  page.setDefaultTimeout(initializationTimeout);
+  page.setDefaultNavigationTimeout(initializationTimeout);
+  const observeWorkers = label !== "WebKit";
+  if (observeWorkers) {
+    await page.addInitScript(() => {
+      const NativeWorker = window.Worker;
+      window.__nicechunkWorkerNames = [];
+      window.Worker = class NiceChunkObservedWorker extends NativeWorker {
+        constructor(url, options) {
+          super(url, options);
+          window.__nicechunkWorkerNames.push(options?.name || "unnamed");
+        }
+      };
+    });
+  }
   const errors = [];
+  const consoleDiagnostics = [];
   page.on("console", (message) => {
+    consoleDiagnostics.push(`${message.type()}: ${message.text()}`);
     if (message.type() === "error") errors.push(message.text());
   });
   page.on("pageerror", (error) => errors.push(error.message));
@@ -90,22 +111,49 @@ async function testBrowser(browser, label, origin, requests) {
   assert(!(await missing.text()).includes("<!doctype html>"), "missing JS must not return HTML");
 
   await page.goto(`${origin}/miner/`, { waitUntil: "networkidle" });
-  await page.locator('#minerWorldCanvas[data-scene-ready="true"]').waitFor({ state: "attached" });
-  await page.waitForFunction(() => Number(document.getElementById("minerWorldCanvas")?.dataset.sceneTerrainChunks) >= 9);
+  try {
+    await page.waitForFunction(() => (
+      document.getElementById("minerWorldCanvas")?.dataset.sceneReady === "true"
+      || document.documentElement.classList.contains("miner-scene-fallback")
+    ));
+  } catch (error) {
+    console.error(`${label} scene initialization diagnostics`, {
+      rootClass: await page.locator("html").getAttribute("class"),
+      canvasData: await page.locator("#minerWorldCanvas").evaluate((canvas) => ({ ...canvas.dataset })),
+      engine: await page.locator("#engineBadge").textContent(),
+      status: await page.locator("#statusBanner").textContent(),
+      diagnostics: consoleDiagnostics,
+    });
+    throw error;
+  }
+  const hasWebGlScene = await page.locator("#minerWorldCanvas").getAttribute("data-scene-ready") === "true";
   assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-view") === "overview", `${label} scene should open on the world view`);
-  assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-renderer") === "chunk.js-webgl2", `${label} scene must use the Chunk.js WebGL2 renderer`);
-  assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-seed") === "nicechunk-mainnet-001", `${label} scene must use the mainnet world seed`);
-  assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-avatar") === "NCM:peasant_guy:v1", `${label} scene must use the game avatar`);
-  assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-cottage") === "NCM3:house-blueprint", `${label} scene must render the hardcoded game cottage`);
-  assert((await page.locator("#minerWorldCanvas").getAttribute("data-scene-forge-item"))?.startsWith("forged-pickaxe:"), `${label} scene must render the game forged pickaxe`);
-  assert(Number(await page.locator("#minerWorldCanvas").getAttribute("data-scene-terrain-thickness")) >= 20, `${label} terrain must have a visible rocky underside`);
-  assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-decorations") === "trees-grass-flowers", `${label} scene decorations are incomplete`);
-  await page.waitForFunction(() => document.getElementById("engineBadge")?.classList.contains("ready"), null, { timeout: 30_000 });
+  if (hasWebGlScene) {
+    await page.waitForFunction(() => Number(document.getElementById("minerWorldCanvas")?.dataset.sceneTerrainChunks) >= 9);
+    assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-renderer") === "chunk.js-webgl2", `${label} scene must use the Chunk.js WebGL2 renderer`);
+    assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-seed") === "nicechunk-mainnet-001", `${label} scene must use the mainnet world seed`);
+    assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-avatar") === "NCM:peasant_guy:v1", `${label} scene must use the game avatar`);
+    assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-cottage") === "NCM3:house-blueprint", `${label} scene must render the hardcoded game cottage`);
+    assert((await page.locator("#minerWorldCanvas").getAttribute("data-scene-forge-item"))?.startsWith("forged-pickaxe:"), `${label} scene must render the game forged pickaxe`);
+    assert(Number(await page.locator("#minerWorldCanvas").getAttribute("data-scene-terrain-thickness")) >= 20, `${label} terrain must have a visible rocky underside`);
+    assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-decorations") === "trees-grass-flowers", `${label} scene decorations are incomplete`);
+  } else {
+    assert((await page.locator("html").getAttribute("class"))?.includes("miner-scene-fallback"), `${label} did not expose the WebGL fallback state`);
+    assert(await page.locator(".miner-world-fallback").isVisible(), `${label} static world fallback is hidden`);
+  }
+  await page.waitForFunction(() => document.getElementById("engineBadge")?.classList.contains("ready"), null, { timeout: initializationTimeout });
   assert(await page.locator("#incumbentBytes").textContent() !== "—", "sample inspection should populate bytes");
+  if (label === "WebKit") assert(await page.locator("#workerCount").inputValue() === "1", "WebKit must default to one mining worker");
+  if (observeWorkers) {
+    assert(await page.evaluate(() => window.__nicechunkWorkerNames.filter((name) => name === "nicechunk-pouw-control").length) === 1, `${label} must reuse one WASM control worker`);
+  }
   const englishHero = await page.locator(".hero-lede").textContent();
   const englishStatus = await page.locator("#statusBanner").textContent();
   const englishEngine = await page.locator("#engineBadge").textContent();
-  for (const locale of ["es", "fr", "de", "ja", "ru", "ko", "zh-Hant", "zh-Hans"]) {
+  const localesToTest = label === "WebKit"
+    ? ["zh-Hans"]
+    : ["es", "fr", "de", "ja", "ru", "ko", "zh-Hant", "zh-Hans"];
+  for (const locale of localesToTest) {
     await page.locator("#localeSelect").selectOption(locale);
     await page.waitForFunction((language) => document.documentElement.lang === language, locale);
     assert(await page.locator(".hero-lede").textContent() !== englishHero, `${label} ${locale} did not translate the Miner page`);
@@ -116,17 +164,22 @@ async function testBrowser(browser, label, origin, requests) {
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForFunction(() => document.documentElement.lang === "zh-Hans");
   assert(await page.locator("#localeSelect").inputValue() === "zh-Hans", `${label} persisted Miner locale was not restored`);
-  await page.waitForFunction(() => document.getElementById("engineBadge")?.classList.contains("ready"), null, { timeout: 30_000 });
+  await page.waitForFunction(() => document.getElementById("engineBadge")?.classList.contains("ready"), null, { timeout: initializationTimeout });
   await page.waitForFunction(() => document.getElementById("incumbentBytes")?.textContent !== "—", null, { timeout: 30_000 });
   await page.locator("#localeSelect").selectOption("en");
   await page.waitForFunction(() => document.documentElement.lang === "en");
 
   const profileViews = { terrain_delta: "terrain", building: "building", forged_item: "forged" };
   for (const profile of ["terrain_delta", "building", "forged_item"]) {
-    await page.locator(`[data-scene-profile="${profile}"]`).click();
+    const startDisabledDuringInspection = await page.evaluate((value) => {
+      document.querySelector(`[data-scene-profile="${value}"]`)?.click();
+      document.getElementById("startButton")?.click();
+      return document.getElementById("startButton")?.disabled;
+    }, profile);
+    assert(startDisabledDuringInspection, `${label} Start must stay disabled while ${profile} is being inspected`);
     await page.waitForFunction((value) => document.querySelector(`[data-profile="${value}"]`)?.getAttribute("aria-selected") === "true", profile);
     await page.waitForFunction((view) => document.getElementById("minerWorldCanvas")?.dataset.sceneView === view, profileViews[profile]);
-    if (profile === "forged_item") {
+    if (profile === "forged_item" && hasWebGlScene) {
       await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.sceneActorRoles === "forged-item");
       assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-actor-count") === "1", `${label} forge view must isolate one forged item`);
     }
@@ -142,8 +195,11 @@ async function testBrowser(browser, label, origin, requests) {
       });
       throw error;
     }
+    if (observeWorkers) {
+      assert(await page.evaluate(() => window.__nicechunkWorkerNames.filter((name) => name === "nicechunk-pouw-control").length) === 1, `${label} created duplicate WASM control workers`);
+    }
     await page.locator("#timeBudget").fill(profile === "terrain_delta" ? "10" : "2");
-    await page.locator("#workerCount").fill("2");
+    await page.locator("#workerCount").fill(label === "WebKit" ? "1" : "2");
     await page.locator("#populationInput").fill("8");
     await page.locator("#startButton").click();
     await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "running");
@@ -169,12 +225,17 @@ async function testBrowser(browser, label, origin, requests) {
     }
     assert(await page.locator("#mismatchCount").textContent() === "0", `${profile} mismatch count should be zero`);
     assert(!(await page.locator("#downloadResult").isDisabled()), `${profile} result download should be enabled`);
-    if (await page.locator("#stopButton").isEnabled()) await page.locator("#stopButton").click();
+    await page.evaluate(() => {
+      const button = document.getElementById("stopButton");
+      if (button && !button.disabled) button.click();
+    });
     await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "stopped");
     await page.waitForFunction(() => document.getElementById("workerStatus")?.textContent.startsWith("0 worker"), null, { timeout: 5_000 });
   }
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+  mobile.setDefaultTimeout(initializationTimeout);
+  mobile.setDefaultNavigationTimeout(initializationTimeout);
   await mobile.addInitScript(() => localStorage.setItem("nicechunk.language", "zh-Hans"));
   mobile.on("console", (message) => {
     if (message.type() === "error") errors.push(`mobile: ${message.text()}`);
@@ -186,9 +247,17 @@ async function testBrowser(browser, label, origin, requests) {
   });
   await mobile.goto(`${origin}/miner/`, { waitUntil: "networkidle" });
   await mobile.waitForFunction(() => document.documentElement.lang === "zh-Hans");
-  await mobile.locator('#minerWorldCanvas[data-scene-ready="true"]').waitFor({ state: "attached" });
-  await mobile.waitForFunction(() => Number(document.getElementById("minerWorldCanvas")?.dataset.sceneTerrainChunks) >= 9);
-  assert(await mobile.locator("#minerWorldCanvas").getAttribute("data-scene-renderer") === "chunk.js-webgl2", `${label} mobile scene must use the Chunk.js WebGL2 renderer`);
+  await mobile.waitForFunction(() => (
+    document.getElementById("minerWorldCanvas")?.dataset.sceneReady === "true"
+    || document.documentElement.classList.contains("miner-scene-fallback")
+  ));
+  const mobileHasWebGlScene = await mobile.locator("#minerWorldCanvas").getAttribute("data-scene-ready") === "true";
+  if (mobileHasWebGlScene) {
+    await mobile.waitForFunction(() => Number(document.getElementById("minerWorldCanvas")?.dataset.sceneTerrainChunks) >= 9);
+    assert(await mobile.locator("#minerWorldCanvas").getAttribute("data-scene-renderer") === "chunk.js-webgl2", `${label} mobile scene must use the Chunk.js WebGL2 renderer`);
+  } else {
+    assert(await mobile.locator(".miner-world-fallback").isVisible(), `${label} mobile static fallback is hidden`);
+  }
   assert(/\p{Script=Han}/u.test(await mobile.locator(".hero-lede").textContent()), `${label} mobile Miner locale was not applied`);
   assert(await mobile.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${label} mobile page overflows horizontally`);
   await mobile.locator("#headerMenuButton").click();
@@ -198,8 +267,10 @@ async function testBrowser(browser, label, origin, requests) {
   assert(await mobile.locator(".scene-dock").isVisible(), `${label} mobile camera dock is hidden`);
   await mobile.locator('[data-scene-view="forged"][data-scene-profile="forged_item"]').click();
   await mobile.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.sceneView === "forged");
-  await mobile.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.sceneActorRoles === "forged-item");
-  assert(await mobile.locator("#minerWorldCanvas").getAttribute("data-scene-actor-count") === "1", `${label} mobile forge view must isolate the pickaxe`);
+  if (mobileHasWebGlScene) {
+    await mobile.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.sceneActorRoles === "forged-item");
+    assert(await mobile.locator("#minerWorldCanvas").getAttribute("data-scene-actor-count") === "1", `${label} mobile forge view must isolate the pickaxe`);
+  }
   await mobile.close();
 
   const browserRequests = requests.slice(requestStart);

@@ -17,6 +17,7 @@ const expectedLocales = ["en", "es", "fr", "de", "ja", "ru", "ko", "zh-Hant", "z
 
 if (/__[A-Z0-9_]+__/u.test(html) || /(?:src|href)=["']\/assets\//u.test(html)) throw new Error("index.html contains an unresolved placeholder or root asset path");
 if (/<(?:script|link)[^>]+https?:\/\//iu.test(html)) throw new Error("index.html includes a third-party script or stylesheet");
+if (!/<button id="startButton"[^>]*\bdisabled\b/iu.test(html)) throw new Error("Miner Start must be disabled before inspection completes");
 if (release.available === false && (release.artifacts.length || release.releaseUrl || release.repository)) {
   throw new Error("Unreleased manifest contains release links or artifacts");
 }

@@ -21,18 +21,23 @@ let externalBest;
 
 self.addEventListener("message", (event) => {
   handle(event.data).catch((error) => {
-    self.postMessage({ type: "error", workerId, error: String(error?.message || error) });
+    self.postMessage({
+      type: "error",
+      requestId: event.data?.requestId,
+      workerId,
+      error: String(error?.message || error),
+    });
   });
 });
 
 async function handle(message) {
   await ensureInitialized();
   if (message.type === "version") {
-    respond(JSON.parse(version_json()));
+    respond(JSON.parse(version_json()), message.requestId);
   } else if (message.type === "inspect") {
-    respond(JSON.parse(inspect_json(message.profile, message.input)));
+    respond(JSON.parse(inspect_json(message.profile, message.input)), message.requestId);
   } else if (message.type === "baseline") {
-    respond(JSON.parse(baseline_json(message.profile, message.input)));
+    respond(JSON.parse(baseline_json(message.profile, message.input)), message.requestId);
   } else if (message.type === "start") {
     workerId = message.workerId;
     profile = message.profile;
@@ -89,8 +94,8 @@ function better(candidate, current) {
   return candidate.decodeUnits < current.decodeUnits;
 }
 
-function respond(result) {
-  self.postMessage({ type: "response", result });
+function respond(result, requestId) {
+  self.postMessage({ type: "response", requestId, result });
 }
 
 async function ensureInitialized() {

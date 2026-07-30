@@ -5,7 +5,12 @@ const SCENE_URL = new URL("__SCENE_URL__", import.meta.url);
 const SITE_CONFIG_URL = new URL("__SITE_CONFIG_URL__", import.meta.url);
 const RELEASE_MANIFEST_URL = new URL("../release-manifest.json", import.meta.url);
 const SAMPLE_URLS = __SAMPLE_URLS__;
+const ENGINE_REQUEST_TIMEOUT_MS = 120_000;
 let worldScene = null;
+let engineWorker = null;
+let engineProbePromise = null;
+let engineRequestId = 0;
+const enginePendingRequests = new Map();
 
 const elements = Object.fromEntries([
   "localeSelect", "sampleSelect", "loadSampleButton", "fileInput", "fileName",
@@ -37,14 +42,18 @@ const state = {
   engineVersion: null,
   engineFailed: false,
   statusView: null,
+  inputRevision: 0,
 };
 
 initialize().catch((error) => fail(error));
 
 async function initialize() {
   const logical = Math.max(1, Number(navigator.hardwareConcurrency || 2) - 1);
-  elements.workerCount.value = String(Math.min(8, logical));
+  const webKit = /AppleWebKit/iu.test(navigator.userAgent)
+    && !/(?:Chrome|Chromium|Edg|OPR)\//iu.test(navigator.userAgent);
+  elements.workerCount.value = String(webKit ? 1 : Math.min(8, logical));
   bindEvents();
+  updateButtons();
   void initializeWorldScene();
   await initI18n();
   elements.localeSelect.value = getLocale();
@@ -96,6 +105,7 @@ function bindEvents() {
   });
   window.addEventListener("pagehide", () => {
     stopWorkers("status.pageClosed", false);
+    disposeEngineWorker();
     worldScene?.destroy();
     worldScene = null;
   });
@@ -149,10 +159,26 @@ function bindHeaderMenu() {
 }
 
 async function probeEngine() {
-  const response = await oneShotWorker({ type: "version" });
-  state.engineVersion = response;
-  state.engineFailed = false;
-  renderEngineBadge();
+  if (state.engineVersion && !state.engineFailed) return state.engineVersion;
+  if (!engineProbePromise) {
+    engineProbePromise = requestEngine({ type: "version" })
+      .then((response) => {
+        state.engineVersion = response;
+        state.engineFailed = false;
+        renderEngineBadge();
+        updateButtons();
+        return response;
+      })
+      .catch((error) => {
+        const engineError = asEngineFailure(error);
+        disposeEngineWorker(engineError);
+        throw engineError;
+      })
+      .finally(() => {
+        engineProbePromise = null;
+      });
+  }
+  return engineProbePromise;
 }
 
 function renderEngineBadge() {
@@ -171,26 +197,47 @@ function renderEngineBadge() {
 }
 
 async function loadSample() {
+  const revision = beginInputLoad();
   const key = `${state.profile}:${elements.sampleSelect.value}`;
   const url = SAMPLE_URLS[key];
   if (!url) throw new Error(t("errors.sampleMissing", { key }));
   const response = await fetch(new URL(url, import.meta.url), { cache: "no-cache" });
   if (!response.ok) throw new Error(t("errors.sampleHttp", { status: response.status }));
   const input = new Uint8Array(await response.arrayBuffer());
-  await setInput(input, url.split("/").at(-1));
+  if (revision !== state.inputRevision) return;
+  await setInput(input, url.split("/").at(-1), revision);
 }
 
 async function loadLocalFile() {
   const file = elements.fileInput.files?.[0];
   if (!file) return;
+  const revision = beginInputLoad();
   const input = new Uint8Array(await file.arrayBuffer());
-  await setInput(input, file.name);
+  if (revision !== state.inputRevision) return;
+  await setInput(input, file.name, revision);
 }
 
-async function setInput(input, name) {
+function beginInputLoad() {
+  const revision = ++state.inputRevision;
   stopWorkers("status.inputChanged", false);
+  state.input = null;
+  state.inputName = "";
+  state.inspect = null;
+  state.best = null;
+  state.workerAttempts.clear();
+  state.curve = [];
+  state.elapsedBeforePause = 0;
+  enableDownloads(false);
+  updateButtons();
+  render();
+  return revision;
+}
+
+async function setInput(input, name, revision) {
+  if (revision !== state.inputRevision) return;
   state.input = input;
   state.inputName = name;
+  state.inspect = null;
   state.best = null;
   state.workerAttempts.clear();
   state.curve = [];
@@ -198,18 +245,50 @@ async function setInput(input, name) {
   elements.fileName.removeAttribute("data-i18n");
   elements.fileName.textContent = name;
   setTranslatedStatus("idle", "status.inspecting", "status.inspectingDetail");
-  const response = await oneShotWorker({ type: "inspect", profile: state.profile, input }, [input.slice().buffer]);
-  state.inspect = response;
-  state.curve.push({ attempts: 0, bytes: response.incumbentBytes });
   updateButtons();
   render();
-  setTranslatedStatus("idle", "status.ready", "status.readyLoaded", {
-    detailParams: { count: () => formatNumber(response.voxelCount) },
-  });
+  const profile = state.profile;
+  try {
+    await probeEngine();
+    if (revision !== state.inputRevision) return;
+    const response = await requestEngine(
+      { type: "inspect", profile, input },
+      [input.slice().buffer],
+    );
+    if (revision !== state.inputRevision) return;
+    state.inspect = response;
+    state.curve.push({ attempts: 0, bytes: response.incumbentBytes });
+    updateButtons();
+    render();
+    setTranslatedStatus("idle", "status.ready", "status.readyLoaded", {
+      detailParams: { count: () => formatNumber(response.voxelCount) },
+    });
+  } catch (error) {
+    if (revision === state.inputRevision) {
+      state.inspect = null;
+      updateButtons();
+      render();
+    }
+    throw error;
+  }
 }
 
 async function startMining() {
-  if (!state.input) throw new Error(t("status.loadFirst"));
+  if (state.engineFailed || !state.engineVersion) {
+    updateButtons();
+    setTranslatedStatus("failed", "errors.title", "errors.generic");
+    return;
+  }
+  if (!state.input) {
+    updateButtons();
+    setTranslatedStatus("idle", "status.ready", "status.loadFirst");
+    return;
+  }
+  if (!state.inspect) {
+    updateButtons();
+    setTranslatedStatus("idle", "status.inspecting", "status.inspectingDetail");
+    return;
+  }
   stopWorkers("status.restarting", false);
   state.best = null;
   state.workerAttempts.clear();
@@ -412,7 +491,8 @@ function resolveDynamicParameters(parameters) {
 function updateButtons() {
   const running = state.phase === "running";
   const paused = state.phase === "paused";
-  elements.startButton.disabled = running || paused || !state.input;
+  const ready = Boolean(state.input && state.inspect && state.engineVersion && !state.engineFailed);
+  elements.startButton.disabled = running || paused || !ready;
   elements.pauseButton.disabled = !running;
   elements.resumeButton.disabled = !paused;
   elements.stopButton.disabled = !running && !paused;
@@ -457,28 +537,77 @@ function drawCurve() {
   context.stroke();
 }
 
-async function oneShotWorker(message, transfer = []) {
-  const worker = new Worker(WORKER_URL, { type: "module", name: "nicechunk-pouw-probe" });
+function ensureEngineWorker() {
+  if (engineWorker) return engineWorker;
+  try {
+    engineWorker = new Worker(WORKER_URL, { type: "module", name: "nicechunk-pouw-control" });
+  } catch (error) {
+    throw asEngineFailure(error);
+  }
+  engineWorker.addEventListener("message", handleEngineMessage);
+  engineWorker.addEventListener("error", (event) => {
+    event.preventDefault();
+    disposeEngineWorker(asEngineFailure(event.error || new Error(event.message || t("errors.engine"))));
+  });
+  engineWorker.addEventListener("messageerror", () => {
+    disposeEngineWorker(asEngineFailure(new Error(t("errors.engine"))));
+  });
+  return engineWorker;
+}
+
+function requestEngine(message, transfer = []) {
+  let worker;
+  try {
+    worker = ensureEngineWorker();
+  } catch (error) {
+    return Promise.reject(asEngineFailure(error));
+  }
+  const requestId = ++engineRequestId;
   return new Promise((resolve, reject) => {
     const timeout = window.setTimeout(() => {
-      worker.terminate();
-      reject(new Error(t("errors.workerTimeout")));
-    }, 30_000);
-    worker.addEventListener("message", (event) => {
-      if (event.data.type === "error") {
-        window.clearTimeout(timeout); worker.terminate(); reject(new Error(event.data.error));
-      } else if (event.data.type === "response") {
-        window.clearTimeout(timeout); worker.terminate(); resolve(event.data.result);
-      }
-    });
-    worker.addEventListener("error", (event) => {
-      console.error(event.error || event.message);
-      window.clearTimeout(timeout); worker.terminate(); reject(new Error(t("errors.workerFailed", { index: "probe" })));
-    });
-    const payload = { ...message };
+      disposeEngineWorker(asEngineFailure(new Error(t("errors.workerTimeout"))));
+    }, ENGINE_REQUEST_TIMEOUT_MS);
+    enginePendingRequests.set(requestId, { resolve, reject, timeout });
+    const payload = { ...message, requestId };
     if (payload.input instanceof Uint8Array && transfer.length) payload.input = new Uint8Array(transfer[0]);
-    worker.postMessage(payload, transfer);
+    try {
+      worker.postMessage(payload, transfer);
+    } catch (error) {
+      window.clearTimeout(timeout);
+      enginePendingRequests.delete(requestId);
+      reject(error);
+    }
   });
+}
+
+function handleEngineMessage(event) {
+  const message = event.data;
+  const requestId = Number(message?.requestId);
+  const pending = enginePendingRequests.get(requestId);
+  if (!pending) return;
+  window.clearTimeout(pending.timeout);
+  enginePendingRequests.delete(requestId);
+  if (message.type === "error") pending.reject(new Error(message.error));
+  else if (message.type === "response") pending.resolve(message.result);
+  else pending.reject(asEngineFailure(new Error(t("errors.engine"))));
+}
+
+function disposeEngineWorker(error = null) {
+  const worker = engineWorker;
+  engineWorker = null;
+  worker?.terminate();
+  for (const pending of enginePendingRequests.values()) {
+    window.clearTimeout(pending.timeout);
+    if (error) pending.reject(error);
+  }
+  enginePendingRequests.clear();
+}
+
+function asEngineFailure(error) {
+  if (error?.engineFailure) return error;
+  const wrapped = new Error(String(error?.message || error || t("errors.engine")));
+  wrapped.engineFailure = true;
+  return wrapped;
 }
 
 async function loadSiteConfig() {
@@ -631,7 +760,10 @@ function createTextElement(tag, text) {
 
 function fail(error) {
   console.error(error);
-  state.engineFailed = true;
+  if (error?.engineFailure) {
+    state.engineFailed = true;
+    state.engineVersion = null;
+  }
   renderEngineBadge();
   setTranslatedStatus("failed", "errors.title", "errors.generic");
   stopWorkers("errors.stopped", false);
