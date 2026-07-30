@@ -168,10 +168,48 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  build-cuda:
+    name: Linux x86_64 CUDA
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: quality
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal --target x86_64-unknown-linux-gnu
+          rustup default "$RUST_VERSION"
+      - name: Build CUDA-capable binary and test CPU fallback
+        run: |
+          cargo test -p pouw-cuda
+          cargo test -p pouw-search --features cuda
+          cargo test -p pouw-cli --features cuda
+          cargo build --release -p pouw-cli --features cuda --target x86_64-unknown-linux-gnu
+          target/x86_64-unknown-linux-gnu/release/nicechunk-miner self-test
+          target/x86_64-unknown-linux-gnu/release/nicechunk-miner --json gpu-info > gpu-info.json
+          node -e 'const report = require("./gpu-info.json"); if (!report.cudaCompiled) process.exit(1)'
+      - name: Package CUDA-capable direct-run archive
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            VERSION="$(node -p "require('./package.json').version")"
+          fi
+          node scripts/package-cli-release.mjs \
+            --platform linux-x86_64-cuda \
+            --version "$VERSION" \
+            --binary target/x86_64-unknown-linux-gnu/release/nicechunk-miner \
+            --output artifacts
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: nicechunk-miner-linux-x86_64-cuda
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+
   publish:
     name: Publish verified GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [quality, property, build]
+    needs: [quality, property, build, build-cuda]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

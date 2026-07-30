@@ -122,6 +122,32 @@ and completed 144,000 exact attempts in 26,898 ms on this 40-logical-CPU host.
 Thread creation does not imply 190 simultaneously executing cores when the host
 has fewer hardware threads.
 
+## RTX 4090 CUDA evaluator
+
+CUDA measurements were repeated for `0.2.0-alpha.6` on an NVIDIA GeForce RTX
+4090 (24 GB, compute capability 8.9), driver 580.173.02, CUDA Toolkit 12.0, and
+an Intel Xeon E5-2697A v4 host with 32 logical CPUs. The release binary does not
+require the Toolkit at runtime: it dynamically loads the NVIDIA driver and
+contains deterministic PTX compiled for compute capability 7.0 or newer.
+
+Both CPU and CUDA runs used 32 threads, 12 islands, population 64, 20
+generations, and seed 123. CUDA used batch size 2,048 and eight formally
+evaluated survivors per island:
+
+| Fixture | CPU attempts/s | CUDA attempts/s | CUDA/CPU | Best/source bytes | Exact |
+| --- | ---: | ---: | ---: | ---: | :---: |
+| `complex-cottage` | 5,891.98 | 24,448.22 | 4.15x | 57 / 64 | yes |
+| `cottage-variant` | 4,068.95 | 26,325.41 | 6.47x | 60 / 64 | yes |
+| `workshop-heldout` | 1,664.55 | 13,967.02 | 8.39x | 79 / 96 | yes |
+
+For every fixture, CPU and CUDA selected the same final candidate byte length,
+semantic root, and encoding hash after 14,400 attempts. The cottage hash was
+`9d15665ee97236486098c97680d47399e781abd89d85933bc88fbc48b6d9a22b`.
+Resuming its CUDA checkpoint advanced generation 20 to 40 and attempts 14,400
+to 28,800 while retaining the same 57-byte exact candidate. The gain depends on
+geometry, batch size, survivor count, driver, power limits, and CPU, so it is
+not a consensus or universal performance claim.
+
 ## Upgrade comparison
 
 Before NCM4, the generic PoUW v1 Building baseline expanded the cottage to 325

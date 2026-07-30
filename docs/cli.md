@@ -29,6 +29,13 @@ Get-Content .\SHA256SUMS
 Compare the hexadecimal values exactly. The release archive itself also has a
 SHA-256 entry in the signed-off static release manifest.
 
+The ordinary `linux-x86_64` archive is CPU-only. NVIDIA users should choose the
+separately named `linux-x86_64-cuda` archive and confirm driver visibility:
+
+```bash
+nicechunk-miner --json gpu-info
+```
+
 ## Workflow
 
 NCM4 format dispatch and preflight:
@@ -45,7 +52,7 @@ Persistent NCM4 Building search accepts either NCM3 or NCM4 input:
 
 ```bash
 nicechunk-miner mine asset.ncm3 --threads auto --islands 12 \
-  --population 64 --generations 200 --seed 123 \
+  --population 64 --seed 123 \
   --shard-index 0 --shard-count 1 \
   --checkpoint state.nc4s.chk --out best.nc4p
 nicechunk-miner resume state.nc4s.chk --out resumed.nc4p
@@ -64,6 +71,28 @@ status=complete exact=true improved=true selectedFormat=ncm4-pouw-v1 ...
 
 Use global `--json-progress` for equivalent newline-delimited JSON status
 records while keeping the final machine-readable report on stdout.
+
+Mining has no implicit generation or time budget. Without `--generations`,
+`--time-limit`, or `--max-attempts`, it continues until Ctrl-C. The cooperative
+stop occurs at a generation boundary, writes the checkpoint atomically, and
+reports `stopReason=ctrl-c`. Add an explicit budget for batch or CI runs.
+
+CUDA-capable NCM4 Building search uses the same command with evaluator options:
+
+```bash
+nicechunk-miner gpu-info
+nicechunk-miner mine asset.ncm3 --accelerator cuda --cuda-device 0 \
+  --threads 32 --islands 12 --population 64 \
+  --gpu-batch-size 2048 --gpu-survivors 8 --seed 123 \
+  --checkpoint state.nc4s.chk --out best.nc4p
+```
+
+`--accelerator auto` selects CUDA when the binary includes CUDA support and a
+compatible NVIDIA device is available; otherwise it reports the reason and
+uses CPU. `--accelerator cuda` fails instead of silently falling back. CUDA is
+currently limited to direct NCM3/NCM4 Building input. The checkpoint stores the
+resolved evaluator and CUDA tuning, so a CUDA run cannot silently resume as a
+different CPU search trajectory. See [the CUDA guide](cuda.md).
 
 `ncm4 verify` returns validation exit code 4 when a candidate is exact but not
 strictly smaller. `selectedFormat` then remains NCM3. The NCM4 checkpoint binds

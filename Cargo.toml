@@ -2,13 +2,14 @@
 resolver = "2"
 members = [
   "crates/pouw-core",
+  "crates/pouw-cuda",
   "crates/pouw-search",
   "crates/pouw-cli",
   "crates/pouw-wasm",
 ]
 
 [workspace.package]
-version = "0.2.0-alpha.5"
+version = "0.2.0-alpha.6"
 edition = "2021"
 rust-version = "1.88"
 license = "Apache-2.0"
@@ -21,6 +22,7 @@ clap = { version = "4.5.40", features = ["derive"] }
 ctrlc = "3.4.7"
 getrandom = { version = "0.2.16", features = ["js"] }
 js-sys = "0.3.77"
+libloading = "0.8.8"
 proptest = "1.7.0"
 rand_chacha = "0.3.1"
 rand_core = "0.6.4"

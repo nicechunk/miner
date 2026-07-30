@@ -37,11 +37,15 @@ A checkpoint contains all information required to continue the same process:
 - verified global best AST and encoding;
 - every island's strategy, generation, RNG generation, complete population,
   seen encoding-hash set, and local counters.
+- resolved evaluator kind, CUDA device ordinal, batch size, and formal-survivor
+  count.
 
 The binary checkpoint starts with `NC4S1\n` followed by bounded serialized
-state. Resume validates versions, semantic root, source encoding hash, config,
-population sizes, and every candidate through the current encoder/decoder.
-It does not restart from the deterministic seed.
+state. Search-state version 2 records the evaluator; version 1 checkpoints are
+migrated explicitly to CPU. Resume validates versions, semantic root, source
+encoding hash, config, population sizes, and every candidate through the
+current encoder/decoder. It does not restart from the deterministic seed or
+silently change a saved CUDA trajectory to CPU.
 
 RNG is generation-addressed ChaCha8. A stream is derived from seed, shard,
 island, and generation; the checkpoint records the corresponding generation.
@@ -102,12 +106,19 @@ The session caches the target semantic root, reuses its thread pool, persists
 populations, and deduplicates canonical encodings. It avoids recomputing a new
 population from scratch each generation. Only verified candidates migrate.
 
-The current Alpha evaluator still constructs ordered voxel maps and performs
-formal encode/decode more often than the planned fast evaluator. Profile-
-specific dense arrays/bitsets, instruction raster caches, incremental dirty
-regions, XOR/popcount fitness, and SIMD remain planned. This is why GPU/WebGPU
-is not exposed: offloading a serial map-building loop or hashing bytes would be
-a misleading GPU mode.
+The optional CUDA backend packs typed AST operations and rasterizes complete
+Building scenes in batches. It computes true SET/CLEAR/PAINT mismatch counts
+and patch-run statistics for all 13 opcodes, ranks each island's offspring, and
+sends only the configured survivors into the ordinary parallel Rust evaluator.
+Only that CPU path can serialize, independently decode, compare semantic roots,
+and promote a candidate. CUDA therefore accelerates a replaceable search stage
+without changing codec bytes or verifier results.
+
+GPU buffers and the CUDA context persist for the session. PTX is embedded in
+the binary and the driver is loaded dynamically. Unsupported builds or devices
+fall back only when `auto` was requested; explicit `cuda` fails closed. The
+current evaluator still rasterizes whole candidates rather than dirty regions,
+and WebGPU remains a separate roadmap item. See [the CUDA guide](cuda.md).
 
 ## Stopping and selection
 

@@ -15,7 +15,8 @@ use pouw_core::{
     PROTOCOL_VERSION, VM_VERSION,
 };
 use pouw_search::{
-    best_baseline, mine, resume, CheckpointV1, Ncm4SearchCheckpoint, Ncm4SearchProgress,
+    best_baseline, cuda_compiled, cuda_devices, mine, resume, CheckpointV1, Ncm4EvaluatorConfig,
+    Ncm4EvaluatorInfo, Ncm4EvaluatorKind, Ncm4SearchCheckpoint, Ncm4SearchProgress,
     Ncm4SearchSession, SearchConfig, SearchControl, SearchProgress,
 };
 use serde_json::{json, Value};
@@ -61,6 +62,7 @@ enum Command {
     Verify(VerifyArgs),
     Decode(DecodeArgs),
     Benchmark(BenchmarkArgs),
+    GpuInfo,
     SelfTest,
 }
 
@@ -166,8 +168,11 @@ struct MineArgs {
     islands: Option<u16>,
     #[arg(long, default_value_t = 64)]
     population: u32,
-    #[arg(long, default_value_t = 200)]
-    generations: u32,
+    #[arg(
+        long,
+        help = "Generation limit; omitted means continue until Ctrl-C or another explicit budget"
+    )]
+    generations: Option<u32>,
     #[arg(long)]
     time_limit: Option<String>,
     #[arg(long)]
@@ -178,6 +183,18 @@ struct MineArgs {
     shard_index: u32,
     #[arg(long, default_value_t = 1)]
     shard_count: u32,
+    #[arg(
+        long,
+        default_value = "auto",
+        help = "NCM4 evaluator: auto, cpu, or cuda"
+    )]
+    accelerator: Ncm4EvaluatorKind,
+    #[arg(long, default_value_t = 0, help = "CUDA device ordinal")]
+    cuda_device: u16,
+    #[arg(long, default_value_t = 2048)]
+    gpu_batch_size: u32,
+    #[arg(long, default_value_t = 8)]
+    gpu_survivors: u32,
     #[arg(long)]
     checkpoint: Option<PathBuf>,
     #[arg(long, default_value = "result.ncpow")]
@@ -248,12 +265,16 @@ fn run(cli: Cli) -> CoreResult<()> {
                 threads: "auto".into(),
                 islands: None,
                 population: 64,
-                generations: 200,
+                generations: None,
                 time_limit: None,
                 max_attempts: None,
                 seed: 1,
                 shard_index: 0,
                 shard_count: 1,
+                accelerator: Ncm4EvaluatorKind::Auto,
+                cuda_device: 0,
+                gpu_batch_size: 2_048,
+                gpu_survivors: 8,
                 checkpoint: args.checkpoint_out,
                 out: args.out,
             },
@@ -263,6 +284,7 @@ fn run(cli: Cli) -> CoreResult<()> {
         Command::Verify(args) => verify(args, cli.json),
         Command::Decode(args) => decode(args, cli.json),
         Command::Benchmark(args) => benchmark(args, cli.json),
+        Command::GpuInfo => gpu_info(cli.json),
         Command::SelfTest => self_test(cli.json),
     }
 }
@@ -485,6 +507,12 @@ fn mine_command(args: MineArgs, json_output: bool, json_progress: bool) -> CoreR
     if args.input.is_some() || ncm4_resume_bytes.is_some() {
         return mine_ncm4_command(args, ncm4_resume_bytes, json_output, json_progress);
     }
+    if args.accelerator == Ncm4EvaluatorKind::Cuda {
+        return Err(Error::invalid(
+            "cuda-profile",
+            "CUDA acceleration currently supports direct NCM3/NCM4 Building search only.",
+        ));
+    }
     let (task, checkpoint, config) = if let Some(path) = &args.resume {
         let checkpoint = CheckpointV1::from_bytes(&read_path(path)?)?;
         let task = TaskV1::from_bytes(&checkpoint.task_bytes)?;
@@ -502,7 +530,7 @@ fn mine_command(args: MineArgs, json_output: bool, json_progress: bool) -> CoreR
             threads,
             islands: args.islands.unwrap_or(threads),
             population: args.population,
-            generations: args.generations,
+            generations: args.generations.unwrap_or(u32::MAX),
             elite_count: (args.population / 16).clamp(1, u32::from(u16::MAX)) as u16,
             tournament_size: args.population.clamp(2, 3) as u8,
             max_attempts: args.max_attempts,
@@ -584,6 +612,30 @@ fn mine_command(args: MineArgs, json_output: bool, json_progress: bool) -> CoreR
     print_report(&value, json_output)
 }
 
+fn gpu_info(json_output: bool) -> CoreResult<()> {
+    let compiled = cuda_compiled();
+    let (devices, error) = if compiled {
+        match cuda_devices() {
+            Ok(devices) => (devices, None),
+            Err(error) => (
+                Vec::new(),
+                Some(json!({ "code": error.code, "message": error.message })),
+            ),
+        }
+    } else {
+        (Vec::new(), None)
+    };
+    print_report(
+        &json!({
+            "cudaCompiled": compiled,
+            "available": !devices.is_empty(),
+            "devices": devices,
+            "error": error,
+        }),
+        json_output,
+    )
+}
+
 fn mine_ncm4_command(
     args: MineArgs,
     resume_bytes: Option<Vec<u8>>,
@@ -627,7 +679,7 @@ fn mine_ncm4_command(
             threads,
             islands: args.islands.unwrap_or(threads),
             population: args.population,
-            generations: args.generations,
+            generations: args.generations.unwrap_or(u32::MAX),
             epoch_generations: 1,
             elite_count: (args.population / 16).clamp(1, u32::from(u16::MAX)) as u16,
             tournament_size: args.population.clamp(2, 3) as u8,
@@ -637,7 +689,16 @@ fn mine_ncm4_command(
             shard_index: args.shard_index,
             shard_count: args.shard_count,
         };
-        Ncm4SearchSession::new(imported, config)?
+        Ncm4SearchSession::new_with_evaluator(
+            imported,
+            config,
+            Ncm4EvaluatorConfig {
+                kind: args.accelerator,
+                cuda_device: args.cuda_device,
+                gpu_batch_size: args.gpu_batch_size,
+                gpu_survivors_per_island: args.gpu_survivors,
+            },
+        )?
     };
 
     let control = SearchControl::default();
@@ -649,11 +710,13 @@ fn mine_ncm4_command(
     let target_generation = start_generation.saturating_add(session.config().generations);
     let source_bytes = session.source_bytes();
     let initial_progress = session.progress();
+    let evaluator_info = session.evaluator_info().clone();
     print_ncm4_start(
         args.input.as_deref().or(args.resume.as_deref()),
         session.source_format().as_str(),
         session.config(),
         &initial_progress,
+        &evaluator_info,
         json_progress,
     );
     let mut reported_witness_bytes = None;
@@ -690,6 +753,23 @@ fn mine_ncm4_command(
             }
         })?;
     }
+    let stop_reason = if control.is_stopped() {
+        "ctrl-c"
+    } else if session
+        .config()
+        .max_attempts
+        .is_some_and(|maximum| session.attempts() >= maximum)
+    {
+        "max-attempts"
+    } else if session
+        .config()
+        .time_limit_ms
+        .is_some_and(|maximum| elapsed_ms(started) >= maximum)
+    {
+        "time-limit"
+    } else {
+        "generation-limit"
+    };
     let checkpoint = session.checkpoint()?;
     let best = session.best().clone();
     let independently_decoded = decode_ncm4(&best.encoding, &limits)?;
@@ -749,6 +829,9 @@ fn mine_ncm4_command(
         "elapsedMs": elapsed_ms(started),
         "threads": session.config().threads,
         "islands": session.config().islands,
+        "evaluator": session.evaluator_info(),
+        "gpuBatchSize": session.evaluator_config().gpu_batch_size,
+        "gpuSurvivorsPerIsland": session.evaluator_config().gpu_survivors_per_island,
         "strategy": "beam-rewrite+typed-island-lns",
         "seed": session.config().seed,
         "shardIndex": session.config().shard_index,
@@ -756,6 +839,7 @@ fn mine_ncm4_command(
         "output": args.out,
         "checkpoint": checkpoint_path,
         "stopped": control.is_stopped(),
+        "stopReason": stop_reason,
     });
     print_ncm4_completion(&report, json_progress);
     print_report(&report, json_output)
@@ -766,6 +850,7 @@ fn print_ncm4_start(
     source_format: &str,
     config: &SearchConfig,
     progress: &Ncm4SearchProgress,
+    evaluator: &Ncm4EvaluatorInfo,
     json_progress: bool,
 ) {
     if json_progress {
@@ -785,11 +870,12 @@ fn print_ncm4_start(
                 "attempts": progress.attempts,
                 "semanticRoot": hash_hex(&progress.semantic_root),
                 "strategy": progress.strategy,
+                "evaluator": evaluator,
             })
         );
     } else {
         eprintln!(
-            "status=starting input={} profile=building sourceFormat={} threads={} islands={} population={} seed={} generation={} attempts={} semanticRoot={} strategy={}",
+            "status=starting input={} profile=building sourceFormat={} threads={} islands={} population={} seed={} generation={} attempts={} semanticRoot={} strategy={} evaluator={} cudaDevice={} fallback={}",
             input
                 .map(|path| path.display().to_string())
                 .unwrap_or_else(|| "checkpoint".into()),
@@ -802,6 +888,13 @@ fn print_ncm4_start(
             progress.attempts,
             hash_hex(&progress.semantic_root),
             progress.strategy,
+            evaluator.active.as_str(),
+            evaluator
+                .device
+                .as_ref()
+                .map(|device| device.name.as_str())
+                .unwrap_or("none"),
+            evaluator.fallback_reason.as_deref().unwrap_or("none"),
         );
     }
 }
@@ -850,11 +943,12 @@ fn print_ncm4_progress(
                 "exact": true,
                 "witnessExists": progress.witness_exists,
                 "strategy": progress.strategy,
+                "evaluator": progress.evaluator,
             })
         );
     } else {
         eprintln!(
-            "status={} generation={} attempts={} rate={:.2}/s elapsed={:.3}s sourceBytes={} candidateBytes={} savedBytes={} savedPercent={:.2}% headerBytes={} bodyBytes={} residualBytes={} decodeUnits={} semanticRoot={} exact=true witness={} strategy={}",
+            "status={} generation={} attempts={} rate={:.2}/s elapsed={:.3}s sourceBytes={} candidateBytes={} savedBytes={} savedPercent={:.2}% headerBytes={} bodyBytes={} residualBytes={} decodeUnits={} semanticRoot={} exact=true witness={} strategy={} evaluator={}",
             status,
             progress.generation,
             progress.attempts,
@@ -871,6 +965,7 @@ fn print_ncm4_progress(
             hash_hex(&progress.semantic_root),
             progress.witness_exists,
             progress.strategy,
+            progress.evaluator,
         );
     }
 }
@@ -894,7 +989,7 @@ fn print_ncm4_completion(report: &Value, json_progress: bool) {
         );
     } else {
         eprintln!(
-            "status=complete exact={} improved={} selectedFormat={} sourceBytes={} candidateBytes={} savedBytes={} savedPercent={:.2}% decodeUnits={} attempts={} rate={:.2}/s elapsed={:.3}s semanticRoot={} output={}",
+            "status=complete exact={} improved={} selectedFormat={} sourceBytes={} candidateBytes={} savedBytes={} savedPercent={:.2}% decodeUnits={} attempts={} rate={:.2}/s elapsed={:.3}s semanticRoot={} evaluator={} stopReason={} output={}",
             report["exact"].as_bool().unwrap_or(false),
             report["improved"].as_bool().unwrap_or(false),
             report["selectedFormat"].as_str().unwrap_or("unknown"),
@@ -907,6 +1002,8 @@ fn print_ncm4_completion(report: &Value, json_progress: bool) {
             report["attemptsPerSecond"].as_f64().unwrap_or(0.0),
             report["elapsedMs"].as_u64().unwrap_or(0) as f64 / 1000.0,
             report["semanticRoot"].as_str().unwrap_or("unknown"),
+            report["evaluator"]["active"].as_str().unwrap_or("unknown"),
+            report["stopReason"].as_str().unwrap_or("unknown"),
             report["output"].as_str().unwrap_or("unknown"),
         );
     }
@@ -1359,5 +1456,22 @@ fn exit_code(kind: ErrorKind) -> u8 {
         ErrorKind::ResourceLimit | ErrorKind::ArithmeticOverflow => 3,
         ErrorKind::HashMismatch | ErrorKind::SemanticMismatch | ErrorKind::NotSmaller => 4,
         ErrorKind::Internal => 70,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn direct_mining_has_no_generation_limit_by_default() {
+        let cli = Cli::try_parse_from(["nicechunk-miner", "mine", "asset.ncm3"]).unwrap();
+        let Command::Mine(arguments) = cli.command else {
+            unreachable!()
+        };
+        assert_eq!(arguments.generations, None);
+        assert_eq!(arguments.time_limit, None);
+        assert_eq!(arguments.max_attempts, None);
+        assert_eq!(arguments.accelerator, Ncm4EvaluatorKind::Auto);
     }
 }

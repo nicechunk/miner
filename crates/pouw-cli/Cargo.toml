@@ -12,6 +12,10 @@ build = "build.rs"
 name = "nicechunk-miner"
 path = "src/main.rs"
 
+[features]
+default = []
+cuda = ["pouw-search/cuda"]
+
 [dependencies]
 base64.workspace = true
 clap.workspace = true

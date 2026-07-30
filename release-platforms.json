@@ -7,6 +7,13 @@
     "archiveExtension": "tar.gz"
   },
   {
+    "id": "linux-x86_64-cuda",
+    "label": "Linux x86_64 CUDA",
+    "runner": "ubuntu-24.04",
+    "target": "x86_64-unknown-linux-gnu",
+    "archiveExtension": "tar.gz"
+  },
+  {
     "id": "linux-aarch64",
     "label": "Linux ARM64",
     "runner": "ubuntu-24.04-arm",

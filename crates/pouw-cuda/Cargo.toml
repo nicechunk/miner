@@ -1,0 +1,11 @@
+[package]
+name = "pouw-cuda"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Optional CUDA batch evaluator for the NiceChunk PoUW miner"
+
+[dependencies]
+libloading.workspace = true

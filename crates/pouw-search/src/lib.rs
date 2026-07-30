@@ -22,8 +22,9 @@ use serde::{Deserialize, Serialize};
 pub use baseline::{baseline_candidates, best_baseline};
 pub use checkpoint::CheckpointV1;
 pub use ncm4_search::{
-    Ncm4SearchCandidate, Ncm4SearchCheckpoint, Ncm4SearchOutcome, Ncm4SearchProgress,
-    Ncm4SearchSession,
+    cuda_compiled, cuda_devices, Ncm4CudaDeviceInfo, Ncm4EvaluatorConfig, Ncm4EvaluatorInfo,
+    Ncm4EvaluatorKind, Ncm4SearchCandidate, Ncm4SearchCheckpoint, Ncm4SearchOutcome,
+    Ncm4SearchProgress, Ncm4SearchSession,
 };
 
 pub const SEARCH_ENGINE_VERSION: u8 = 1;

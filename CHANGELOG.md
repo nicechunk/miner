@@ -6,6 +6,30 @@ independently.
 
 ## Unreleased
 
+## 0.2.0-alpha.6 - 2026-07-30
+
+### Added
+
+- Add a native CUDA batch evaluator for all 13 NCM4 Building opcodes while
+  retaining independent CPU serialization, decode, semantic-root, and exact
+  verification for every promoted survivor.
+- Add `gpu-info`, `--accelerator`, CUDA device/batch/survivor controls, and a
+  separately identified Linux x86_64 CUDA release archive.
+- Persist the resolved evaluator in checkpoint version 2 and migrate version 1
+  checkpoints explicitly to CPU.
+
+### Changed
+
+- Let `mine` continue until Ctrl-C by default; generation, time, and attempt
+  limits now apply only when supplied explicitly.
+- Report the active evaluator, device or fallback reason, and exact stop reason
+  in human-readable and JSON mining status.
+
+### Measured
+
+- On the tested RTX 4090, CUDA increased NCM4 attempts/s by 4.15x to 8.39x on
+  three Building fixtures while preserving candidate bytes and semantic roots.
+
 ## 0.2.0-alpha.5 - 2026-07-30
 
 ### Fixed

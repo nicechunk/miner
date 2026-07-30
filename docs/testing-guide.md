@@ -31,8 +31,8 @@ Run from the repository root:
 
 ```bash
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features
 cargo check -p pouw-core --no-default-features
 cargo build -p pouw-cli
 target/debug/nicechunk-miner self-test
@@ -95,6 +95,26 @@ generation state, Pause/Resume/Stop, Worker termination, IndexedDB checkpoint,
 verified elite exchange, NCM4 export/reimport/search, localization, responsive
 layout, real 404s, same-origin GET-only traffic, and zero uploads.
 
+## CUDA validation
+
+CPU-only hosts still compile and test the CUDA boundary because the NVIDIA
+driver is dynamically loaded. On a compatible NVIDIA host, opt into real kernel
+tests explicitly:
+
+```bash
+cargo build --release -p pouw-cli --features cuda
+target/release/nicechunk-miner --json gpu-info
+NICECHUNK_CUDA_TEST=1 cargo test -p pouw-search --features cuda
+target/release/nicechunk-miner mine test-vectors/building/complex-cottage.ncm3 \
+  --accelerator cuda --threads auto --islands 12 --population 64 \
+  --generations 20 --seed 123 --gpu-batch-size 2048 --gpu-survivors 8
+```
+
+The kernel parity suite covers all 13 NCM4 Building opcodes and compares GPU
+mismatch, SET/CLEAR/PAINT, and patch-run results to a CPU rasterization. It also
+checks CUDA checkpoint/resume against an uninterrupted fixed-seed run. Never
+set `NICECHUNK_CUDA_TEST=1` on a host without a compatible NVIDIA device.
+
 ## Property and adversarial runs
 
 The normal suite uses bounded property cases. The independent CI job increases
@@ -133,8 +153,8 @@ marks the tag release as a pre-release.
 Release tags must exactly equal the workspace/package version, for example:
 
 ```bash
-git tag -a v0.2.0-alpha.5 -m "Release NCM4 Alpha 5"
-git push origin v0.2.0-alpha.5
+git tag -a v0.2.0-alpha.6 -m "Release NCM4 Alpha 6"
+git push origin v0.2.0-alpha.6
 ```
 
 Do not create or advertise download links until the workflow has uploaded and

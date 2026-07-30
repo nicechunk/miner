@@ -124,6 +124,9 @@ fn ncm4_cli_analyzes_encodes_decodes_verifies_and_mines() {
     assert_eq!(mined_report["islands"], 2);
     assert_eq!(mined_report["sourceFormat"], "ncm3-v1");
     assert_eq!(mined_report["mismatchCount"], 0);
+    assert_eq!(mined_report["evaluator"]["active"], "cpu");
+    assert_eq!(mined_report["evaluator"]["requested"], "auto");
+    assert_eq!(mined_report["stopReason"], "generation-limit");
     assert!(mined_report["savedBytes"].as_i64().unwrap() > 0);
     assert!(progress.contains("status=starting"));
     assert!(progress.contains("threads=2"));
@@ -138,4 +141,12 @@ fn ncm4_cli_analyzes_encodes_decodes_verifies_and_mines() {
     assert!(checkpoint.exists());
 
     fs::remove_dir_all(&temporary).unwrap();
+}
+
+#[test]
+fn gpu_info_is_machine_readable_without_requiring_a_gpu() {
+    let report = successful_json(&["--json", "gpu-info"]);
+    assert!(report["cudaCompiled"].is_boolean());
+    assert!(report["available"].is_boolean());
+    assert!(report["devices"].is_array());
 }

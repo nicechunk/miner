@@ -10,9 +10,11 @@ description = "Typed deterministic and genetic search for NiceChunk PoUW"
 [features]
 default = ["parallel"]
 parallel = ["dep:rayon"]
+cuda = ["parallel", "dep:pouw-cuda"]
 
 [dependencies]
 pouw-core = { path = "../pouw-core" }
+pouw-cuda = { path = "../pouw-cuda", optional = true }
 rand_chacha.workspace = true
 rand_core.workspace = true
 rayon = { workspace = true, optional = true }

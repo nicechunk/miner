@@ -1,8 +1,9 @@
 # NiceChunk Proof of Useful Work Miner
 
 This repository is the source of truth for the NiceChunk Proof of Useful Work
-Miner. Version `0.2.0-alpha.5` adds the experimental NCM4 PoUW codec and a
-persistent multi-island search session while preserving NCM3 byte-for-byte.
+Miner. Version `0.2.0-alpha.6` adds an optional CUDA batch evaluator to the
+experimental NCM4 PoUW codec and persistent multi-island search session while
+preserving NCM3 byte-for-byte.
 It contains the deterministic core and verifier, native CLI, WASM bindings,
 static browser miner, schemas, vectors, benchmarks, and release automation.
 
@@ -41,6 +42,26 @@ Current measured witnesses are 57 bytes versus 64 for the real cottage, 60
 versus 64 for a structural variant, and 79 versus 96 for a held-out workshop.
 See [the NCM4 benchmark report](docs/ncm4-benchmarks.md) for exact roots,
 parameters, and multi-thread throughput.
+
+## CUDA acceleration
+
+The separate Linux x86_64 CUDA release dynamically loads the NVIDIA driver and
+embeds its versioned PTX, so a CUDA Toolkit is not required on the mining host.
+CUDA evaluates batches of typed NCM4 Building programs and ranks residual work;
+every survivor still passes the ordinary Rust serializer, independent decoder,
+semantic-root comparison, and exact verifier on CPU before it can become best.
+
+```bash
+nicechunk-miner --json gpu-info
+nicechunk-miner mine asset.ncm3 --accelerator cuda --cuda-device 0 \
+  --threads auto --islands 12 --gpu-batch-size 2048 --gpu-survivors 8 \
+  --seed 123 --checkpoint asset.nc4s.chk --out asset.nc4p
+```
+
+On the tested RTX 4090, the CUDA evaluator measured 4.15x to 8.39x the CPU
+attempt rate across three Building fixtures. This is a search acceleration,
+not a different codec or verifier. See [the CUDA guide](docs/cuda.md) for the
+driver requirement, fallback behavior, tuning, and reproduced measurements.
 
 ## Layout
 
@@ -89,7 +110,7 @@ nicechunk-miner ncm4 verify \
   --source test-vectors/building/complex-cottage.ncm3 \
   --candidate cottage.nc4p
 
-# Persistent native search; auto leaves one logical core for the OS/UI
+# Persistent native search; no generation/time limit means run until Ctrl-C
 nicechunk-miner mine test-vectors/building/complex-cottage.ncm3 \
   --threads auto --seed 123 --checkpoint cottage.nc4s.chk \
   --out cottage-best.nc4p
@@ -102,6 +123,8 @@ nicechunk-miner resume cottage.nc4s.chk --out cottage-resumed.nc4p
 Live search status is written to stderr. Every newly shorter exact witness is
 labelled `status=improved` and includes source/candidate bytes, saved bytes and
 percentage, body/residual cost, decode units, semantic root, and exactness.
+When no `--generations`, `--time-limit`, or `--max-attempts` option is supplied,
+native mining continues until Ctrl-C and atomically saves the checkpoint.
 
 `mine` accepts `--shard-index` and `--shard-count` for deterministic,
 non-overlapping search streams. Checkpoints contain the complete population,
@@ -117,8 +140,9 @@ The v1 VM baseline remains in `docs/benchmarks.md`; NCM4 is specified in
 - Compact NCM4 search currently targets Building. Terrain and forged-item NCM4
   imports are exact bounded wrappers; the existing PoUW v1 VM remains smaller
   for the terrain fixtures.
-- CUDA, WebGPU, pools, wallets, rewards, and a Solana verifier are interfaces or
-  roadmap work, not simulated features.
+- CUDA is available only for native NCM4 Building candidate evaluation. WebGPU,
+  pools, wallets, rewards, and a Solana verifier remain roadmap work and are not
+  simulated features.
 - The browser comparison exposes independently verified semantic summaries and
   exact mismatch state. A dedicated dual voxel-render/difference mesh remains a
   follow-up rendering improvement; it is not required for verification.

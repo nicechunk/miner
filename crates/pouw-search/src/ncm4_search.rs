@@ -13,7 +13,132 @@ use serde::{Deserialize, Serialize};
 use crate::{IslandStrategy, SearchConfig};
 
 const CHECKPOINT_MAGIC: &[u8] = b"NC4S1\n";
-const NCM4_SEARCH_VERSION: u8 = 1;
+const NCM4_SEARCH_VERSION: u8 = 2;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Ncm4EvaluatorKind {
+    #[default]
+    Cpu,
+    Auto,
+    Cuda,
+}
+
+impl Ncm4EvaluatorKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Cpu => "cpu",
+            Self::Auto => "auto",
+            Self::Cuda => "cuda",
+        }
+    }
+}
+
+impl core::str::FromStr for Ncm4EvaluatorKind {
+    type Err = Error;
+
+    fn from_str(value: &str) -> Result<Self> {
+        match value {
+            "cpu" => Ok(Self::Cpu),
+            "auto" => Ok(Self::Auto),
+            "cuda" | "gpu" => Ok(Self::Cuda),
+            _ => Err(Error::invalid(
+                "ncm4-evaluator",
+                "NCM4 evaluator must be auto, cpu, or cuda.",
+            )),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Ncm4EvaluatorConfig {
+    pub kind: Ncm4EvaluatorKind,
+    pub cuda_device: u16,
+    pub gpu_batch_size: u32,
+    pub gpu_survivors_per_island: u32,
+}
+
+impl Default for Ncm4EvaluatorConfig {
+    fn default() -> Self {
+        Self {
+            kind: Ncm4EvaluatorKind::Cpu,
+            cuda_device: 0,
+            gpu_batch_size: 2_048,
+            gpu_survivors_per_island: 8,
+        }
+    }
+}
+
+impl Ncm4EvaluatorConfig {
+    fn validate(&self, search: &SearchConfig) -> Result<()> {
+        let _ = search;
+        if self.gpu_batch_size == 0
+            || self.gpu_batch_size > 65_535
+            || self.gpu_survivors_per_island == 0
+            || self.gpu_survivors_per_island > 16_384
+        {
+            return Err(Error::limit(
+                "ncm4-evaluator-config",
+                "NCM4 GPU batch or survivor configuration is outside its bounded envelope.",
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Ncm4CudaDeviceInfo {
+    pub ordinal: u32,
+    pub name: String,
+    pub compute_major: i32,
+    pub compute_minor: i32,
+    pub total_memory_bytes: u64,
+    pub driver_version: i32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Ncm4EvaluatorInfo {
+    pub requested: Ncm4EvaluatorKind,
+    pub active: Ncm4EvaluatorKind,
+    pub cuda_compiled: bool,
+    pub device: Option<Ncm4CudaDeviceInfo>,
+    pub fallback_reason: Option<String>,
+}
+
+pub const fn cuda_compiled() -> bool {
+    cfg!(feature = "cuda")
+}
+
+pub fn cuda_devices() -> Result<Vec<Ncm4CudaDeviceInfo>> {
+    #[cfg(feature = "cuda")]
+    {
+        pouw_cuda::devices()
+            .map(|devices| devices.into_iter().map(cuda_device_info).collect())
+            .map_err(|error| Error::new(ErrorKind::Internal, "ncm4-cuda-probe", error.to_string()))
+    }
+    #[cfg(not(feature = "cuda"))]
+    {
+        Err(Error::invalid(
+            "ncm4-cuda-not-compiled",
+            "This nicechunk-miner build does not include CUDA support.",
+        ))
+    }
+}
+
+#[cfg(feature = "cuda")]
+fn cuda_device_info(device: pouw_cuda::CudaDeviceInfo) -> Ncm4CudaDeviceInfo {
+    Ncm4CudaDeviceInfo {
+        ordinal: device.ordinal,
+        name: device.name,
+        compute_major: device.compute_major,
+        compute_minor: device.compute_minor,
+        total_memory_bytes: device.total_memory_bytes as u64,
+        driver_version: device.driver_version,
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,6 +182,8 @@ struct SerializableState {
     source_encoding_hash: Hash32,
     source_bytes: u32,
     config: SearchConfig,
+    #[serde(default)]
+    evaluator: Ncm4EvaluatorConfig,
     generation: u32,
     attempts: u64,
     best: Ncm4SearchCandidate,
@@ -92,14 +219,18 @@ impl Ncm4SearchCheckpoint {
                 "NCM4 search checkpoint magic must be NC4S1.",
             ));
         }
-        let checkpoint: Self =
-            serde_json::from_slice(&input[CHECKPOINT_MAGIC.len()..]).map_err(|error| {
+        let mut checkpoint: Self = serde_json::from_slice(&input[CHECKPOINT_MAGIC.len()..])
+            .map_err(|error| {
                 Error::new(
                     ErrorKind::InvalidInput,
                     "ncm4-checkpoint-json",
                     error.to_string(),
                 )
             })?;
+        if checkpoint.state.search_version == 1 {
+            checkpoint.state.search_version = NCM4_SEARCH_VERSION;
+            checkpoint.state.evaluator = Ncm4EvaluatorConfig::default();
+        }
         checkpoint.validate()?;
         Ok(checkpoint)
     }
@@ -127,6 +258,7 @@ impl Ncm4SearchCheckpoint {
         }
         let limits = LimitsV1::default();
         state.config.validate(&limits)?;
+        state.evaluator.validate(&state.config)?;
         state.imported.semantics.validate(&limits)?;
         let reimported = pouw_core::import_incumbent(
             state.imported.profile,
@@ -149,6 +281,10 @@ impl Ncm4SearchCheckpoint {
                 || island.generation != state.generation
                 || island.rng_generation != island.generation
                 || island.population.is_empty()
+                || island
+                    .population
+                    .iter()
+                    .any(|candidate| !island.seen.contains(&candidate.encoding_hash))
             {
                 return Err(Error::invalid(
                     "ncm4-checkpoint-island",
@@ -197,6 +333,7 @@ pub struct Ncm4SearchProgress {
     pub residual_bytes: u32,
     pub decode_units: u64,
     pub strategy: String,
+    pub evaluator: String,
     pub semantic_root: Hash32,
     pub witness_exists: bool,
 }
@@ -219,8 +356,17 @@ pub struct Ncm4SearchSession {
 
 impl Ncm4SearchSession {
     pub fn new(imported: ImportedAsset, config: SearchConfig) -> Result<Self> {
+        Self::new_with_evaluator(imported, config, Ncm4EvaluatorConfig::default())
+    }
+
+    pub fn new_with_evaluator(
+        imported: ImportedAsset,
+        config: SearchConfig,
+        evaluator: Ncm4EvaluatorConfig,
+    ) -> Result<Self> {
         let limits = LimitsV1::default();
         config.validate(&limits)?;
+        evaluator.validate(&config)?;
         let target = building_target(&imported)?.clone();
         let root = semantic_root(&imported.semantics);
         let source_encoding_hash = encoding_hash(
@@ -261,7 +407,8 @@ impl Ncm4SearchSession {
                 seen,
             });
         }
-        let executor = Ncm4Executor::new(&config)?;
+        let executor = Ncm4Executor::new(&config, &target, &limits, &evaluator)?;
+        let resolved_evaluator = executor.resolved_config();
         Ok(Self {
             state: SerializableState {
                 search_version: NCM4_SEARCH_VERSION,
@@ -270,6 +417,7 @@ impl Ncm4SearchSession {
                 semantic_root: root,
                 source_encoding_hash,
                 config,
+                evaluator: resolved_evaluator,
                 generation: 0,
                 attempts: 0,
                 best: seed,
@@ -293,13 +441,8 @@ impl Ncm4SearchSession {
             }
             replayed.sort_by(Ncm4SearchCandidate::fitness_cmp);
             island.population = replayed;
-            island.seen = island
-                .population
-                .iter()
-                .map(|candidate| candidate.encoding_hash)
-                .collect();
         }
-        let executor = Ncm4Executor::new(&state.config)?;
+        let executor = Ncm4Executor::new(&state.config, &target, &limits, &state.evaluator)?;
         Ok(Self {
             state,
             target,
@@ -379,6 +522,7 @@ impl Ncm4SearchSession {
             residual_bytes: best.stats.residual_bytes,
             decode_units: best.stats.decode_units,
             strategy: "beam-rewrite+typed-island-lns".into(),
+            evaluator: self.executor.info().active.as_str().into(),
             semantic_root: best.semantic_root,
             witness_exists: best.stats.total_bytes < self.state.source_bytes,
         }
@@ -398,6 +542,14 @@ impl Ncm4SearchSession {
 
     pub fn config(&self) -> &SearchConfig {
         &self.state.config
+    }
+
+    pub fn evaluator_config(&self) -> &Ncm4EvaluatorConfig {
+        &self.state.evaluator
+    }
+
+    pub fn evaluator_info(&self) -> &Ncm4EvaluatorInfo {
+        self.executor.info()
     }
 
     pub fn generation(&self) -> u32 {
@@ -442,13 +594,31 @@ impl Ncm4SearchSession {
 #[cfg(feature = "parallel")]
 struct Ncm4Executor {
     pool: rayon::ThreadPool,
+    backend: Ncm4ExecutorBackend,
+    info: Ncm4EvaluatorInfo,
+    resolved_config: Ncm4EvaluatorConfig,
     #[cfg(test)]
     probe: Option<std::sync::Arc<ParallelEvaluationProbe>>,
 }
 
 #[cfg(feature = "parallel")]
+enum Ncm4ExecutorBackend {
+    Cpu,
+    #[cfg(feature = "cuda")]
+    Cuda(Box<CudaBatchEvaluator>),
+}
+
+#[cfg(feature = "parallel")]
 impl Ncm4Executor {
-    fn new(config: &SearchConfig) -> Result<Self> {
+    fn new(
+        config: &SearchConfig,
+        target: &BuildingSemantics,
+        limits: &LimitsV1,
+        evaluator: &Ncm4EvaluatorConfig,
+    ) -> Result<Self> {
+        let (backend, info) = create_parallel_backend(target, limits, evaluator)?;
+        let mut resolved_config = evaluator.clone();
+        resolved_config.kind = info.active;
         Ok(Self {
             pool: rayon::ThreadPoolBuilder::new()
                 .num_threads(usize::from(config.threads))
@@ -456,13 +626,24 @@ impl Ncm4Executor {
                 .map_err(|error| {
                     Error::new(ErrorKind::Internal, "ncm4-rayon-pool", error.to_string())
                 })?,
+            backend,
+            info,
+            resolved_config,
             #[cfg(test)]
             probe: None,
         })
     }
 
+    fn resolved_config(&self) -> Ncm4EvaluatorConfig {
+        self.resolved_config.clone()
+    }
+
+    fn info(&self) -> &Ncm4EvaluatorInfo {
+        &self.info
+    }
+
     fn run(
-        &self,
+        &mut self,
         islands: &mut [Ncm4IslandState],
         target: &BuildingSemantics,
         limits: &LimitsV1,
@@ -472,32 +653,151 @@ impl Ncm4Executor {
         use rayon::prelude::*;
         for _ in 0..generations {
             let (prepared, work) = prepare_generation_batch(islands, config);
-            let evaluated = self.pool.install(|| {
-                work.into_par_iter()
-                    .map(|work| {
-                        #[cfg(test)]
-                        let _probe_guard = self.probe.as_ref().map(|probe| probe.enter());
-                        evaluate_work(work, target, limits)
-                    })
-                    .collect()
-            });
+            let evaluated = match &mut self.backend {
+                Ncm4ExecutorBackend::Cpu => self.pool.install(|| {
+                    work.into_par_iter()
+                        .map(|work| {
+                            #[cfg(test)]
+                            let _probe_guard = self.probe.as_ref().map(|probe| probe.enter());
+                            evaluate_work(work, target, limits)
+                        })
+                        .collect()
+                }),
+                #[cfg(feature = "cuda")]
+                Ncm4ExecutorBackend::Cuda(cuda) => evaluate_cuda_batch(
+                    &self.pool,
+                    cuda,
+                    work,
+                    target,
+                    limits,
+                    config,
+                    #[cfg(test)]
+                    self.probe.as_ref(),
+                )?,
+            };
             commit_generation_batch(islands, prepared, evaluated)?;
         }
         Ok(())
     }
 }
 
+#[cfg(all(feature = "parallel", feature = "cuda"))]
+fn create_parallel_backend(
+    target: &BuildingSemantics,
+    limits: &LimitsV1,
+    evaluator: &Ncm4EvaluatorConfig,
+) -> Result<(Ncm4ExecutorBackend, Ncm4EvaluatorInfo)> {
+    let requested = evaluator.kind;
+    if requested == Ncm4EvaluatorKind::Cpu {
+        return Ok((
+            Ncm4ExecutorBackend::Cpu,
+            Ncm4EvaluatorInfo {
+                requested,
+                active: Ncm4EvaluatorKind::Cpu,
+                cuda_compiled: true,
+                device: None,
+                fallback_reason: None,
+            },
+        ));
+    }
+    match CudaBatchEvaluator::new(target, limits, evaluator) {
+        Ok(cuda) => {
+            let device = Some(cuda.device.clone());
+            Ok((
+                Ncm4ExecutorBackend::Cuda(Box::new(cuda)),
+                Ncm4EvaluatorInfo {
+                    requested,
+                    active: Ncm4EvaluatorKind::Cuda,
+                    cuda_compiled: true,
+                    device,
+                    fallback_reason: None,
+                },
+            ))
+        }
+        Err(error) if requested == Ncm4EvaluatorKind::Auto => Ok((
+            Ncm4ExecutorBackend::Cpu,
+            Ncm4EvaluatorInfo {
+                requested,
+                active: Ncm4EvaluatorKind::Cpu,
+                cuda_compiled: true,
+                device: None,
+                fallback_reason: Some(error.message),
+            },
+        )),
+        Err(error) => Err(error),
+    }
+}
+
+#[cfg(all(feature = "parallel", not(feature = "cuda")))]
+fn create_parallel_backend(
+    _target: &BuildingSemantics,
+    _limits: &LimitsV1,
+    evaluator: &Ncm4EvaluatorConfig,
+) -> Result<(Ncm4ExecutorBackend, Ncm4EvaluatorInfo)> {
+    if evaluator.kind == Ncm4EvaluatorKind::Cuda {
+        return Err(Error::invalid(
+            "ncm4-cuda-not-compiled",
+            "This nicechunk-miner build does not include CUDA support.",
+        ));
+    }
+    Ok((
+        Ncm4ExecutorBackend::Cpu,
+        Ncm4EvaluatorInfo {
+            requested: evaluator.kind,
+            active: Ncm4EvaluatorKind::Cpu,
+            cuda_compiled: false,
+            device: None,
+            fallback_reason: (evaluator.kind == Ncm4EvaluatorKind::Auto)
+                .then(|| "CUDA support is not compiled into this binary.".into()),
+        },
+    ))
+}
+
 #[cfg(not(feature = "parallel"))]
-struct Ncm4Executor;
+struct Ncm4Executor {
+    info: Ncm4EvaluatorInfo,
+    resolved_config: Ncm4EvaluatorConfig,
+}
 
 #[cfg(not(feature = "parallel"))]
 impl Ncm4Executor {
-    fn new(_config: &SearchConfig) -> Result<Self> {
-        Ok(Self)
+    fn new(
+        _config: &SearchConfig,
+        _target: &BuildingSemantics,
+        _limits: &LimitsV1,
+        evaluator: &Ncm4EvaluatorConfig,
+    ) -> Result<Self> {
+        if evaluator.kind == Ncm4EvaluatorKind::Cuda {
+            return Err(Error::invalid(
+                "ncm4-cuda-not-compiled",
+                "CUDA requires a native parallel nicechunk-miner build.",
+            ));
+        }
+        let mut resolved_config = evaluator.clone();
+        resolved_config.kind = Ncm4EvaluatorKind::Cpu;
+        Ok(Self {
+            info: Ncm4EvaluatorInfo {
+                requested: evaluator.kind,
+                active: Ncm4EvaluatorKind::Cpu,
+                cuda_compiled: false,
+                device: None,
+                fallback_reason: (evaluator.kind == Ncm4EvaluatorKind::Auto)
+                    .then(|| "CUDA is unavailable in this build.".into()),
+            },
+            resolved_config,
+        })
+    }
+
+    fn resolved_config(&self) -> Ncm4EvaluatorConfig {
+        self.resolved_config.clone()
+    }
+
+    fn info(&self) -> &Ncm4EvaluatorInfo {
+        &self.info
     }
 
     fn run(
-        &self,
+        &mut self,
         islands: &mut [Ncm4IslandState],
         target: &BuildingSemantics,
         limits: &LimitsV1,
@@ -527,8 +827,375 @@ struct OffspringWork {
 }
 
 struct EvaluatedOffspring {
-    candidate: Result<Ncm4SearchCandidate>,
+    candidate: Option<Result<Ncm4SearchCandidate>>,
     fallback: Ncm4SearchCandidate,
+}
+
+#[cfg(feature = "cuda")]
+struct CudaBatchEvaluator {
+    scorer: pouw_cuda::CudaScorer,
+    device: Ncm4CudaDeviceInfo,
+    batch_size: usize,
+    survivors_per_island: usize,
+    volume: u32,
+}
+
+#[cfg(feature = "cuda")]
+impl CudaBatchEvaluator {
+    fn new(
+        target: &BuildingSemantics,
+        limits: &LimitsV1,
+        config: &Ncm4EvaluatorConfig,
+    ) -> Result<Self> {
+        let volume = target
+            .size
+            .iter()
+            .try_fold(1_u32, |value, dimension| {
+                value.checked_mul(u32::from(*dimension))
+            })
+            .ok_or_else(|| Error::overflow("NCM4 CUDA target volume overflow."))?;
+        let mut dense_target = vec![0_u16; volume as usize];
+        for voxel in &target.voxels {
+            dense_target[pouw_core::building_coord_id(target.size, *voxel) as usize] =
+                voxel.material;
+        }
+        let scorer = pouw_cuda::CudaScorer::new(
+            u32::from(config.cuda_device),
+            target.size,
+            &dense_target,
+            limits.max_expanded_per_op,
+            limits.max_writes,
+        )
+        .map_err(|error| Error::new(ErrorKind::Internal, "ncm4-cuda-init", error.to_string()))?;
+        let device = cuda_device_info(scorer.device().clone());
+        Ok(Self {
+            scorer,
+            device,
+            batch_size: config.gpu_batch_size as usize,
+            survivors_per_island: config.gpu_survivors_per_island as usize,
+            volume,
+        })
+    }
+
+    fn scores(&mut self, work: &[OffspringWork]) -> Result<Vec<pouw_cuda::PackedScore>> {
+        let mut output = Vec::with_capacity(work.len());
+        for chunk in work.chunks(self.batch_size) {
+            let mut operations = Vec::new();
+            let mut offsets = Vec::with_capacity(chunk.len() + 1);
+            let mut masks = Vec::new();
+            offsets.push(0);
+            for candidate in chunk {
+                pack_cuda_program(&candidate.program, &mut operations, &mut masks)?;
+                offsets.push(u32::try_from(operations.len()).map_err(|_| {
+                    Error::limit(
+                        "ncm4-cuda-operation-count",
+                        "NCM4 CUDA operation batch exceeds u32.",
+                    )
+                })?);
+            }
+            let scores = self
+                .scorer
+                .score(&operations, &offsets, &masks)
+                .map_err(|error| {
+                    Error::new(ErrorKind::Internal, "ncm4-cuda-score", error.to_string())
+                })?;
+            output.extend(scores);
+        }
+        Ok(output)
+    }
+}
+
+#[cfg(all(feature = "parallel", feature = "cuda"))]
+fn evaluate_cuda_batch(
+    pool: &rayon::ThreadPool,
+    cuda: &mut CudaBatchEvaluator,
+    work: Vec<OffspringWork>,
+    target: &BuildingSemantics,
+    limits: &LimitsV1,
+    config: &SearchConfig,
+    #[cfg(test)] probe: Option<&std::sync::Arc<ParallelEvaluationProbe>>,
+) -> Result<Vec<EvaluatedOffspring>> {
+    use rayon::prelude::*;
+
+    let scores = cuda.scores(&work)?;
+    if scores.len() != work.len() {
+        return Err(Error::new(
+            ErrorKind::Internal,
+            "ncm4-cuda-result-count",
+            "NCM4 CUDA evaluator returned an incomplete score batch.",
+        ));
+    }
+    let offspring_per_island = config
+        .population
+        .saturating_sub(u32::from(config.elite_count)) as usize;
+    let mut selected = vec![false; work.len()];
+    for start in (0..work.len()).step_by(offspring_per_island) {
+        let end = (start + offspring_per_island).min(work.len());
+        let mut ranking = (start..end).collect::<Vec<_>>();
+        ranking.sort_by_key(|index| cuda_rank(&scores[*index], &work[*index], cuda.volume, *index));
+        for index in ranking
+            .into_iter()
+            .take(cuda.survivors_per_island.min(end - start))
+        {
+            selected[index] = true;
+        }
+    }
+    Ok(pool.install(|| {
+        work.into_par_iter()
+            .enumerate()
+            .map(|(index, work)| {
+                let candidate = selected[index].then(|| {
+                    #[cfg(test)]
+                    let _probe_guard = probe.map(|probe| probe.enter());
+                    evaluate(work.program, target, limits)
+                });
+                EvaluatedOffspring {
+                    candidate,
+                    fallback: work.fallback,
+                }
+            })
+            .collect()
+    }))
+}
+
+#[cfg(feature = "cuda")]
+fn cuda_rank(
+    score: &pouw_cuda::PackedScore,
+    work: &OffspringWork,
+    volume: u32,
+    original_index: usize,
+) -> (u8, u64, u32, usize, usize) {
+    let sparse_estimate = u64::from(score.mismatches)
+        .saturating_mul(3)
+        .saturating_add(u64::from(score.set_patches + score.paint_patches));
+    let run_estimate = u64::from(score.patch_runs).saturating_mul(6);
+    let bitmap_estimate = u64::from(volume.div_ceil(8))
+        .saturating_add(u64::from(score.paint_patches).saturating_mul(2));
+    let residual_estimate = sparse_estimate.min(run_estimate).min(bitmap_estimate);
+    let structural_estimate = (work.program.ops.len() as u64)
+        .saturating_mul(6)
+        .saturating_add(
+            work.program
+                .ops
+                .iter()
+                .map(|op| match op {
+                    Ncm4BuildingOp::Extrude { mask, .. } => mask.len().div_ceil(8) as u64,
+                    _ => 0,
+                })
+                .sum::<u64>(),
+        );
+    (
+        u8::from(score.valid == 0),
+        structural_estimate.saturating_add(residual_estimate),
+        score.mismatches,
+        work.program.ops.len(),
+        original_index,
+    )
+}
+
+#[cfg(feature = "cuda")]
+fn pack_cuda_program(
+    program: &Ncm4BuildingProgram,
+    output: &mut Vec<pouw_cuda::PackedOp>,
+    masks: &mut Vec<u8>,
+) -> Result<()> {
+    use pouw_cuda::{PackedOp, PackedOpKind};
+
+    for operation in &program.ops {
+        let mut packed = match operation {
+            Ncm4BuildingOp::Box { .. } => PackedOp::new(PackedOpKind::Box),
+            Ncm4BuildingOp::RepeatBox { .. } => PackedOp::new(PackedOpKind::RepeatBox),
+            Ncm4BuildingOp::Gable { .. } => PackedOp::new(PackedOpKind::Gable),
+            Ncm4BuildingOp::Tree { .. } => PackedOp::new(PackedOpKind::Tree),
+            Ncm4BuildingOp::Fence { .. } => PackedOp::new(PackedOpKind::Fence),
+            Ncm4BuildingOp::Run { .. } => PackedOp::new(PackedOpKind::Run),
+            Ncm4BuildingOp::Wall { .. } => PackedOp::new(PackedOpKind::Wall),
+            Ncm4BuildingOp::Extrude { .. } => PackedOp::new(PackedOpKind::Extrude),
+            Ncm4BuildingOp::Translate { .. } => PackedOp::new(PackedOpKind::Translate),
+            Ncm4BuildingOp::RotateY { .. } => PackedOp::new(PackedOpKind::RotateY),
+            Ncm4BuildingOp::Mirror { .. } => PackedOp::new(PackedOpKind::Mirror),
+            Ncm4BuildingOp::RepeatRegion { .. } => PackedOp::new(PackedOpKind::RepeatRegion),
+            Ncm4BuildingOp::ClearBox { .. } => PackedOp::new(PackedOpKind::ClearBox),
+        };
+        let p = &mut packed.parameters;
+        match operation {
+            Ncm4BuildingOp::Box {
+                material,
+                origin,
+                size,
+            } => {
+                p[0] = i32::from(*material);
+                set_origin_and_size(p, *origin, *size);
+            }
+            Ncm4BuildingOp::RepeatBox {
+                material,
+                origin,
+                size,
+                count,
+                delta,
+            } => {
+                p[0] = i32::from(*material);
+                set_origin_and_size(p, *origin, *size);
+                p[8] = i32::from(*count);
+                set_delta(p, *delta);
+            }
+            Ncm4BuildingOp::Gable {
+                material,
+                origin,
+                width,
+                depth,
+                style,
+                z_oriented,
+            } => {
+                p[0] = i32::from(*material);
+                set_origin(p, *origin);
+                p[5] = i32::from(*width);
+                p[6] = i32::from(*depth);
+                p[8] = match style {
+                    GableStyle::Outline => 0,
+                    GableStyle::Trim => 1,
+                    GableStyle::Fill => 2,
+                };
+                p[9] = i32::from(*z_oriented);
+            }
+            Ncm4BuildingOp::Tree {
+                trunk_material,
+                leaf_material,
+                origin,
+                height,
+                crown,
+            } => {
+                p[0] = i32::from(*trunk_material);
+                p[1] = i32::from(*leaf_material);
+                set_origin(p, *origin);
+                p[5] = i32::from(*height);
+                p[6] = i32::from(*crown);
+            }
+            Ncm4BuildingOp::Fence {
+                material,
+                origin,
+                length,
+                axis,
+                spacing,
+            } => {
+                p[0] = i32::from(*material);
+                set_origin(p, *origin);
+                p[5] = i32::from(*length);
+                p[8] = i32::from(*axis);
+                p[9] = i32::from(*spacing);
+            }
+            Ncm4BuildingOp::Run {
+                material,
+                origin,
+                axis,
+                length,
+            } => {
+                p[0] = i32::from(*material);
+                set_origin(p, *origin);
+                p[5] = i32::from(*length);
+                p[8] = i32::from(*axis);
+            }
+            Ncm4BuildingOp::Wall {
+                material,
+                origin,
+                normal_axis,
+                u_length,
+                v_length,
+                thickness,
+            } => {
+                p[0] = i32::from(*material);
+                set_origin(p, *origin);
+                p[5] = i32::from(*u_length);
+                p[6] = i32::from(*v_length);
+                p[7] = i32::from(*thickness);
+                p[8] = i32::from(*normal_axis);
+            }
+            Ncm4BuildingOp::Extrude {
+                material,
+                origin,
+                axis,
+                u_length,
+                v_length,
+                depth,
+                mask,
+            } => {
+                p[0] = i32::from(*material);
+                set_origin(p, *origin);
+                p[5] = i32::from(*u_length);
+                p[6] = i32::from(*v_length);
+                p[7] = i32::from(*depth);
+                p[8] = i32::from(*axis);
+                p[16] = i32::try_from(masks.len()).map_err(|_| {
+                    Error::limit("ncm4-cuda-mask", "NCM4 CUDA mask batch exceeds i32.")
+                })?;
+                masks.extend(mask.iter().map(|value| u8::from(*value)));
+            }
+            Ncm4BuildingOp::Translate {
+                source_origin,
+                source_size,
+                delta,
+            } => {
+                set_origin_and_size(p, *source_origin, *source_size);
+                set_delta(p, *delta);
+            }
+            Ncm4BuildingOp::RotateY {
+                source_origin,
+                source_size,
+                destination_origin,
+                quarter_turns,
+            } => {
+                set_origin_and_size(p, *source_origin, *source_size);
+                set_destination(p, *destination_origin);
+                p[15] = i32::from(*quarter_turns);
+            }
+            Ncm4BuildingOp::Mirror {
+                source_origin,
+                source_size,
+                destination_origin,
+                axis,
+            } => {
+                set_origin_and_size(p, *source_origin, *source_size);
+                set_destination(p, *destination_origin);
+                p[15] = i32::from(*axis);
+            }
+            Ncm4BuildingOp::RepeatRegion {
+                source_origin,
+                source_size,
+                count,
+                delta,
+            } => {
+                set_origin_and_size(p, *source_origin, *source_size);
+                p[8] = i32::from(*count);
+                set_delta(p, *delta);
+            }
+            Ncm4BuildingOp::ClearBox { origin, size } => {
+                set_origin_and_size(p, *origin, *size);
+            }
+        }
+        output.push(packed);
+    }
+    Ok(())
+}
+
+#[cfg(feature = "cuda")]
+fn set_origin(parameters: &mut [i32; 20], origin: [u16; 3]) {
+    parameters[2..5].copy_from_slice(&origin.map(i32::from));
+}
+
+#[cfg(feature = "cuda")]
+fn set_origin_and_size(parameters: &mut [i32; 20], origin: [u16; 3], size: [u16; 3]) {
+    set_origin(parameters, origin);
+    parameters[5..8].copy_from_slice(&size.map(i32::from));
+}
+
+#[cfg(feature = "cuda")]
+fn set_delta(parameters: &mut [i32; 20], delta: [i16; 3]) {
+    parameters[9..12].copy_from_slice(&delta.map(i32::from));
+}
+
+#[cfg(feature = "cuda")]
+fn set_destination(parameters: &mut [i32; 20], destination: [u16; 3]) {
+    parameters[12..15].copy_from_slice(&destination.map(i32::from));
 }
 
 fn prepare_generation_batch(
@@ -594,7 +1261,7 @@ fn evaluate_work(
     limits: &LimitsV1,
 ) -> EvaluatedOffspring {
     EvaluatedOffspring {
-        candidate: evaluate(work.program, target, limits),
+        candidate: Some(evaluate(work.program, target, limits)),
         fallback: work.fallback,
     }
 }
@@ -631,7 +1298,7 @@ fn commit_generation_batch(
                 ));
             };
             match result.candidate {
-                Ok(candidate) if island.seen.insert(candidate.encoding_hash) => {
+                Some(Ok(candidate)) if island.seen.insert(candidate.encoding_hash) => {
                     prepared.next.push(candidate)
                 }
                 _ => prepared.next.push(result.fallback),
@@ -1464,6 +2131,195 @@ mod tests {
         mutate_choice(&mut run, &mut rng, 2);
         assert!(run.ops.iter().any(is_run));
         assert!(evaluate(run, &run_target, &limits).unwrap().exact);
+    }
+
+    #[cfg(feature = "cuda")]
+    #[test]
+    fn cuda_prefilter_matches_cpu_scene_differences() {
+        if std::env::var_os("NICECHUNK_CUDA_TEST").is_none() {
+            return;
+        }
+        let limits = LimitsV1::default();
+        let seed_program = Ncm4BuildingProgram {
+            size: [16, 16, 16],
+            palette: vec![1],
+            ops: vec![Ncm4BuildingOp::Box {
+                material: 1,
+                origin: [0, 0, 0],
+                size: [4, 4, 4],
+            }],
+            residual: pouw_core::Ncm4Residual::None,
+        };
+        let Semantics::Building(target) = decode_ncm4(
+            &encode_ncm4_building(&seed_program, &limits).unwrap(),
+            &limits,
+        )
+        .unwrap()
+        .semantics
+        else {
+            unreachable!()
+        };
+        let seed = evaluate(seed_program.clone(), &target, &limits).unwrap();
+        let mut programs = vec![seed_program.clone()];
+        for choice in [2_u32, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] {
+            let mut program = seed_program.clone();
+            let mut rng = generation_rng(7, 0, choice);
+            mutate_choice(&mut program, &mut rng, choice);
+            program.residual = pouw_core::Ncm4Residual::None;
+            cpu_prefilter_score(&program, &target, &limits).unwrap();
+            programs.push(program);
+        }
+        let mut run = seed_program.clone();
+        run.ops[0] = Ncm4BuildingOp::Box {
+            material: 1,
+            origin: [0, 0, 0],
+            size: [4, 1, 1],
+        };
+        let mut rng = generation_rng(7, 1, 2);
+        mutate_choice(&mut run, &mut rng, 2);
+        run.residual = pouw_core::Ncm4Residual::None;
+        programs.push(run);
+        for family in [
+            is_wall as fn(&Ncm4BuildingOp) -> bool,
+            is_run,
+            is_extrude,
+            is_translate,
+            is_rotate,
+            is_mirror,
+            is_repeat_region,
+            is_clear,
+            is_gable,
+            is_tree,
+            is_fence,
+            is_repeat_box,
+        ] {
+            assert!(programs.iter().flat_map(|program| &program.ops).any(family));
+        }
+        let config = Ncm4EvaluatorConfig {
+            kind: Ncm4EvaluatorKind::Cuda,
+            cuda_device: 0,
+            gpu_batch_size: 128,
+            gpu_survivors_per_island: 4,
+        };
+        let mut cuda = CudaBatchEvaluator::new(&target, &limits, &config).unwrap();
+        let work = programs
+            .iter()
+            .cloned()
+            .map(|program| OffspringWork {
+                program,
+                fallback: seed.clone(),
+            })
+            .collect::<Vec<_>>();
+        let gpu = cuda.scores(&work).unwrap();
+        for (index, program) in programs.iter().enumerate() {
+            let cpu = cpu_prefilter_score(program, &target, &limits).unwrap();
+            assert_eq!(gpu[index].valid, 1, "program {index}");
+            assert_eq!(gpu[index].mismatches, cpu.mismatches, "program {index}");
+            assert_eq!(gpu[index].set_patches, cpu.set_patches, "program {index}");
+            assert_eq!(
+                gpu[index].clear_patches, cpu.clear_patches,
+                "program {index}"
+            );
+            assert_eq!(
+                gpu[index].paint_patches, cpu.paint_patches,
+                "program {index}"
+            );
+            assert_eq!(gpu[index].patch_runs, cpu.patch_runs, "program {index}");
+        }
+    }
+
+    #[cfg(feature = "cuda")]
+    #[test]
+    fn cuda_checkpoint_resume_reproduces_search_state() {
+        if std::env::var_os("NICECHUNK_CUDA_TEST").is_none() {
+            return;
+        }
+        let evaluator = Ncm4EvaluatorConfig {
+            kind: Ncm4EvaluatorKind::Cuda,
+            cuda_device: 0,
+            gpu_batch_size: 128,
+            gpu_survivors_per_island: 4,
+        };
+        let mut search_config = config(2);
+        search_config.threads = 4;
+        search_config.population = 12;
+        let checkpoint = {
+            let mut first = Ncm4SearchSession::new_with_evaluator(
+                fixture(),
+                search_config.clone(),
+                evaluator.clone(),
+            )
+            .unwrap();
+            first.step(1, |_| {}).unwrap().checkpoint
+        };
+        let resumed = {
+            let mut session = Ncm4SearchSession::from_checkpoint(&checkpoint).unwrap();
+            session.step(1, |_| {}).unwrap()
+        };
+        let uninterrupted = {
+            let mut session =
+                Ncm4SearchSession::new_with_evaluator(fixture(), search_config, evaluator).unwrap();
+            session.step(2, |_| {}).unwrap()
+        };
+        assert_eq!(resumed.best, uninterrupted.best);
+        assert_eq!(resumed.attempts, uninterrupted.attempts);
+        assert_eq!(resumed.checkpoint.state, uninterrupted.checkpoint.state);
+    }
+
+    #[cfg(feature = "cuda")]
+    fn cpu_prefilter_score(
+        program: &Ncm4BuildingProgram,
+        target: &BuildingSemantics,
+        limits: &LimitsV1,
+    ) -> Result<pouw_cuda::PackedScore> {
+        let mut structural = program.clone();
+        structural.residual = pouw_core::Ncm4Residual::None;
+        let decoded = decode_ncm4(&encode_ncm4_building(&structural, limits)?, limits)?;
+        let Semantics::Building(base) = decoded.semantics else {
+            unreachable!()
+        };
+        let volume = target
+            .size
+            .iter()
+            .fold(1_usize, |value, dimension| value * usize::from(*dimension));
+        let mut before = vec![0_u16; volume];
+        let mut after = vec![0_u16; volume];
+        for voxel in base.voxels {
+            before[pouw_core::building_coord_id(base.size, voxel) as usize] = voxel.material;
+        }
+        for voxel in &target.voxels {
+            after[pouw_core::building_coord_id(target.size, *voxel) as usize] = voxel.material;
+        }
+        let mut score = pouw_cuda::PackedScore {
+            valid: 1,
+            ..pouw_cuda::PackedScore::default()
+        };
+        let mut previous = None;
+        for (before, after) in before.into_iter().zip(after) {
+            let signature = match (before, after) {
+                (left, right) if left == right => None,
+                (0, material) => {
+                    score.set_patches += 1;
+                    Some((1_u8, material))
+                }
+                (_, 0) => {
+                    score.clear_patches += 1;
+                    Some((2_u8, 0))
+                }
+                (_, material) => {
+                    score.paint_patches += 1;
+                    Some((3_u8, material))
+                }
+            };
+            if let Some(signature) = signature {
+                score.mismatches += 1;
+                if previous != Some(signature) {
+                    score.patch_runs += 1;
+                }
+            }
+            previous = signature;
+        }
+        Ok(score)
     }
 
     fn is_wall(op: &Ncm4BuildingOp) -> bool {

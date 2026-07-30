@@ -330,6 +330,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
+name = "libloading"
+version = "0.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
+dependencies = [
+ "cfg-if",
+ "windows-link",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -391,7 +401,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "pouw-cli"
-version = "0.2.0-alpha.5"
+version = "0.2.0-alpha.6"
 dependencies = [
  "base64",
  "clap",
@@ -405,7 +415,7 @@ dependencies = [
 
 [[package]]
 name = "pouw-core"
-version = "0.2.0-alpha.5"
+version = "0.2.0-alpha.6"
 dependencies = [
  "base64",
  "proptest",
@@ -415,10 +425,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "pouw-cuda"
+version = "0.2.0-alpha.6"
+dependencies = [
+ "libloading",
+]
+
+[[package]]
 name = "pouw-search"
-version = "0.2.0-alpha.5"
+version = "0.2.0-alpha.6"
 dependencies = [
  "pouw-core",
+ "pouw-cuda",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
  "rayon",
@@ -428,7 +446,7 @@ dependencies = [
 
 [[package]]
 name = "pouw-wasm"
-version = "0.2.0-alpha.5"
+version = "0.2.0-alpha.6"
 dependencies = [
  "base64",
  "pouw-core",

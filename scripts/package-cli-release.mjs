@@ -29,6 +29,7 @@ if (!platform.startsWith("windows-")) await chmod(resolve(stage, binaryName), 0o
 await copyFile(resolve(root, "README.md"), resolve(stage, "README.md"));
 await copyFile(resolve(root, "CHANGELOG.md"), resolve(stage, "CHANGELOG.md"));
 await copyFile(resolve(root, "docs", "cli.md"), resolve(stage, "docs", "cli.md"));
+await copyFile(resolve(root, "docs", "cuda.md"), resolve(stage, "docs", "cuda.md"));
 await copyFile(resolve(root, "docs", "benchmarks.md"), resolve(stage, "docs", "benchmarks.md"));
 await copyFile(resolve(root, "docs", "ncm4-spec.md"), resolve(stage, "docs", "ncm4-spec.md"));
 await copyFile(resolve(root, "docs", "ncm4-benchmarks.md"), resolve(stage, "docs", "ncm4-benchmarks.md"));
@@ -42,6 +43,7 @@ const stagedFiles = [
   "README.md",
   "docs/benchmarks.md",
   "docs/cli.md",
+  "docs/cuda.md",
   "docs/ncm4-benchmarks.md",
   "docs/ncm4-spec.md",
   "docs/ncm4-verification.md",
