@@ -177,8 +177,30 @@
           </div>
         </div>
 
+        <aside class="ncm-preview-panel" aria-label="Decoded NCM 3D preview" data-i18n-aria-label="preview.panelAria">
+          <div class="panel-label"><span data-i18n="preview.title">Parsed NCM model</span><span aria-hidden="true">01</span></div>
+          <div id="ncmPreviewFrame" class="ncm-preview-frame" data-preview-state="waiting">
+            <canvas id="ncmPreviewCanvas" aria-label="Canonical NCM voxel model" data-i18n-aria-label="preview.canvasAria"></canvas>
+            <div class="ncm-preview-horizon" aria-hidden="true"></div>
+            <div class="ncm-preview-fallback" role="status">
+              <strong>NCM / 3D</strong>
+              <span id="ncmPreviewMessage" data-i18n="preview.loading">Waiting for the Rust/WASM decoder.</span>
+            </div>
+            <span class="ncm-preview-engine" aria-hidden="true">RUST/WASM → CHUNK.JS</span>
+          </div>
+          <div class="ncm-preview-facts">
+            <div><span data-i18n="preview.format">Format</span><strong id="ncmPreviewFormat">—</strong></div>
+            <div><span data-i18n="preview.dimensions">Dimensions</span><strong id="ncmPreviewDimensions">—</strong></div>
+            <div><span data-i18n="preview.voxels">Voxels</span><strong id="ncmPreviewVoxels">—</strong></div>
+          </div>
+          <div class="ncm-preview-root">
+            <span data-i18n="preview.semanticRoot">Semantic root</span>
+            <code id="ncmPreviewRoot">—</code>
+          </div>
+        </aside>
+
         <aside class="control-panel" aria-label="Miner controls" data-i18n-aria-label="controls.panelAria">
-          <div class="panel-label"><span data-i18n="controls.configuration">Configuration</span><span aria-hidden="true">01</span></div>
+          <div class="panel-label"><span data-i18n="controls.configuration">Configuration</span><span aria-hidden="true">02</span></div>
           <div class="input-source">
             <label><span data-i18n="controls.builtIn">Built-in vector</span>
               <select id="sampleSelect">
@@ -223,7 +245,7 @@
         </aside>
 
         <div class="results-panel">
-          <div class="panel-label"><span data-i18n="metrics.liveVerification">Live verification</span><span aria-hidden="true">02</span></div>
+          <div class="panel-label"><span data-i18n="metrics.liveVerification">Live verification</span><span aria-hidden="true">03</span></div>
           <div class="ncm4-preflight" aria-label="NCM4 language audit" data-i18n-aria-label="ncm4.auditAria">
             <div><span data-i18n="ncm4.inputFormat">Input format</span><strong id="inputFormat">—</strong></div>
             <div><span data-i18n="ncm4.witness">Shorter witness</span><strong id="witnessStatus">—</strong></div>

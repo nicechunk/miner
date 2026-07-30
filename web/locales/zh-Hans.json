@@ -118,6 +118,18 @@
     "timeCompleted": "设定的时间预算已用完。",
     "verificationFailed": "验证失败"
   },
+  "preview": {
+    "panelAria": "已解码 NCM 3D 预览",
+    "title": "NCM 解析模型",
+    "canvasAria": "规范 NCM 体素模型",
+    "loading": "正在等待 Rust/WASM 解码器。",
+    "format": "格式",
+    "dimensions": "尺寸",
+    "voxels": "体素",
+    "semanticRoot": "语义根",
+    "buildingOnly": "请选择建筑蓝图，以渲染规范 NCM 体素。",
+    "webglUnavailable": "WebGL2 不可用，规范模型数据仍显示在下方。"
+  },
   "controls": {
     "panelAria": "Miner 控制",
     "configuration": "配置",

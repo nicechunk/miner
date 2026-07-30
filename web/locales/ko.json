@@ -118,6 +118,18 @@
     "timeCompleted": "구성된 시간 예산이 완료되었습니다.",
     "verificationFailed": "확인 실패"
   },
+  "preview": {
+    "panelAria": "디코딩된 NCM 3D 미리보기",
+    "title": "해석된 NCM 모델",
+    "canvasAria": "정규 NCM 복셀 모델",
+    "loading": "Rust/WASM 디코더를 기다리는 중입니다.",
+    "format": "형식",
+    "dimensions": "크기",
+    "voxels": "복셀",
+    "semanticRoot": "시맨틱 루트",
+    "buildingOnly": "건물 설계도를 선택하면 정규 NCM 복셀을 렌더링합니다.",
+    "webglUnavailable": "WebGL2를 사용할 수 없습니다. 정규 모델 데이터는 아래에 계속 표시됩니다."
+  },
   "controls": {
     "panelAria": "광부 제어",
     "configuration": "구성",

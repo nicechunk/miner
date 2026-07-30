@@ -471,6 +471,271 @@ export function createMinerWorldScene(canvas, options = {}) {
   };
 }
 
+/**
+ * Render the canonical building semantics returned by pouw-core/WASM.
+ * This deliberately does not decode NCM in JavaScript: the browser only turns
+ * the already verified coordinate/material map into Chunk.js mesh input.
+ */
+export function createNcmPreviewScene(canvas, options = {}) {
+  if (!(canvas instanceof HTMLCanvasElement)) return createNoopPreviewController();
+
+  const frame = canvas.closest(".ncm-preview-frame");
+  const lowPower = Number(navigator.deviceMemory || 8) <= 4 || navigator.connection?.saveData === true;
+  const maxFps = lowPower ? 12 : 18;
+  const frameInterval = 1_000 / maxFps;
+  let renderer = null;
+  let chunks = [];
+  let bounds = null;
+  let inspection = null;
+  let initialization = null;
+  let resizeObserver = null;
+  let visibilityObserver = null;
+  let animationFrame = 0;
+  let lastFrameTime = 0;
+  let visible = true;
+  let destroyed = false;
+  let revision = 0;
+
+  canvas.dataset.previewReady = "false";
+  canvas.dataset.previewRenderer = "chunk.js-webgl2";
+
+  const setFrameState = (value) => {
+    if (frame) frame.dataset.previewState = value;
+  };
+
+  const schedule = () => {
+    if (animationFrame || destroyed || document.hidden || !visible || !renderer || !bounds || !chunks.length) return;
+    animationFrame = requestAnimationFrame(renderFrame);
+  };
+
+  const markUnavailable = (error) => {
+    if (destroyed) return;
+    if (animationFrame) cancelAnimationFrame(animationFrame);
+    animationFrame = 0;
+    canvas.dataset.previewReady = "false";
+    canvas.dataset.previewError = String(error?.message || error || "WebGL2 unavailable").slice(0, 180);
+    setFrameState("error");
+    renderer?.dispose();
+    renderer = null;
+    options.onUnavailable?.(error);
+    console.warn("NiceChunk NCM model preview is unavailable; showing canonical model data instead.", error);
+  };
+
+  async function initialize() {
+    if (renderer || destroyed) return;
+    try {
+      await nextFrame();
+      if (destroyed) return;
+      renderer = new WebGL2VoxelRenderer(canvas, {
+        viewDistance: 128,
+        textureTileSize: 32,
+        textureSeed: "nicechunk-ncm-preview-v1",
+        useRegionBatching: false,
+        maxChunkUploadsPerFrame: lowPower ? 8 : 20,
+        maxMobileDpr: 1,
+        maxDesktopDpr: lowPower ? 1 : 1.25,
+        cloudHeight: 384,
+        cloudRadius: 320,
+        cloudCellSize: 64,
+        cloudFarPadding: 64,
+        maxVoxelParticles: 0,
+        clearColor: [0.035, 0.047, 0.055, 1],
+      });
+      renderer.init();
+      delete canvas.dataset.previewError;
+      schedule();
+    } catch (error) {
+      markUnavailable(error);
+    }
+  }
+
+  function renderFrame(timestamp, force = false) {
+    animationFrame = 0;
+    if (destroyed || document.hidden || !visible || !renderer || !bounds || !chunks.length) return;
+    if (!force && timestamp - lastFrameTime < frameInterval) {
+      schedule();
+      return;
+    }
+    lastFrameTime = timestamp;
+    try {
+      const camera = previewCameraState(bounds, canvasAspect(canvas));
+      renderer.prepareChunksForRender(chunks, {
+        maxUploads: Math.max(8, chunks.length * 2),
+        cameraState: camera,
+      });
+      const stats = renderer.render(camera, chunks, [], [previewFoundationOverlay(bounds)]);
+      canvas.dataset.previewReady = "true";
+      canvas.dataset.previewChunks = String(chunks.length);
+      canvas.dataset.previewTriangles = String(stats.triangles || 0);
+      setFrameState("ready");
+    } catch (error) {
+      markUnavailable(error);
+    }
+  }
+
+  function setInspection(nextInspection) {
+    revision += 1;
+    inspection = nextInspection || null;
+    chunks = [];
+    bounds = null;
+    canvas.dataset.previewReady = "false";
+    canvas.dataset.previewProfile = String(inspection?.semantics?.profile || "");
+    canvas.dataset.previewFormat = String(inspection?.format || "");
+    canvas.dataset.previewSemanticRoot = String(inspection?.semanticRoot || "");
+    canvas.dataset.previewVoxelCount = String(inspection?.voxelCount ?? "");
+    delete canvas.dataset.previewDimensions;
+    renderer?.pruneChunks(new Set());
+
+    if (inspection?.semantics?.profile !== "building") {
+      setFrameState(inspection ? "unsupported" : "waiting");
+      return;
+    }
+
+    try {
+      const currentRevision = revision;
+      const placement = createCanonicalBuildingPlacement(inspection);
+      chunks = createBuildingChunkMeshes(placement, { chunkSize: 16, revision: currentRevision });
+      bounds = placement.bounds;
+      const size = inspection.semantics.semantics.size;
+      canvas.dataset.previewDimensions = size.join("x");
+      canvas.dataset.previewChunks = String(chunks.length);
+      setFrameState(chunks.length ? "loading" : "empty");
+      if (!chunks.length) return;
+      if (renderer) {
+        renderer.pruneChunks(new Set(chunks.map((chunk) => chunk.id)));
+        renderFrame(performance.now(), true);
+      } else if (!initialization) {
+        initialization = initialize().finally(() => {
+          initialization = null;
+        });
+      }
+    } catch (error) {
+      markUnavailable(error);
+    }
+  }
+
+  const handleVisibility = () => {
+    if (document.hidden) {
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      animationFrame = 0;
+      return;
+    }
+    lastFrameTime = 0;
+    schedule();
+  };
+
+  resizeObserver = new ResizeObserver(() => {
+    renderer?.resize();
+    renderFrame(performance.now(), true);
+  });
+  resizeObserver.observe(canvas);
+  if ("IntersectionObserver" in window) {
+    visibilityObserver = new IntersectionObserver((entries) => {
+      visible = entries.some((entry) => entry.isIntersecting && entry.intersectionRatio > 0);
+      if (!visible && animationFrame) cancelAnimationFrame(animationFrame);
+      if (!visible) animationFrame = 0;
+      else schedule();
+    }, { rootMargin: "160px 0px", threshold: [0, 0.01] });
+    visibilityObserver.observe(canvas);
+  }
+  document.addEventListener("visibilitychange", handleVisibility);
+
+  return {
+    setInspection,
+    destroy() {
+      if (destroyed) return;
+      destroyed = true;
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      resizeObserver?.disconnect();
+      visibilityObserver?.disconnect();
+      document.removeEventListener("visibilitychange", handleVisibility);
+      renderer?.dispose();
+      renderer = null;
+      chunks = [];
+      bounds = null;
+    },
+  };
+}
+
+function createCanonicalBuildingPlacement(inspection) {
+  const semantics = inspection?.semantics?.semantics;
+  const size = semantics?.size;
+  if (!Array.isArray(size) || size.length !== 3 || size.some((value) => !Number.isSafeInteger(value) || value <= 0)) {
+    throw new Error("Canonical building dimensions are invalid.");
+  }
+  if (!Array.isArray(semantics.voxels)) throw new Error("Canonical building voxels are unavailable.");
+
+  const [sizeX, sizeY, sizeZ] = size;
+  const voxels = new Map();
+  for (const voxel of semantics.voxels) {
+    const x = Number(voxel?.x);
+    const y = Number(voxel?.y);
+    const z = Number(voxel?.z);
+    const material = Number(voxel?.material);
+    if (![x, y, z, material].every(Number.isSafeInteger)
+      || x < 0 || x >= sizeX || y < 0 || y >= sizeY || z < 0 || z >= sizeZ || material <= 0) {
+      throw new Error("Canonical building contains an invalid voxel.");
+    }
+    voxels.set(`${x},${y},${z}`, { x, y, z, material });
+  }
+  if (voxels.size !== semantics.voxels.length) throw new Error("Canonical building contains duplicate voxels.");
+
+  const rootId = String(inspection.semanticRoot || "unrooted").slice(0, 16);
+  const building = {
+    id: `canonical-${rootId}`,
+    format: "NCM3",
+    codeId: rootId,
+    size: { x: sizeX, y: sizeY, z: sizeZ },
+    voxels,
+    voxelCount: voxels.size,
+    scale: 1,
+  };
+  return createBuildingPlacement(building, {
+    id: `preview-foundation-${rootId}`,
+    minX: 0,
+    minZ: 0,
+    surfaceY: 0,
+    width: sizeX,
+    depth: sizeZ,
+  }, { placementId: `ncm-preview-${rootId}` });
+}
+
+function previewCameraState(bounds, aspect) {
+  const target = [
+    (bounds.minX + bounds.maxX + 1) * 0.5,
+    (bounds.minY + bounds.maxY + 1) * 0.5,
+    (bounds.minZ + bounds.maxZ + 1) * 0.5,
+  ];
+  const radius = Math.max(2.4, Math.hypot(bounds.width, bounds.height, bounds.depth) * 0.52);
+  const narrowScale = Math.max(1, 0.9 / Math.max(0.32, aspect));
+  const distance = radius * 3.05 * narrowScale;
+  const angle = 0.73;
+  const horizontal = distance * 0.82;
+  const eye = [
+    target[0] + Math.cos(angle) * horizontal,
+    target[1] + distance * 0.48,
+    target[2] + Math.sin(angle) * horizontal,
+  ];
+  return cameraStateFromPose({ eye, target, fov: 39 }, aspect, Math.max(128, distance * 2.4));
+}
+
+function previewFoundationOverlay(bounds) {
+  return {
+    shape: "foundation",
+    worldX: bounds.minX,
+    worldY: bounds.minY - 0.02,
+    worldZ: bounds.minZ,
+    width: bounds.width,
+    depth: bounds.depth,
+    preview: true,
+    grid: true,
+    fillColor: [0.04, 0.42, 0.72, 0.07],
+    gridColor: [0.28, 0.86, 1, 0.2],
+    edgeColor: [0.58, 0.96, 1, 0.68],
+    glowColor: [0.06, 0.68, 1, 0.14],
+  };
+}
+
 function createMinerCottage() {
   return parseNcm3Building(COTTAGE_NCM3, {
     id: "miner-cottage",
@@ -753,7 +1018,7 @@ function cameraPoseForView(view, aspect) {
   };
 }
 
-function cameraStateFromPose(pose, aspect) {
+function cameraStateFromPose(pose, aspect, far = 520) {
   const eyeX = Math.floor(pose.eye[0]);
   const eyeY = Math.floor(pose.eye[1]);
   const eyeZ = Math.floor(pose.eye[2]);
@@ -776,7 +1041,7 @@ function cameraStateFromPose(pose, aspect) {
     fov: pose.fov,
     aspect,
     near: 0.1,
-    far: 520,
+    far,
   });
 }
 
@@ -845,6 +1110,13 @@ function createNoopController() {
     focus() {},
     setRunState() {},
     stats: Object.freeze({ backend: "unavailable", terrainChunks: 0, buildingChunks: 0, avatars: 0, drawCalls: 0, triangles: 0, maxFps: 0 }),
+    destroy() {},
+  };
+}
+
+function createNoopPreviewController() {
+  return {
+    setInspection() {},
     destroy() {},
   };
 }

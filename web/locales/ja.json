@@ -118,6 +118,18 @@
     "timeCompleted": "設定された時間予算が完了しました。",
     "verificationFailed": "検証に失敗しました"
   },
+  "preview": {
+    "panelAria": "デコード済み NCM の 3D プレビュー",
+    "title": "解析済み NCM モデル",
+    "canvasAria": "正規 NCM ボクセルモデル",
+    "loading": "Rust/WASM デコーダーを待機しています。",
+    "format": "形式",
+    "dimensions": "寸法",
+    "voxels": "ボクセル",
+    "semanticRoot": "セマンティックルート",
+    "buildingOnly": "建築設計図を選択すると、正規 NCM ボクセルを表示します。",
+    "webglUnavailable": "WebGL2 を利用できません。正規モデルデータは下に引き続き表示されます。"
+  },
   "controls": {
     "panelAria": "マイナーコントロール",
     "configuration": "構成",

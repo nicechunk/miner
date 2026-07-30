@@ -7,6 +7,7 @@ const RELEASE_MANIFEST_URL = new URL("../release-manifest.json", import.meta.url
 const SAMPLE_URLS = __SAMPLE_URLS__;
 const ENGINE_REQUEST_TIMEOUT_MS = 120_000;
 let worldScene = null;
+let ncmPreviewScene = null;
 let engineWorker = null;
 let engineProbePromise = null;
 let engineRequestId = 0;
@@ -30,6 +31,8 @@ const elements = Object.fromEntries([
   "inputFormat", "witnessStatus", "ncm4SeedBytes", "selectedFormat", "generation",
   "strategyName", "islandCount", "originalModelSummary", "candidateModelSummary",
   "diffOverlaySummary",
+  "ncmPreviewFrame", "ncmPreviewCanvas", "ncmPreviewMessage", "ncmPreviewFormat",
+  "ncmPreviewDimensions", "ncmPreviewVoxels", "ncmPreviewRoot",
 ].map((id) => [id, document.getElementById(id)]));
 
 const state = {
@@ -130,16 +133,28 @@ function bindEvents() {
     disposeEngineWorker();
     worldScene?.destroy();
     worldScene = null;
+    ncmPreviewScene?.destroy();
+    ncmPreviewScene = null;
   });
 }
 
 async function initializeWorldScene() {
   const canvas = document.getElementById("minerWorldCanvas");
-  if (!canvas) return;
   try {
-    const { createMinerWorldScene } = await import(SCENE_URL);
-    worldScene = createMinerWorldScene(canvas);
-    dispatchScenePhase();
+    const { createMinerWorldScene, createNcmPreviewScene } = await import(SCENE_URL);
+    if (canvas) {
+      worldScene = createMinerWorldScene(canvas);
+      dispatchScenePhase();
+    }
+    if (elements.ncmPreviewCanvas) {
+      ncmPreviewScene = createNcmPreviewScene(elements.ncmPreviewCanvas, {
+        onUnavailable: () => {
+          elements.ncmPreviewMessage.removeAttribute("data-i18n");
+          elements.ncmPreviewMessage.textContent = t("preview.webglUnavailable");
+        },
+      });
+      ncmPreviewScene.setInspection(state.inspect);
+    }
   } catch (error) {
     document.documentElement.classList.add("miner-scene-fallback");
     console.warn("NiceChunk 3D world scene is unavailable; using the static fallback.", error);
@@ -260,6 +275,7 @@ function beginInputLoad() {
   state.workerAttempts.clear();
   state.curve = [];
   state.elapsedBeforePause = 0;
+  updateNcmPreview();
   enableDownloads(false);
   updateButtons();
   render();
@@ -296,6 +312,7 @@ async function setInput(input, name, revision) {
     if (revision !== state.inputRevision) return;
     state.inspect = response;
     state.curve.push({ attempts: 0, bytes: response.incumbentBytes });
+    updateNcmPreview();
     await analyzeNcm4(false, revision);
     state.savedCheckpointBase64 = await loadStoredCheckpoint(checkpointStorageKey(response));
     updateButtons();
@@ -306,6 +323,7 @@ async function setInput(input, name, revision) {
   } catch (error) {
     if (revision === state.inputRevision) {
       state.inspect = null;
+      updateNcmPreview();
       updateButtons();
       render();
     }
@@ -611,6 +629,29 @@ function render() {
     ? t(best.exact ? "ncm4.diffExact" : "ncm4.diffMismatch", { count: best.mismatchCount ?? "—" })
     : "—";
   renderDynamicMetrics();
+}
+
+function updateNcmPreview() {
+  const inspect = state.inspect;
+  const semantics = inspect?.semantics;
+  const building = semantics?.profile === "building" ? semantics.semantics : null;
+  elements.ncmPreviewFormat.textContent = inspect?.format || "—";
+  elements.ncmPreviewDimensions.textContent = Array.isArray(building?.size)
+    ? building.size.join(" × ")
+    : "—";
+  elements.ncmPreviewVoxels.textContent = inspect ? formatNumber(inspect.voxelCount) : "—";
+  elements.ncmPreviewRoot.textContent = inspect?.semanticRoot || "—";
+  elements.ncmPreviewMessage.removeAttribute("data-i18n");
+  if (elements.ncmPreviewCanvas.dataset.previewError) {
+    elements.ncmPreviewMessage.textContent = t("preview.webglUnavailable");
+  } else if (building) {
+    elements.ncmPreviewMessage.textContent = t("preview.loading");
+  } else if (inspect) {
+    elements.ncmPreviewMessage.textContent = t("preview.buildingOnly");
+  } else {
+    elements.ncmPreviewMessage.textContent = t("preview.loading");
+  }
+  ncmPreviewScene?.setInspection(inspect);
 }
 
 function strategyLabel(strategy) {
@@ -1021,6 +1062,7 @@ async function changeLocale(locale) {
   renderStatus();
   if (state.releaseManifest) renderReleaseManifest(state.releaseManifest);
   else if (state.releaseLoadError) renderReleaseError();
+  updateNcmPreview();
   render();
 }
 

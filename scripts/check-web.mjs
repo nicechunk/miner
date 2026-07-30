@@ -40,6 +40,15 @@ if (!sourceScene.includes("NCM3:") || !sourceScene.includes("EQUIPMENT_MODEL_ID.
 if (!sourceScene.includes('"leftBlade"') || !sourceScene.includes('"rightBlade"')) {
   throw new Error("Forged item display must retain a recognizable two-sided pickaxe silhouette");
 }
+if (!html.includes('id="ncmPreviewCanvas"') || !sourceScene.includes("createNcmPreviewScene") || !sourceScene.includes("createCanonicalBuildingPlacement")) {
+  throw new Error("Miner must render Rust/WASM canonical NCM semantics in the left 3D preview");
+}
+if (!sourceApp.includes("ncmPreviewScene.setInspection(state.inspect)")) {
+  throw new Error("NCM preview must update from the inspected WASM result");
+}
+if (!sourceStyles.includes('.ncm-preview-frame[data-preview-state="ready"]')) {
+  throw new Error("NCM preview is missing its rendered and fallback visual states");
+}
 if (/\bthree(?:\.module)?\b/iu.test(sourceScene)) throw new Error("Miner world scene must not depend on Three.js");
 for (const [key, suffix] of Object.entries({ source: "", docs: "/tree/main/docs", issues: "/issues", releases: "/releases" })) {
   if (sourceConfig[key] !== `https://github.com/nicechunk/miner${suffix}`) throw new Error(`Miner ${key} URL is stale`);

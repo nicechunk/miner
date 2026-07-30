@@ -163,6 +163,8 @@ async function testBrowser(browser, label, origin, requests) {
   }
   await page.waitForFunction(() => document.getElementById("engineBadge")?.classList.contains("ready"), null, { timeout: initializationTimeout });
   assert(await page.locator("#incumbentBytes").textContent() !== "—", "sample inspection should populate bytes");
+  assert(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-profile") === "terrain_delta", `${label} preview must track the inspected profile`);
+  assert(await page.locator("#ncmPreviewRoot").textContent() === await page.locator("#targetRoot").textContent(), `${label} preview root must come from the WASM inspection`);
   if (label === "WebKit") assert(await page.locator("#workerCount").inputValue() === "1", "WebKit must default to one mining worker");
   if (observeWorkers) {
     assert(await page.evaluate(() => window.__nicechunkWorkerNames.filter((name) => name === "nicechunk-pouw-control").length) === 1, `${label} must reuse one WASM control worker`);
@@ -215,6 +217,50 @@ async function testBrowser(browser, label, origin, requests) {
         errors,
       });
       throw error;
+    }
+    if (profile === "building") {
+      await page.waitForFunction(() => {
+        const canvas = document.getElementById("ncmPreviewCanvas");
+        return canvas?.dataset.previewProfile === "building"
+          && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
+      }, null, { timeout: 30_000 });
+      assert(await page.locator("#ncmPreviewFormat").textContent() === "ncm3-v1", `${label} building preview must identify the real NCM3 source`);
+      assert(/^\d+ × \d+ × \d+$/u.test(await page.locator("#ncmPreviewDimensions").textContent()), `${label} building preview dimensions are missing`);
+      assert(Number((await page.locator("#ncmPreviewVoxels").textContent()).replaceAll(",", "")) > 0, `${label} building preview voxel count is missing`);
+      assert(await page.locator("#ncmPreviewRoot").textContent() === await page.locator("#targetRoot").textContent(), `${label} building preview semantic root differs from verification`);
+      if (hasWebGlScene) {
+        assert(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-ready") === "true", `${label} NCM preview did not render through Chunk.js WebGL2`);
+        assert(Number(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-chunks")) > 0, `${label} NCM preview has no rendered chunks`);
+      } else {
+        assert(await page.locator("#ncmPreviewFrame").getAttribute("data-preview-state") === "error", `${label} NCM preview did not expose its WebGL fallback`);
+        assert(await page.locator(".ncm-preview-fallback").isVisible(), `${label} NCM preview fallback is hidden`);
+      }
+
+      const complexPreview = await previewSnapshot(page);
+      for (const variant of ["normal", "boundary"]) {
+        await page.locator("#sampleSelect").selectOption(variant);
+        await page.waitForFunction((previousRoot) => {
+          const canvas = document.getElementById("ncmPreviewCanvas");
+          return canvas?.dataset.previewProfile === "building"
+            && Boolean(canvas.dataset.previewSemanticRoot)
+            && canvas.dataset.previewSemanticRoot !== previousRoot
+            && document.getElementById("targetRoot")?.textContent === canvas.dataset.previewSemanticRoot
+            && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
+        }, complexPreview.root, { timeout: 30_000 });
+        await page.waitForFunction(() => document.getElementById("statusBanner")?.textContent.includes("Ready"), null, { timeout: 30_000 });
+        const variantPreview = await previewSnapshot(page);
+        assert(variantPreview.root !== complexPreview.root, `${label} ${variant} NCM fixture reused the complex semantic root`);
+        assert(variantPreview.root === await page.locator("#targetRoot").textContent(), `${label} ${variant} preview root differs from verification`);
+        assert(JSON.stringify(variantPreview) !== JSON.stringify(complexPreview), `${label} ${variant} NCM preview data did not change`);
+      }
+      await page.locator("#sampleSelect").selectOption("complex");
+      await page.waitForFunction((complexRoot) => (
+        document.getElementById("ncmPreviewCanvas")?.dataset.previewSemanticRoot === complexRoot
+        && document.getElementById("targetRoot")?.textContent === complexRoot
+        && (document.getElementById("ncmPreviewCanvas")?.dataset.previewReady === "true"
+          || Boolean(document.getElementById("ncmPreviewCanvas")?.dataset.previewError))
+      ), complexPreview.root, { timeout: 30_000 });
+      await page.waitForFunction(() => document.getElementById("statusBanner")?.textContent.includes("Ready"), null, { timeout: 30_000 });
     }
     if (observeWorkers) {
       assert(await page.evaluate(() => window.__nicechunkWorkerNames.filter((name) => name === "nicechunk-pouw-control").length) === 1, `${label} created duplicate WASM control workers`);
@@ -306,6 +352,12 @@ async function testBrowser(browser, label, origin, requests) {
     await page.locator("#loadTextButton").click();
     await page.waitForFunction(() => document.querySelector('[data-profile="building"]')?.getAttribute("aria-selected") === "true");
     await page.waitForFunction(() => document.getElementById("inputFormat")?.textContent === "ncm4-pouw-v1");
+    await page.waitForFunction(() => {
+      const canvas = document.getElementById("ncmPreviewCanvas");
+      return canvas?.dataset.previewFormat === "ncm4-pouw-v1"
+        && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
+    });
+    assert(await page.locator("#ncmPreviewRoot").textContent() === await page.locator("#targetRoot").textContent(), `${label} imported NCM4 preview root differs from verification`);
     assert(await page.locator("#candidateBytes").textContent() === "57 B", `${label} imported NCM4P text changed size`);
     await page.locator("#workerCount").fill("1");
     await page.locator("#populationInput").fill("4");
@@ -352,6 +404,18 @@ async function testBrowser(browser, label, origin, requests) {
   assert(await mobile.locator("#primaryNav").getAttribute("data-open") === "true", `${label} mobile menu did not open`);
   await mobile.locator('[data-scene-view="building"][data-scene-profile="building"]').click();
   await mobile.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.sceneView === "building");
+  await mobile.locator("#ncmPreviewFrame").scrollIntoViewIfNeeded();
+  await mobile.waitForFunction(() => {
+    const canvas = document.getElementById("ncmPreviewCanvas");
+    return canvas?.dataset.previewProfile === "building"
+      && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
+  }, null, { timeout: 30_000 });
+  if (mobileHasWebGlScene) {
+    assert(await mobile.locator("#ncmPreviewCanvas").getAttribute("data-preview-ready") === "true", `${label} mobile NCM preview did not render`);
+  } else {
+    assert(await mobile.locator("#ncmPreviewFrame").getAttribute("data-preview-state") === "error", `${label} mobile NCM fallback state is missing`);
+  }
+  assert(await mobile.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${label} mobile NCM preview overflows horizontally`);
   assert(await mobile.locator(".scene-dock").isVisible(), `${label} mobile camera dock is hidden`);
   await mobile.locator('[data-scene-view="forged"][data-scene-profile="forged_item"]').click();
   await mobile.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.sceneView === "forged");
@@ -366,6 +430,18 @@ async function testBrowser(browser, label, origin, requests) {
   assert(errors.length === 0, `${label} browser errors: ${errors.join(" | ")} · requests: ${diagnostics.map((request) => `${request.method} ${request.url}`).join(", ")}`);
   assert(browserRequests.every((request) => request.method === "GET"), `${label} observed a non-GET request`);
   console.log(`${label} browser smoke passed with ${browserRequests.length} local GET requests and no uploads`);
+}
+
+async function previewSnapshot(page) {
+  return page.evaluate(() => {
+    const canvas = document.getElementById("ncmPreviewCanvas");
+    return {
+      root: canvas?.dataset.previewSemanticRoot || "",
+      dimensions: canvas?.dataset.previewDimensions || "",
+      voxels: Number(canvas?.dataset.previewVoxelCount || 0),
+      chunks: Number(canvas?.dataset.previewChunks || 0),
+    };
+  });
 }
 
 function browserTargets() {

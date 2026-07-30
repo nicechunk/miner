@@ -118,6 +118,18 @@
     "timeCompleted": "Das konfigurierte Zeitbudget ist abgeschlossen.",
     "verificationFailed": "Die Überprüfung ist fehlgeschlagen"
   },
+  "preview": {
+    "panelAria": "3D-Vorschau des dekodierten NCM",
+    "title": "Analysiertes NCM-Modell",
+    "canvasAria": "Kanonisches NCM-Voxelmodell",
+    "loading": "Warten auf den Rust/WASM-Decoder.",
+    "format": "Format",
+    "dimensions": "Abmessungen",
+    "voxels": "Voxel",
+    "semanticRoot": "Semantische Wurzel",
+    "buildingOnly": "Wählen Sie Bauplan, um die kanonischen NCM-Voxel darzustellen.",
+    "webglUnavailable": "WebGL2 ist nicht verfügbar. Die kanonischen Modelldaten werden unten weiterhin angezeigt."
+  },
   "controls": {
     "panelAria": "Miner-Kontrollen",
     "configuration": "Konfiguration",

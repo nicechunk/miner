@@ -28,6 +28,10 @@ mergeInto(english, {
     exactMatch: "Exact Match",
     failed: "Failed",
   },
+  preview: {
+    buildingOnly: "Select Building Blueprint to render canonical NCM voxels.",
+    webglUnavailable: "WebGL2 is unavailable. Canonical model data is still shown below.",
+  },
   ncm4: {
     analyzing: "Analyzing NCM4 locally",
     analyzingDetail: "The shared Rust core is measuring the complete stored-byte cost and verifying a deterministic witness.",
@@ -101,6 +105,117 @@ const languageNames = {
   ru: "Русский",
   zhHans: "简体中文",
   zhHant: "繁體中文",
+};
+
+const previewMessages = {
+  en: {
+    panelAria: "Decoded NCM 3D preview",
+    title: "Parsed NCM model",
+    canvasAria: "Canonical NCM voxel model",
+    loading: "Waiting for the Rust/WASM decoder.",
+    format: "Format",
+    dimensions: "Dimensions",
+    voxels: "Voxels",
+    semanticRoot: "Semantic root",
+    buildingOnly: "Select Building Blueprint to render canonical NCM voxels.",
+    webglUnavailable: "WebGL2 is unavailable. Canonical model data is still shown below.",
+  },
+  es: {
+    panelAria: "Vista 3D del NCM decodificado",
+    title: "Modelo NCM analizado",
+    canvasAria: "Modelo canónico de vóxeles NCM",
+    loading: "Esperando al decodificador Rust/WASM.",
+    format: "Formato",
+    dimensions: "Dimensiones",
+    voxels: "Vóxeles",
+    semanticRoot: "Raíz semántica",
+    buildingOnly: "Selecciona Plano de edificio para renderizar los vóxeles NCM canónicos.",
+    webglUnavailable: "WebGL2 no está disponible. Los datos canónicos del modelo se muestran abajo.",
+  },
+  fr: {
+    panelAria: "Aperçu 3D du NCM décodé",
+    title: "Modèle NCM analysé",
+    canvasAria: "Modèle voxel NCM canonique",
+    loading: "En attente du décodeur Rust/WASM.",
+    format: "Format",
+    dimensions: "Dimensions",
+    voxels: "Voxels",
+    semanticRoot: "Racine sémantique",
+    buildingOnly: "Sélectionnez Plan de bâtiment pour afficher les voxels NCM canoniques.",
+    webglUnavailable: "WebGL2 est indisponible. Les données canoniques du modèle restent affichées ci-dessous.",
+  },
+  de: {
+    panelAria: "3D-Vorschau des dekodierten NCM",
+    title: "Analysiertes NCM-Modell",
+    canvasAria: "Kanonisches NCM-Voxelmodell",
+    loading: "Warten auf den Rust/WASM-Decoder.",
+    format: "Format",
+    dimensions: "Abmessungen",
+    voxels: "Voxel",
+    semanticRoot: "Semantische Wurzel",
+    buildingOnly: "Wählen Sie Bauplan, um die kanonischen NCM-Voxel darzustellen.",
+    webglUnavailable: "WebGL2 ist nicht verfügbar. Die kanonischen Modelldaten werden unten weiterhin angezeigt.",
+  },
+  ja: {
+    panelAria: "デコード済み NCM の 3D プレビュー",
+    title: "解析済み NCM モデル",
+    canvasAria: "正規 NCM ボクセルモデル",
+    loading: "Rust/WASM デコーダーを待機しています。",
+    format: "形式",
+    dimensions: "寸法",
+    voxels: "ボクセル",
+    semanticRoot: "セマンティックルート",
+    buildingOnly: "建築設計図を選択すると、正規 NCM ボクセルを表示します。",
+    webglUnavailable: "WebGL2 を利用できません。正規モデルデータは下に引き続き表示されます。",
+  },
+  ru: {
+    panelAria: "Трёхмерный просмотр декодированного NCM",
+    title: "Разобранная модель NCM",
+    canvasAria: "Каноническая воксельная модель NCM",
+    loading: "Ожидание декодера Rust/WASM.",
+    format: "Формат",
+    dimensions: "Размеры",
+    voxels: "Воксели",
+    semanticRoot: "Семантический корень",
+    buildingOnly: "Выберите чертёж здания для отображения канонических вокселей NCM.",
+    webglUnavailable: "WebGL2 недоступен. Канонические данные модели по-прежнему показаны ниже.",
+  },
+  ko: {
+    panelAria: "디코딩된 NCM 3D 미리보기",
+    title: "해석된 NCM 모델",
+    canvasAria: "정규 NCM 복셀 모델",
+    loading: "Rust/WASM 디코더를 기다리는 중입니다.",
+    format: "형식",
+    dimensions: "크기",
+    voxels: "복셀",
+    semanticRoot: "시맨틱 루트",
+    buildingOnly: "건물 설계도를 선택하면 정규 NCM 복셀을 렌더링합니다.",
+    webglUnavailable: "WebGL2를 사용할 수 없습니다. 정규 모델 데이터는 아래에 계속 표시됩니다.",
+  },
+  "zh-Hant": {
+    panelAria: "已解碼 NCM 3D 預覽",
+    title: "NCM 解析模型",
+    canvasAria: "規範 NCM 體素模型",
+    loading: "正在等待 Rust/WASM 解碼器。",
+    format: "格式",
+    dimensions: "尺寸",
+    voxels: "體素",
+    semanticRoot: "語意根",
+    buildingOnly: "請選擇建築藍圖，以渲染規範 NCM 體素。",
+    webglUnavailable: "WebGL2 無法使用，規範模型資料仍顯示於下方。",
+  },
+  "zh-Hans": {
+    panelAria: "已解码 NCM 3D 预览",
+    title: "NCM 解析模型",
+    canvasAria: "规范 NCM 体素模型",
+    loading: "正在等待 Rust/WASM 解码器。",
+    format: "格式",
+    dimensions: "尺寸",
+    voxels: "体素",
+    semanticRoot: "语义根",
+    buildingOnly: "请选择建筑蓝图，以渲染规范 NCM 体素。",
+    webglUnavailable: "WebGL2 不可用，规范模型数据仍显示在下方。",
+  },
 };
 
 const overrides = {
@@ -2563,6 +2678,7 @@ for (const locale of localeOrder) {
   messages.languages = { ...languageNames };
   mergeInto(messages, overrides[locale] || {});
   mergeInto(messages, { ncm4: ncm4Overrides[locale] || {} });
+  mergeInto(messages, { preview: previewMessages[locale] });
   await writeFile(resolve(localeDirectory, `${locale}.json`), `${JSON.stringify(messages, null, 2)}\n`);
 }
 
