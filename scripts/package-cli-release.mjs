@@ -56,7 +56,7 @@ if (entry.archiveExtension === "zip") {
     "-NoProfile",
     "-NonInteractive",
     "-Command",
-    "[System.IO.Compression.ZipFile]::CreateFromDirectory($env:NICECHUNK_RELEASE_STAGE, $env:NICECHUNK_RELEASE_ARCHIVE, [System.IO.Compression.CompressionLevel]::Optimal, $false)",
+    "$ErrorActionPreference = 'Stop'; Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::CreateFromDirectory($env:NICECHUNK_RELEASE_STAGE, $env:NICECHUNK_RELEASE_ARCHIVE, [System.IO.Compression.CompressionLevel]::Optimal, $false)",
   ], {
     env: {
       ...process.env,
