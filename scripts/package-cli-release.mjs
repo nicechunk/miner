@@ -19,7 +19,8 @@ const entry = platforms.find((item) => item.id === platform);
 if (!entry) throw new Error(`Unknown release platform ${platform}`);
 
 await mkdir(output, { recursive: true });
-const stage = resolve(output, `.stage-${platform}`);
+const stageName = `.stage-${platform}`;
+const stage = resolve(output, stageName);
 await rm(stage, { recursive: true, force: true });
 await mkdir(resolve(stage, "docs"), { recursive: true });
 const binaryName = platform.startsWith("windows-") ? "nicechunk-miner.exe" : "nicechunk-miner";
@@ -49,9 +50,9 @@ const archiveName = `nicechunk-miner-${version}-${platform}.${entry.archiveExten
 const archive = resolve(output, archiveName);
 await rm(archive, { force: true });
 if (entry.archiveExtension === "zip") {
-  execFileSync("tar", ["-a", "-cf", archive, "-C", stage, "."], { stdio: "inherit" });
+  execFileSync("tar", ["-a", "-cf", archiveName, "-C", stageName, "."], { cwd: output, stdio: "inherit" });
 } else {
-  execFileSync("tar", ["-czf", archive, "-C", stage, "."], { stdio: "inherit" });
+  execFileSync("tar", ["-czf", archiveName, "-C", stageName, "."], { cwd: output, stdio: "inherit" });
 }
 const archiveHash = await sha256(archive);
 await writeFile(`${archive}.sha256`, `${archiveHash}  ${basename(archive)}\n`);
