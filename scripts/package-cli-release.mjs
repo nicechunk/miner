@@ -27,16 +27,24 @@ const binaryName = platform.startsWith("windows-") ? "nicechunk-miner.exe" : "ni
 await copyFile(binary, resolve(stage, binaryName));
 if (!platform.startsWith("windows-")) await chmod(resolve(stage, binaryName), 0o755);
 await copyFile(resolve(root, "README.md"), resolve(stage, "README.md"));
+await copyFile(resolve(root, "CHANGELOG.md"), resolve(stage, "CHANGELOG.md"));
 await copyFile(resolve(root, "docs", "cli.md"), resolve(stage, "docs", "cli.md"));
 await copyFile(resolve(root, "docs", "benchmarks.md"), resolve(stage, "docs", "benchmarks.md"));
+await copyFile(resolve(root, "docs", "ncm4-spec.md"), resolve(stage, "docs", "ncm4-spec.md"));
+await copyFile(resolve(root, "docs", "ncm4-benchmarks.md"), resolve(stage, "docs", "ncm4-benchmarks.md"));
+await copyFile(resolve(root, "docs", "ncm4-verification.md"), resolve(stage, "docs", "ncm4-verification.md"));
 await copyFile(resolve(root, "docs", "protocol.md"), resolve(stage, "docs", "protocol.md"));
 await copyFile(resolve(root, "docs", "security.md"), resolve(stage, "docs", "security.md"));
 
 const stagedFiles = [
   binaryName,
+  "CHANGELOG.md",
   "README.md",
   "docs/benchmarks.md",
   "docs/cli.md",
+  "docs/ncm4-benchmarks.md",
+  "docs/ncm4-spec.md",
+  "docs/ncm4-verification.md",
   "docs/protocol.md",
   "docs/security.md",
 ];

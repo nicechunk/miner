@@ -1,9 +1,16 @@
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const chunkJsRoot = resolve(process.env.NICECHUNK_CHUNK_JS_ROOT || resolve(root, "..", "chunk.js"));
+const pinnedChunkJsRoot = resolve(root, ".dependencies", "chunk.js");
+const chunkJsRoot = resolve(
+  process.env.NICECHUNK_CHUNK_JS_ROOT
+    || (existsSync(resolve(pinnedChunkJsRoot, "forge", "forge-core.js"))
+      ? pinnedChunkJsRoot
+      : resolve(root, "..", "chunk.js")),
+);
 const blueprintCodec = await import(pathToFileURL(resolve(chunkJsRoot, "ncm", "blueprint-codec.js")).href);
 const forgeCodec = await import(pathToFileURL(resolve(chunkJsRoot, "forge", "forge-core.js")).href);
 const { createBlueprint, encodeNcm3 } = blueprintCodec;

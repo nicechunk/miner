@@ -11,16 +11,25 @@ let engineWorker = null;
 let engineProbePromise = null;
 let engineRequestId = 0;
 const enginePendingRequests = new Map();
+const checkpointPersistence = {
+  inFlight: false,
+  pending: null,
+  timer: null,
+};
 
 const elements = Object.fromEntries([
   "localeSelect", "sampleSelect", "loadSampleButton", "fileInput", "fileName",
+  "inputText", "loadTextButton", "analyzeButton", "decodeButton", "verifyButton",
   "workerCount", "seedInput", "timeBudget", "populationInput", "startButton",
   "pauseButton", "resumeButton", "stopButton", "resetButton", "statusBanner",
   "engineBadge", "incumbentBytes", "candidateBytes", "savedBytes", "savedPercent",
   "attempts", "attemptRate", "elapsed", "workerStatus", "decodeUnits", "programBytes",
   "residualBytes", "overheadBytes", "targetRoot", "candidateRoot", "mismatchCount",
   "exactStatus", "curveCanvas", "downloadCandidate", "downloadResult", "downloadTask",
-  "downloadReport", "copyCommand", "releasePanel", "sourceNote",
+  "downloadCheckpoint", "checkpointInput", "downloadReport", "copyCommand", "releasePanel", "sourceNote",
+  "inputFormat", "witnessStatus", "ncm4SeedBytes", "selectedFormat", "generation",
+  "strategyName", "islandCount", "originalModelSummary", "candidateModelSummary",
+  "diffOverlaySummary",
 ].map((id) => [id, document.getElementById(id)]));
 
 const state = {
@@ -28,6 +37,9 @@ const state = {
   input: null,
   inputName: "",
   inspect: null,
+  ncm4: null,
+  ncm4Best: null,
+  savedCheckpointBase64: null,
   workers: new Map(),
   workerAttempts: new Map(),
   best: null,
@@ -85,13 +97,23 @@ function bindEvents() {
   elements.loadSampleButton.addEventListener("click", () => loadSample().catch(fail));
   elements.sampleSelect.addEventListener("change", () => loadSample().catch(fail));
   elements.fileInput.addEventListener("change", () => loadLocalFile().catch(fail));
+  elements.loadTextButton.addEventListener("click", () => loadPastedInput().catch(fail));
+  elements.analyzeButton.addEventListener("click", () => analyzeNcm4(true).catch(fail));
+  elements.decodeButton.addEventListener("click", () => decodeCurrent().catch(fail));
+  elements.verifyButton.addEventListener("click", () => verifyCurrent().catch(fail));
   elements.startButton.addEventListener("click", () => startMining().catch(fail));
   elements.pauseButton.addEventListener("click", pauseMining);
   elements.resumeButton.addEventListener("click", resumeMining);
   elements.stopButton.addEventListener("click", () => stopWorkers("status.stoppedByUser"));
   elements.resetButton.addEventListener("click", () => reset().catch(fail));
   elements.localeSelect.addEventListener("change", () => changeLocale(elements.localeSelect.value).catch(fail));
-  elements.downloadCandidate.addEventListener("click", () => downloadBase64(state.best?.candidateBase64, "candidate.ncpow-vm", "application/octet-stream"));
+  elements.downloadCandidate.addEventListener("click", () => downloadBase64(
+    state.best?.candidateBase64,
+    state.best?.format === "ncm4-pouw-v1" ? "candidate.nc4p" : "candidate.ncpow-vm",
+    "application/octet-stream",
+  ));
+  elements.downloadCheckpoint.addEventListener("click", () => downloadBase64(state.best?.checkpointBase64 || state.savedCheckpointBase64, "miner-session.nc4s.chk", "application/octet-stream"));
+  elements.checkpointInput.addEventListener("change", () => importCheckpoint().catch(fail));
   elements.downloadResult.addEventListener("click", () => downloadBase64(state.best?.resultBase64, "browser-result.ncpow", "application/octet-stream"));
   elements.downloadTask.addEventListener("click", () => downloadBase64(state.best?.taskBase64, "browser-task.ncpow", "application/octet-stream"));
   elements.downloadReport.addEventListener("click", downloadReport);
@@ -217,12 +239,23 @@ async function loadLocalFile() {
   await setInput(input, file.name, revision);
 }
 
+async function loadPastedInput() {
+  const value = elements.inputText.value.trim();
+  if (!value) throw new Error(t("ncm4.pasteRequired"));
+  const revision = beginInputLoad();
+  const input = new TextEncoder().encode(value);
+  await setInput(input, "pasted-input.txt", revision);
+}
+
 function beginInputLoad() {
   const revision = ++state.inputRevision;
   stopWorkers("status.inputChanged", false);
   state.input = null;
   state.inputName = "";
   state.inspect = null;
+  state.ncm4 = null;
+  state.ncm4Best = null;
+  state.savedCheckpointBase64 = null;
   state.best = null;
   state.workerAttempts.clear();
   state.curve = [];
@@ -238,12 +271,17 @@ async function setInput(input, name, revision) {
   state.input = input;
   state.inputName = name;
   state.inspect = null;
+  state.ncm4 = null;
+  state.ncm4Best = null;
+  state.savedCheckpointBase64 = null;
   state.best = null;
   state.workerAttempts.clear();
   state.curve = [];
   state.elapsedBeforePause = 0;
   elements.fileName.removeAttribute("data-i18n");
   elements.fileName.textContent = name;
+  const detectedProfile = detectInputProfile(input, name);
+  if (detectedProfile && detectedProfile !== state.profile) selectProfileWithoutLoading(detectedProfile);
   setTranslatedStatus("idle", "status.inspecting", "status.inspectingDetail");
   updateButtons();
   render();
@@ -258,6 +296,8 @@ async function setInput(input, name, revision) {
     if (revision !== state.inputRevision) return;
     state.inspect = response;
     state.curve.push({ attempts: 0, bytes: response.incumbentBytes });
+    await analyzeNcm4(false, revision);
+    state.savedCheckpointBase64 = await loadStoredCheckpoint(checkpointStorageKey(response));
     updateButtons();
     render();
     setTranslatedStatus("idle", "status.ready", "status.readyLoaded", {
@@ -271,6 +311,96 @@ async function setInput(input, name, revision) {
     }
     throw error;
   }
+}
+
+async function analyzeNcm4(showStatus = true, revision = state.inputRevision) {
+  if (!state.input || !state.inspect) return;
+  if (showStatus) setTranslatedStatus("idle", "ncm4.analyzing", "ncm4.analyzingDetail");
+  const input = state.input.slice();
+  const analysis = await requestEngine(
+    { type: "ncm4Analyze", profile: state.profile, input },
+    [input.buffer],
+  );
+  if (revision !== state.inputRevision) return;
+  state.ncm4 = analysis;
+  state.ncm4Best = normalizeNcm4Analysis(analysis);
+  state.best = state.ncm4Best;
+  state.curve = [
+    { attempts: 0, bytes: state.inspect.incumbentBytes },
+    { attempts: 0, bytes: state.ncm4Best.candidateBytes },
+  ];
+  enableDownloads(true);
+  drawCurve();
+  render();
+  if (showStatus) showBestStatus();
+}
+
+function normalizeNcm4Analysis(analysis) {
+  const headerBytes = Number(analysis.fixedHeaderBytes || 0) + Number(analysis.profileHeaderBytes || 0);
+  const sourceBytes = Number(analysis.sourceBytes || 0);
+  const candidateBytes = Number(analysis.ncm4TotalBytes || 0);
+  const savedBytes = Number.isFinite(Number(analysis.savedBytes))
+    ? Number(analysis.savedBytes)
+    : sourceBytes - candidateBytes;
+  return {
+    ...analysis,
+    format: "ncm4-pouw-v1",
+    accepted: Boolean(analysis.witnessExists),
+    improved: Boolean(analysis.witnessExists),
+    exact: Boolean(analysis.exact),
+    mismatchCount: 0,
+    incumbentBytes: sourceBytes,
+    candidateBytes,
+    savedBytes,
+    savedBps: Number.isFinite(Number(analysis.savedBps))
+      ? Number(analysis.savedBps)
+      : sourceBytes === 0 ? 0 : Math.trunc(savedBytes * 10000 / sourceBytes),
+    programBytes: Number(analysis.bodyBytes || 0),
+    residualBytes: Number(analysis.residualBytes || 0),
+    overheadBytes: headerBytes,
+    targetSemanticRoot: analysis.semanticRoot,
+    candidateSemanticRoot: analysis.candidateSemanticRoot || analysis.semanticRoot,
+    candidateEncodingHash: analysis.encodingHash,
+    generations: 0,
+    generation: 0,
+    attempts: 0,
+    strategy: "deterministic-language-audit",
+  };
+}
+
+function detectInputProfile(input, name) {
+  if (input.length >= 6 && String.fromCharCode(...input.slice(0, 4)) === "NC4P") {
+    return { 1: "terrain_delta", 2: "building", 3: "forged_item" }[input[5]] || null;
+  }
+  const prefix = new TextDecoder().decode(input.slice(0, Math.min(input.length, 24)));
+  if (prefix.startsWith("NCM4P:")) return detectNcm4TextProfile(prefix);
+  if (prefix.startsWith("NCM3:")) return "building";
+  if (prefix.startsWith("NCBK")) return "terrain_delta";
+  const lower = String(name || "").toLowerCase();
+  if (lower.endsWith(".ncf1") || lower.endsWith(".ncf")) return "forged_item";
+  if (lower.endsWith(".ncm3") || lower.endsWith(".ncm")) return "building";
+  if (lower.endsWith(".ncbk")) return "terrain_delta";
+  return null;
+}
+
+function detectNcm4TextProfile(prefix) {
+  try {
+    const encoded = prefix.slice("NCM4P:".length).replaceAll("-", "+").replaceAll("_", "/");
+    const padded = encoded + "=".repeat((4 - encoded.length % 4) % 4);
+    const header = atob(padded.slice(0, 12));
+    if (header.slice(0, 4) !== "NC4P" || header.length < 6) return null;
+    return { 1: "terrain_delta", 2: "building", 3: "forged_item" }[header.charCodeAt(5)] || null;
+  } catch {
+    return null;
+  }
+}
+
+function selectProfileWithoutLoading(profile) {
+  state.profile = profile;
+  document.querySelectorAll("[data-profile]").forEach((item) => {
+    item.setAttribute("aria-selected", String(item.dataset.profile === profile));
+  });
+  dispatchSceneProfile();
 }
 
 async function startMining() {
@@ -290,9 +420,10 @@ async function startMining() {
     return;
   }
   stopWorkers("status.restarting", false);
-  state.best = null;
+  state.best = state.profile === "building" ? state.ncm4Best : null;
   state.workerAttempts.clear();
   state.curve = [{ attempts: 0, bytes: state.inspect.incumbentBytes }];
+  if (state.ncm4Best) state.curve.push({ attempts: 0, bytes: state.ncm4Best.candidateBytes });
   state.elapsedBeforePause = 0;
   state.runStartedAt = performance.now();
   state.phase = "running";
@@ -314,9 +445,13 @@ async function startMining() {
       type: "start",
       workerId: index,
       profile: state.profile,
+      format: state.inspect.format,
       input: bytes,
       seed: (seed + index * 0x9e3779b9) >>> 0,
       population,
+      workerCount,
+      checkpointBase64: index === 0 ? state.savedCheckpointBase64 : null,
+      sourceEncodingHash: state.inspect.encodingHash,
     }, [bytes.buffer]);
   }
   updateButtons();
@@ -331,6 +466,11 @@ function pauseMining() {
   state.phase = "paused";
   dispatchScenePhase();
   for (const worker of state.workers.values()) worker.postMessage({ type: "pause" });
+  scheduleCheckpointPersistence(
+    checkpointStorageKey(state.inspect),
+    state.savedCheckpointBase64,
+    true,
+  );
   updateButtons();
   setTranslatedStatus("paused", "status.paused", "status.pausedDetail");
   render();
@@ -356,6 +496,11 @@ function stopWorkers(messageKey = "status.stopped", showStatus = true) {
     worker.terminate();
   }
   state.workers.clear();
+  scheduleCheckpointPersistence(
+    checkpointStorageKey(state.inspect),
+    state.savedCheckpointBase64,
+    true,
+  );
   if (state.phase !== "idle") state.phase = "stopped";
   dispatchScenePhase();
   updateButtons();
@@ -386,24 +531,42 @@ function tick() {
 
 function handleWorkerMessage(workerId, message) {
   if (message.type === "error") {
+    if (String(message.error).includes("checkpoint target or incumbent encoding")) {
+      state.savedCheckpointBase64 = null;
+    }
     fail(new Error(message.error));
     return;
   }
   if (message.type === "result") {
     const result = message.result;
     state.workerAttempts.set(workerId, Number(result.attempts || 0));
+    if (result.checkpointBase64 && state.inspect?.semanticRoot) {
+      state.savedCheckpointBase64 = result.checkpointBase64;
+      scheduleCheckpointPersistence(checkpointStorageKey(state.inspect), result.checkpointBase64);
+    }
+    if (state.best && result.candidateEncodingHash === state.best.candidateEncodingHash) {
+      state.best.checkpointBase64 = result.checkpointBase64;
+      state.best.generation = result.generation ?? result.generations ?? state.best.generation;
+      state.best.generations = state.best.generation;
+      state.best.attempts = result.attempts ?? state.best.attempts;
+    }
     if (result.exact && isBetter(result, state.best)) {
       state.best = result;
       state.curve.push({ attempts: totalAttempts(), bytes: result.candidateBytes });
       for (const [id, worker] of state.workers) {
         if (id !== workerId) {
-          worker.postMessage({ type: "verifiedBest", candidateBase64: result.candidateBase64 });
+          worker.postMessage({
+            type: "verifiedBest",
+            candidateBase64: result.candidateBase64,
+            checkpointBase64: result.checkpointBase64,
+          });
         }
       }
       enableDownloads(true);
       drawCurve();
       showBestStatus();
     }
+    enableDownloads(Boolean(state.best));
     render();
   }
 }
@@ -432,7 +595,31 @@ function render() {
   elements.mismatchCount.textContent = best ? formatNumber(best.mismatchCount) : "—";
   elements.exactStatus.removeAttribute("data-i18n");
   elements.exactStatus.textContent = best ? (best.exact ? t("metrics.exactMatch") : t("metrics.failed")) : t("metrics.notRun");
+  elements.inputFormat.textContent = inspect?.format || "—";
+  elements.witnessStatus.textContent = state.ncm4
+    ? t(state.ncm4.witnessExists ? "ncm4.witnessYes" : "ncm4.witnessNo")
+    : "—";
+  elements.witnessStatus.dataset.witness = String(Boolean(state.ncm4?.witnessExists));
+  elements.ncm4SeedBytes.textContent = state.ncm4 ? formatBytes(state.ncm4.ncm4TotalBytes) : "—";
+  elements.selectedFormat.textContent = best?.selectedFormat || state.ncm4?.selectedFormat || inspect?.format || "—";
+  elements.generation.textContent = formatNumber(best?.generation ?? best?.generations ?? 0);
+  elements.strategyName.textContent = strategyLabel(best?.strategy);
+  elements.islandCount.textContent = formatNumber(state.workers.size);
+  elements.originalModelSummary.textContent = semanticSummary(inspect?.semantics);
+  elements.candidateModelSummary.textContent = semanticSummary(state.ncm4?.semantics || (best?.exact ? inspect?.semantics : null));
+  elements.diffOverlaySummary.textContent = best
+    ? t(best.exact ? "ncm4.diffExact" : "ncm4.diffMismatch", { count: best.mismatchCount ?? "—" })
+    : "—";
   renderDynamicMetrics();
+}
+
+function strategyLabel(strategy) {
+  if (!strategy) return "—";
+  const keys = {
+    "deterministic-language-audit": "ncm4.strategyAudit",
+    "beam-rewrite+typed-island-lns": "ncm4.strategyHybrid",
+  };
+  return keys[strategy] ? t(keys[strategy]) : strategy;
 }
 
 function renderDynamicMetrics() {
@@ -456,6 +643,10 @@ function showBestStatus(suffixKey = "") {
         saved: () => formatSignedBytes(state.best.savedBytes),
         suffix: () => suffixKey ? t(suffixKey) : "",
       },
+    });
+  } else if (state.inspect?.format === "ncm3-v1") {
+    setTranslatedStatus("exact", "ncm4.ncm3Remains", "ncm4.ncm3RemainsDetail", {
+      detailParams: { suffix: () => suffixKey ? t(suffixKey) : "" },
     });
   } else {
     setTranslatedStatus("exact", "status.exactNoImprovement", "status.noImprovementDetail", {
@@ -493,15 +684,21 @@ function updateButtons() {
   const paused = state.phase === "paused";
   const ready = Boolean(state.input && state.inspect && state.engineVersion && !state.engineFailed);
   elements.startButton.disabled = running || paused || !ready;
+  elements.analyzeButton.disabled = running || paused || !ready;
+  elements.decodeButton.disabled = running || paused || !ready;
+  elements.verifyButton.disabled = running || paused || !ready || !state.best;
   elements.pauseButton.disabled = !running;
   elements.resumeButton.disabled = !paused;
   elements.stopButton.disabled = !running && !paused;
 }
 
 function enableDownloads(enabled) {
-  for (const element of [elements.downloadCandidate, elements.downloadResult, elements.downloadTask, elements.downloadReport, elements.copyCommand]) {
-    element.disabled = !enabled;
-  }
+  elements.downloadCandidate.disabled = !enabled || !state.best?.candidateBase64;
+  elements.downloadCheckpoint.disabled = !enabled || !(state.best?.checkpointBase64 || state.savedCheckpointBase64);
+  elements.downloadResult.disabled = !enabled || !state.best?.resultBase64;
+  elements.downloadTask.disabled = !enabled || !state.best?.taskBase64;
+  elements.downloadReport.disabled = !enabled || !state.best;
+  elements.copyCommand.disabled = !enabled || !state.best;
 }
 
 function drawCurve() {
@@ -610,6 +807,153 @@ function asEngineFailure(error) {
   return wrapped;
 }
 
+async function decodeCurrent() {
+  if (!state.input || !state.inspect) return;
+  if (state.inspect.format === "ncm4-pouw-v1") {
+    const input = state.input.slice();
+    const decoded = await requestEngine({ type: "ncm4Decode", input }, [input.buffer]);
+    state.ncm4 ||= {
+      ...decoded.stats,
+      ncm4TotalBytes: decoded.stats.totalBytes,
+      semanticRoot: decoded.semanticRoot,
+      candidateSemanticRoot: decoded.semanticRoot,
+      semantics: decoded.semantics,
+      selectedFormat: "ncm4-pouw-v1",
+      exact: true,
+      witnessExists: false,
+    };
+  }
+  render();
+  setTranslatedStatus("exact", "ncm4.decoded", "ncm4.decodedDetail");
+}
+
+async function verifyCurrent() {
+  if (!state.input || !state.best?.candidateBase64) return;
+  if (state.best.format === "ncm4-pouw-v1") {
+    const candidate = base64Bytes(state.best.candidateBase64);
+    const report = await requestEngine({
+      type: "ncm4Verify",
+      profile: state.profile,
+      source: state.input.slice(),
+      candidate,
+    });
+    Object.assign(state.best, report);
+  }
+  render();
+  showBestStatus();
+}
+
+async function importCheckpoint() {
+  const file = elements.checkpointInput.files?.[0];
+  if (!file) return;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  state.savedCheckpointBase64 = bytesBase64(bytes);
+  enableDownloads(Boolean(state.best));
+  setTranslatedStatus("idle", "ncm4.checkpointReady", "ncm4.checkpointReadyDetail");
+}
+
+function semanticSummary(value) {
+  if (!value) return "—";
+  const semantics = value.semantics || value;
+  if (Array.isArray(semantics.voxels)) return t("ncm4.voxelSummary", { count: formatNumber(semantics.voxels.length) });
+  if (Array.isArray(semantics.deleted)) return t("ncm4.voxelSummary", { count: formatNumber(semantics.deleted.length) });
+  if (semantics.geometry?.components) {
+    const count = semantics.geometry.components.reduce((sum, component) => sum + (component.solid?.length || 0), 0);
+    return t("ncm4.voxelSummary", { count: formatNumber(count) });
+  }
+  if (semantics.geometry?.appearance?.quads) {
+    return t("ncm4.quadSummary", { count: formatNumber(semantics.geometry.appearance.quads.length) });
+  }
+  return t("ncm4.semanticReady");
+}
+
+function openCheckpointDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("nicechunk-miner", 3);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains("ncm4-checkpoints-v2")) {
+        request.result.createObjectStore("ncm4-checkpoints-v2", { keyPath: "key" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function checkpointStorageKey(inspect) {
+  return inspect?.semanticRoot && inspect?.encodingHash
+    ? `${inspect.semanticRoot}:${inspect.encodingHash}`
+    : null;
+}
+
+function scheduleCheckpointPersistence(key, checkpointBase64, immediate = false) {
+  if (!key || !checkpointBase64 || !globalThis.indexedDB) return;
+  checkpointPersistence.pending = { key, checkpointBase64 };
+  if (checkpointPersistence.inFlight) return;
+  if (checkpointPersistence.timer) {
+    if (!immediate) return;
+    window.clearTimeout(checkpointPersistence.timer);
+  }
+  checkpointPersistence.timer = window.setTimeout(
+    drainCheckpointPersistence,
+    immediate ? 0 : 750,
+  );
+}
+
+async function drainCheckpointPersistence() {
+  checkpointPersistence.timer = null;
+  if (checkpointPersistence.inFlight || !checkpointPersistence.pending) return;
+  const pending = checkpointPersistence.pending;
+  checkpointPersistence.pending = null;
+  checkpointPersistence.inFlight = true;
+  try {
+    await storeCheckpoint(pending.key, pending.checkpointBase64);
+  } finally {
+    checkpointPersistence.inFlight = false;
+    if (checkpointPersistence.pending) {
+      checkpointPersistence.timer = window.setTimeout(drainCheckpointPersistence, 750);
+    }
+  }
+}
+
+async function storeCheckpoint(key, checkpointBase64) {
+  if (!key || !checkpointBase64 || !globalThis.indexedDB) return;
+  try {
+    const database = await openCheckpointDatabase();
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction("ncm4-checkpoints-v2", "readwrite");
+      transaction.objectStore("ncm4-checkpoints-v2").put({
+        key,
+        checkpointBase64,
+        savedAt: Date.now(),
+      });
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+  } catch (error) {
+    console.warn("Local checkpoint persistence is unavailable.", error);
+  }
+}
+
+async function loadStoredCheckpoint(key) {
+  if (!key || !globalThis.indexedDB) return null;
+  try {
+    const database = await openCheckpointDatabase();
+    const record = await new Promise((resolve, reject) => {
+      const request = database.transaction("ncm4-checkpoints-v2", "readonly")
+        .objectStore("ncm4-checkpoints-v2")
+        .get(key);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return record?.checkpointBase64 || null;
+  } catch {
+    return null;
+  }
+}
+
 async function loadSiteConfig() {
   const response = await fetch(SITE_CONFIG_URL, { cache: "no-cache" });
   if (!response.ok) return;
@@ -697,7 +1041,9 @@ function downloadReport() {
 }
 
 async function copyVerifyCommand() {
-  const command = "nicechunk-miner verify --task browser-task.ncpow --result browser-result.ncpow";
+  const command = state.best?.format === "ncm4-pouw-v1"
+    ? `nicechunk-miner ncm4 verify --source ${shellQuote(state.inputName || "source.ncm3")} --candidate candidate.nc4p`
+    : "nicechunk-miner verify --task browser-task.ncpow --result browser-result.ncpow";
   try {
     await navigator.clipboard.writeText(command);
   } catch {
@@ -724,6 +1070,16 @@ function downloadBlob(blob, name) {
 function base64Bytes(value) {
   const binary = atob(value);
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+function bytesBase64(bytes) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function shellQuote(value) {
+  return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
 function elapsedMs() {

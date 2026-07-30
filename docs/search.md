@@ -1,5 +1,13 @@
 # PoUW Search v1
 
+This document describes the original cross-profile PoUW VM search. Miner
+`0.2.0-alpha.1` also includes a separate persistent NCM4 Building session; see
+`ncm4-search.md`. Newly written checkpoints for both engines store complete
+island populations, strategies, and deterministic RNG-generation state. The
+original `CheckpointV1` reader still accepts older best-only files and resumes
+them by deterministically reseeding the configured islands. The two checkpoint
+magics are deliberately not interchangeable.
+
 ## Separation from consensus
 
 The searcher is replaceable. Consensus accepts only a canonical candidate that
@@ -75,12 +83,16 @@ Checkpoint v1 contains:
 - seed and full search configuration;
 - completed generation and attempt count;
 - typed best program, candidate bytes, and candidate encoding hash.
+- every island index, strategy, generation, RNG generation, and full typed
+  population.
 
-Resume parses the task again, verifies all identifiers and versions, decodes
-the best candidate, and rejects a checkpoint from another target or config.
-CLI writes use a temporary file, flush/sync, and atomic rename. Ctrl-C sets a
-cooperative stop flag; after the current bounded epoch the best result and
-checkpoint are written.
+Resume parses the task again, verifies all identifiers and versions, and
+independently rebuilds every saved population candidate before search
+continues. It rejects a checkpoint from another target or config. Older v1
+files without island state remain readable and restart their islands from the
+recorded best and deterministic seed. CLI writes use a temporary file,
+flush/sync, and atomic rename. Ctrl-C sets a cooperative stop flag; after the
+current bounded epoch the best result and checkpoint are written.
 
 ## Non-goals
 

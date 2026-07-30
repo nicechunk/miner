@@ -1,5 +1,8 @@
 # Security Model
 
+NCM4-specific parsing, canonicality, and future chain-adapter analysis is in
+`ncm4-verification.md`. NCM4 reuses the trust and hash boundaries below.
+
 ## Trust boundary
 
 Tasks, incumbents, results, checkpoints, local browser files, and network-

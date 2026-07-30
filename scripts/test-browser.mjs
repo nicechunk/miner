@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { createServer } from "node:http";
 import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
@@ -9,6 +10,24 @@ import { chromium, firefox, webkit } from "playwright";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = resolve(root, "web", "dist");
 const wasmDelayMs = Math.max(0, Number(process.env.POUW_WASM_DELAY_MS || 0));
+const requestedBrowserNames = String(process.env.POUW_BROWSER_TARGETS || "")
+  .split(",")
+  .map((value) => value.trim().toLowerCase())
+  .filter(Boolean);
+if (requestedBrowserNames.length > 1 && process.env.POUW_BROWSER_CHILD !== "1") {
+  for (const name of requestedBrowserNames) {
+    execFileSync(process.execPath, [fileURLToPath(import.meta.url)], {
+      env: {
+        ...process.env,
+        POUW_BROWSER_CHILD: "1",
+        POUW_BROWSER_TARGETS: name,
+      },
+      stdio: "inherit",
+    });
+  }
+  console.log(`Isolated browser smoke passed for ${requestedBrowserNames.join(", ")}`);
+  process.exit(0);
+}
 const requests = [];
 const server = createServer(async (request, response) => {
   try {
@@ -94,6 +113,7 @@ async function testBrowser(browser, label, origin, requests) {
   }
   const errors = [];
   const consoleDiagnostics = [];
+  let ncm4CandidateBytes = null;
   page.on("console", (message) => {
     consoleDiagnostics.push(`${message.type()}: ${message.text()}`);
     if (message.type() === "error") errors.push(message.text());
@@ -171,6 +191,7 @@ async function testBrowser(browser, label, origin, requests) {
 
   const profileViews = { terrain_delta: "terrain", building: "building", forged_item: "forged" };
   for (const profile of ["terrain_delta", "building", "forged_item"]) {
+    await page.locator("#sampleSelect").selectOption(profile === "building" ? "complex" : "normal");
     const startDisabledDuringInspection = await page.evaluate((value) => {
       document.querySelector(`[data-scene-profile="${value}"]`)?.click();
       document.getElementById("startButton")?.click();
@@ -224,13 +245,76 @@ async function testBrowser(browser, label, origin, requests) {
       throw error;
     }
     assert(await page.locator("#mismatchCount").textContent() === "0", `${profile} mismatch count should be zero`);
-    assert(!(await page.locator("#downloadResult").isDisabled()), `${profile} result download should be enabled`);
+    if (profile === "building") {
+      await page.waitForFunction(() => Number(document.getElementById("generation")?.textContent || 0) >= 2);
+      const generationBeforePause = Number(await page.locator("#generation").textContent());
+      await page.locator("#pauseButton").click();
+      await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "paused");
+      await page.locator("#resumeButton").click();
+      await page.waitForFunction((previous) => Number(document.getElementById("generation")?.textContent || 0) > previous, generationBeforePause);
+      assert(await page.locator("#inputFormat").textContent() === "ncm3-v1", `${label} building source format was not detected`);
+      assert(await page.locator("#selectedFormat").textContent() === "ncm4-pouw-v1", `${label} shorter NCM4 witness was not selected`);
+      assert(await page.locator("#candidateBytes").textContent() === "57 B", `${label} deterministic NCM4 witness byte count changed`);
+      assert(!(await page.locator("#downloadCandidate").isDisabled()), `${label} NCM4 candidate download should be enabled`);
+      assert(!(await page.locator("#downloadCheckpoint").isDisabled()), `${label} NCM4 checkpoint download should be enabled`);
+      assert(!(await page.locator("#downloadReport").isDisabled()), `${label} NCM4 JSON report should be enabled`);
+      assert(await page.locator("#downloadResult").isDisabled(), `${label} NCM4 must not expose a nonexistent NCPV result`);
+      assert(await page.locator("#downloadTask").isDisabled(), `${label} NCM4 must not expose a nonexistent NCPV task`);
+      const downloadPromise = page.waitForEvent("download");
+      await page.locator("#downloadCandidate").click();
+      const download = await downloadPromise;
+      ncm4CandidateBytes = await readFile(await download.path());
+      assert(ncm4CandidateBytes.length === 57, `${label} downloaded NCM4 candidate has the wrong byte length`);
+    } else {
+      assert(!(await page.locator("#downloadResult").isDisabled()), `${profile} result download should be enabled`);
+    }
     await page.evaluate(() => {
       const button = document.getElementById("stopButton");
       if (button && !button.disabled) button.click();
     });
     await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "stopped");
     await page.waitForFunction(() => document.getElementById("workerStatus")?.textContent.startsWith("0 worker"), null, { timeout: 5_000 });
+    if (profile === "building") {
+      const semanticRoot = await page.locator("#targetRoot").textContent();
+      await page.waitForFunction((root) => new Promise((resolveCheckpoint) => {
+        const request = indexedDB.open("nicechunk-miner", 3);
+        request.onerror = () => resolveCheckpoint(false);
+        request.onsuccess = () => {
+          const database = request.result;
+          const lookup = database.transaction("ncm4-checkpoints-v2", "readonly")
+            .objectStore("ncm4-checkpoints-v2")
+            .getAll();
+          lookup.onerror = () => resolveCheckpoint(false);
+          lookup.onsuccess = () => {
+            database.close();
+            resolveCheckpoint(lookup.result.some((record) => (
+              record.key?.startsWith(`${root}:`) && record.checkpointBase64
+            )));
+          };
+        };
+      }), semanticRoot, { timeout: 5_000 });
+    }
+  }
+
+  assert(ncm4CandidateBytes, `${label} did not produce an NCM4 candidate for import testing`);
+  {
+    await page.locator('[data-scene-profile="terrain_delta"]').click();
+    await page.waitForFunction(() => document.querySelector('[data-profile="terrain_delta"]')?.getAttribute("aria-selected") === "true");
+    await page.waitForFunction(() => document.getElementById("statusBanner")?.textContent.includes("Ready"));
+    const textEncoding = `NCM4P:${Buffer.from(ncm4CandidateBytes).toString("base64url")}`;
+    await page.locator("#inputText").fill(textEncoding);
+    await page.locator("#loadTextButton").click();
+    await page.waitForFunction(() => document.querySelector('[data-profile="building"]')?.getAttribute("aria-selected") === "true");
+    await page.waitForFunction(() => document.getElementById("inputFormat")?.textContent === "ncm4-pouw-v1");
+    assert(await page.locator("#candidateBytes").textContent() === "57 B", `${label} imported NCM4P text changed size`);
+    await page.locator("#workerCount").fill("1");
+    await page.locator("#populationInput").fill("4");
+    await page.locator("#timeBudget").fill("2");
+    await page.locator("#startButton").click();
+    await page.waitForFunction(() => Number(document.getElementById("generation")?.textContent || 0) > 0);
+    assert(await page.locator("#exactStatus").textContent() === "Exact Match", `${label} NCM4 source search lost exactness`);
+    await page.locator("#stopButton").click();
+    await page.waitForFunction(() => document.getElementById("workerStatus")?.textContent.startsWith("0 worker"));
   }
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
@@ -281,18 +365,28 @@ async function testBrowser(browser, label, origin, requests) {
 }
 
 function browserTargets() {
-  const requested = String(process.env.POUW_BROWSER_TARGETS || "")
-    .split(",")
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean);
   const configured = {
     chromium: { label: "Chromium", type: chromium },
     firefox: { label: "Firefox", type: firefox },
     webkit: { label: "WebKit", type: webkit },
+    chrome: {
+      label: "Google Chrome",
+      type: chromium,
+      launchOptions: { executablePath: "/usr/bin/google-chrome" },
+    },
+    edge: {
+      label: "Microsoft Edge",
+      type: chromium,
+      launchOptions: { executablePath: "/usr/bin/microsoft-edge" },
+    },
   };
-  if (requested.length) {
-    return requested.map((name) => {
+  if (requestedBrowserNames.length) {
+    return requestedBrowserNames.map((name) => {
       if (!configured[name]) throw new Error(`Unknown POUW_BROWSER_TARGETS entry ${name}`);
+      if (configured[name].launchOptions?.executablePath
+        && !existsSync(configured[name].launchOptions.executablePath)) {
+        throw new Error(`${configured[name].label} executable is unavailable`);
+      }
       return { ...configured[name], required: true };
     });
   }

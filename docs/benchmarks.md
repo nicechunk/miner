@@ -1,5 +1,9 @@
 # Reproducible v1 Benchmark
 
+This table remains the pre-NCM4 PoUW VM baseline. NCM4 Alpha storage witnesses,
+negative/fallback cases, and 1/2/4/8/12-thread measurements are in
+`ncm4-benchmarks.md`.
+
 Measured on 2026-07-27 with the release-mode `nicechunk-miner 0.1.0`
 binary on x86_64 Linux (Intel Xeon E5-2680 v2). The command was:
 

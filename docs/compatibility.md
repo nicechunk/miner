@@ -1,6 +1,6 @@
-# NiceChunk PoUW v1 Compatibility Audit
+# NiceChunk PoUW / NCM4 Alpha Compatibility Audit
 
-Audit date: 2026-07-27 UTC
+Audit date: 2026-07-30 UTC
 
 ## Repository authority
 
@@ -10,17 +10,18 @@ It contains no game wallet, deployment credential, private operations material,
 or unrelated website source.
 
 The browser scene consumes the public `nicechunk/chunk.js` runtime at the exact
-revision pinned by the release workflow. Local integration workspaces may use a
-sibling Chunk.js checkout through `NICECHUNK_CHUNK_JS_ROOT`; the generated Miner
-bundle remains self-contained and makes no runtime request to GitHub.
+revision pinned by the release workflow. The compatibility suite also consumes
+the pinned public Game implementation through `NICECHUNK_GAME_ROOT`; the
+generated Miner bundle remains self-contained and makes no runtime request to
+GitHub.
 
 The audited public `main` heads were:
 
 | Repository | Commit |
 | --- | --- |
-| `nicechunk/game` | `18206c17a0e615ef588f163fcbc5d7ced8dedada` |
-| `nicechunk/chunk.js` | `f3113bf0e376b3ccca59fe773d3995bb18e656ee` |
-| `nicechunk/nicechunk-programs` | `8cec0c85b7035a83c30c9bcfee6301fe021afc23` |
+| `nicechunk/game` | `58241acf2ec3c408e1af173a947e3d85753fc739` |
+| `nicechunk/chunk.js` | `0198c1aeeadad513b6e05c75bdcbc31133d28776` |
+| `nicechunk/nicechunk-programs` | `d70cd1b2b61e4ea8186fd0b219955f8ce64bacde` |
 | `nicechunk/nicechunk-ncm-dna` | `5c3ef8e87bad656353ad527d823297dabc396231` |
 | `nicechunk/nicechunk-proof-of-frontier` | `d3fcec0f2ed5efe1738b0695c59ac6358940bbb4` |
 
@@ -80,18 +81,30 @@ compatibility reference for import validation.
 - Building placement applies integer translation and quarter-turn rotation only;
   one NCM3 voxel remains one world voxel.
 
-PoUW imports all current NCM3 opcodes exactly. Its own VM adds generic bounded
-`RUN`, `WALL`, `EXTRUDE`, `REPEAT`, `MIRROR`, `CUT`, literal, and exact patch
-operations without changing NCM3 itself.
+PoUW imports all current NCM3 opcodes exactly. NCM4 adds a separate bounded
+compact grammar and exact residual without changing NCM3 itself. The current
+NCM3 fixtures retain their pre-upgrade semantic roots in unit, native/WASM, and
+production-JavaScript differential tests.
 
-Risk: the main worktree's uncommitted NCM3 copy currently lacks several public
-input-envelope hardening checks. The miner does not copy that regression.
-NCM3's `stableCodeId` is FNV-1a over text and is a cache/display identifier, not
-an economic asset identity.
+Risk: NCM3's `stableCodeId` is FNV-1a over text and is a cache/display
+identifier, not an economic asset identity.
+
+## NCM4 name collision and dispatch
+
+The current Chunk.js repository already uses the text prefix `NCM4:` for a
+character-animation format. Reusing those bytes for a voxel codec would create
+ambiguous dispatch and could let one client parse another product's data. Miner
+therefore uses `NC4P` binary magic and `NCM4P:` text while publishing the
+feature as NCM4 PoUW. NCM3 still uses only `NCM3:`. See `ncm4-spec.md` for the
+versioned layout.
+
+NCM4 Alpha's compact codec is Building-specific. Terrain and forged assets can
+be imported/verified through an exact wrapper but are not claimed to compress;
+preflight does not recommend deep NCM4 search for those profiles.
 
 ## `forged_item` / NCF1
 
-The current main-worktree format is NCF1 version 15 with a 640-byte chain limit.
+The current public format is NCF1 version 15 with a 640-byte chain limit.
 It is an MSB-first bitstream with zero padding limited to the final partial byte.
 
 - The immutable equipment header contains 16-bit mass in 5 g units, a 16-bit
@@ -108,7 +121,8 @@ It is an MSB-first bitstream with zero padding limited to the final partial byte
 - Client canonicalization validates non-empty components, ranges, surfaces,
   resource IDs, padding, and complete geometry when `decodeNcf1` is used.
 
-The on-chain Backpack verifier does **not** perform that geometry validation.
+The Backpack verifier at the audited public programs commit still does **not**
+perform that geometry validation.
 `verified_forge_design` reads only the first 108 bits (version plus equipment
 header), derives material requirements, and returns FNV-1a-32 over all supplied
 bytes. It accepts any 14..640 byte payload whose header is plausible, including

@@ -8,6 +8,7 @@ pub mod error;
 pub mod hash;
 pub mod import;
 pub mod model;
+pub mod ncm4;
 pub mod protocol;
 pub mod varint;
 pub mod vm;
@@ -20,6 +21,7 @@ pub use hash::{
 };
 pub use import::{import_asset, import_incumbent, ImportedAsset};
 pub use model::*;
+pub use ncm4::*;
 pub use protocol::*;
 pub use vm::*;
 

@@ -8,7 +8,7 @@ use pouw_core::{
 use rand_chacha::ChaCha8Rng;
 use rand_core::{RngCore, SeedableRng};
 
-use crate::{evaluate_program, IslandState, SearchCandidate, SearchConfig};
+use crate::{evaluate_program, IslandState, IslandStrategy, SearchCandidate, SearchConfig};
 
 pub(crate) fn evolve_epoch(
     island: &mut IslandState,
@@ -25,16 +25,27 @@ pub(crate) fn evolve_epoch(
             .take(usize::from(config.elite_count))
             .cloned()
             .collect::<Vec<_>>();
-        let mut rng = generation_rng(config.seed, island.index, island.generation);
+        let stream = u64::from(config.shard_index)
+            .saturating_mul(u64::from(config.islands))
+            .saturating_add(u64::from(island.index));
+        let mut rng = generation_rng(config.seed, stream, island.generation);
         while next.len() < config.population as usize {
             let first = tournament(&island.population, &mut rng, config.tournament_size).clone();
-            let mut program = if rng.next_u32() % 100 < 45 {
-                let second = tournament(&island.population, &mut rng, config.tournament_size);
-                crossover(&first.program, &second.program, &mut rng)
+            let mut program =
+                if island.strategy == IslandStrategy::Genetic && rng.next_u32() % 100 < 45 {
+                    let second = tournament(&island.population, &mut rng, config.tournament_size);
+                    crossover(&first.program, &second.program, &mut rng)
+                } else {
+                    first.program.clone()
+                };
+            let mutation_count = if island.strategy == IslandStrategy::LargeNeighborhood {
+                2 + rng.next_u32() % 3
             } else {
-                first.program.clone()
+                1
             };
-            mutate(&mut program, target, &mut rng);
+            for _ in 0..mutation_count {
+                mutate(&mut program, target, &mut rng);
+            }
             local_optimize(&mut program);
             island.attempts = island.attempts.saturating_add(1);
             match evaluate_program(program, target, limits) {
@@ -537,9 +548,9 @@ fn op_origin_x(op: &BuildingOp) -> Option<u16> {
     }
 }
 
-fn generation_rng(seed: u64, island: u16, generation: u32) -> ChaCha8Rng {
+fn generation_rng(seed: u64, island_stream: u64, generation: u32) -> ChaCha8Rng {
     let mut state = seed
-        ^ u64::from(island).wrapping_mul(0x9e37_79b9_7f4a_7c15)
+        ^ island_stream.wrapping_mul(0x9e37_79b9_7f4a_7c15)
         ^ u64::from(generation).wrapping_mul(0xbf58_476d_1ce4_e5b9);
     let mut bytes = [0_u8; 32];
     for chunk in bytes.chunks_exact_mut(8) {

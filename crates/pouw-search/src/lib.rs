@@ -3,6 +3,7 @@
 mod baseline;
 mod checkpoint;
 mod genetics;
+mod ncm4_search;
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -20,8 +21,19 @@ use serde::{Deserialize, Serialize};
 
 pub use baseline::{baseline_candidates, best_baseline};
 pub use checkpoint::CheckpointV1;
+pub use ncm4_search::{
+    Ncm4SearchCandidate, Ncm4SearchCheckpoint, Ncm4SearchOutcome, Ncm4SearchProgress,
+    Ncm4SearchSession,
+};
 
 pub const SEARCH_ENGINE_VERSION: u8 = 1;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum IslandStrategy {
+    Genetic,
+    LargeNeighborhood,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,6 +49,10 @@ pub struct SearchConfig {
     pub max_attempts: Option<u64>,
     pub time_limit_ms: Option<u64>,
     pub memory_limit_bytes: u64,
+    #[serde(default)]
+    pub shard_index: u32,
+    #[serde(default = "default_shard_count")]
+    pub shard_count: u32,
 }
 
 impl Default for SearchConfig {
@@ -45,7 +61,7 @@ impl Default for SearchConfig {
         Self {
             seed: 1,
             threads,
-            islands: threads.min(8),
+            islands: threads,
             population: 64,
             generations: 200,
             epoch_generations: 4,
@@ -54,6 +70,8 @@ impl Default for SearchConfig {
             max_attempts: None,
             time_limit_ms: None,
             memory_limit_bytes: 512 * 1024 * 1024,
+            shard_index: 0,
+            shard_count: 1,
         }
     }
 }
@@ -74,6 +92,8 @@ impl SearchConfig {
             || self.time_limit_ms == Some(0)
             || self.memory_limit_bytes < 1024 * 1024
             || self.memory_limit_bytes > limits.max_memory_bytes.saturating_mul(16)
+            || self.shard_count == 0
+            || self.shard_index >= self.shard_count
         {
             return Err(Error::limit(
                 "invalid-search-config",
@@ -181,11 +201,73 @@ impl SearchControl {
 }
 
 #[derive(Clone)]
-struct IslandState {
+pub(crate) struct IslandState {
     index: u16,
     generation: u32,
     attempts: u64,
     population: Vec<SearchCandidate>,
+    strategy: IslandStrategy,
+}
+
+#[cfg(feature = "parallel")]
+struct IslandExecutor {
+    pool: rayon::ThreadPool,
+}
+
+#[cfg(feature = "parallel")]
+impl IslandExecutor {
+    fn new(config: &SearchConfig) -> Result<Self> {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(usize::from(config.threads))
+            .build()
+            .map_err(|error| Error::new(ErrorKind::Internal, "rayon-pool", error.to_string()))?;
+        Ok(Self { pool })
+    }
+
+    fn run(
+        &self,
+        islands: &mut [IslandState],
+        target: &Semantics,
+        limits: &LimitsV1,
+        config: &SearchConfig,
+        epoch: u32,
+    ) -> Result<()> {
+        use rayon::prelude::*;
+        self.pool.install(|| {
+            islands.par_iter_mut().try_for_each(|island| {
+                genetics::evolve_epoch(island, target, limits, config, epoch)
+            })
+        })
+    }
+
+    #[cfg(test)]
+    fn thread_count(&self) -> usize {
+        self.pool.current_num_threads()
+    }
+}
+
+#[cfg(not(feature = "parallel"))]
+struct IslandExecutor;
+
+#[cfg(not(feature = "parallel"))]
+impl IslandExecutor {
+    fn new(_config: &SearchConfig) -> Result<Self> {
+        Ok(Self)
+    }
+
+    fn run(
+        &self,
+        islands: &mut [IslandState],
+        target: &Semantics,
+        limits: &LimitsV1,
+        config: &SearchConfig,
+        epoch: u32,
+    ) -> Result<()> {
+        for island in islands {
+            genetics::evolve_epoch(island, target, limits, config, epoch)?;
+        }
+        Ok(())
+    }
 }
 
 /// Search timing is non-consensus metadata. `std::time::Instant` deliberately
@@ -306,14 +388,31 @@ fn mine_from_checkpoint(
     let start_generation = checkpoint.map_or(0, |value| value.generation);
     let mut attempts = checkpoint.map_or(0, |value| value.attempts);
     let island_count = usize::from(config.islands.max(1));
-    let mut islands = (0..island_count)
-        .map(|index| IslandState {
-            index: index as u16,
-            generation: start_generation,
-            attempts: 0,
-            population: seed_population(&baselines, config.population as usize, index),
-        })
-        .collect::<Vec<_>>();
+    let mut islands = checkpoint
+        .map(|value| value.restored_islands(task, &target))
+        .transpose()?
+        .flatten()
+        .unwrap_or_else(|| {
+            (0..island_count)
+                .map(|index| {
+                    let global_index = u64::from(config.shard_index)
+                        .saturating_mul(config.islands as u64)
+                        .saturating_add(index as u64);
+                    IslandState {
+                        index: index as u16,
+                        generation: start_generation,
+                        attempts: 0,
+                        population: seed_population(&baselines, config.population as usize, index),
+                        strategy: if global_index % 2 == 0 {
+                            IslandStrategy::Genetic
+                        } else {
+                            IslandStrategy::LargeNeighborhood
+                        },
+                    }
+                })
+                .collect::<Vec<_>>()
+        });
+    let executor = IslandExecutor::new(config)?;
     let clock = SearchClock::start(config.time_limit_ms);
     let mut completed_generation = start_generation;
     let end_generation = start_generation.saturating_add(config.generations);
@@ -336,7 +435,7 @@ fn mine_from_checkpoint(
         for island in &mut islands {
             inject_migrant(&mut island.population, &global_best);
         }
-        run_island_epoch(&mut islands, &target, &task.limits, config, epoch)?;
+        executor.run(&mut islands, &target, &task.limits, config, epoch)?;
         let epoch_attempts = islands
             .iter_mut()
             .map(|island| {
@@ -384,12 +483,13 @@ fn mine_from_checkpoint(
             "Search returned a candidate that failed independent exact verification.",
         ));
     }
-    let checkpoint = CheckpointV1::new(
+    let checkpoint = CheckpointV1::new_with_islands(
         task,
         config.clone(),
         completed_generation,
         attempts,
         &global_best,
+        &islands,
     )?;
     Ok(SearchOutcome {
         best: global_best,
@@ -400,41 +500,6 @@ fn mine_from_checkpoint(
         generations: completed_generation,
         checkpoint,
     })
-}
-
-#[cfg(feature = "parallel")]
-fn run_island_epoch(
-    islands: &mut [IslandState],
-    target: &Semantics,
-    limits: &LimitsV1,
-    config: &SearchConfig,
-    epoch: u32,
-) -> Result<()> {
-    use rayon::prelude::*;
-
-    let pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(usize::from(config.threads))
-        .build()
-        .map_err(|error| Error::new(ErrorKind::Internal, "rayon-pool", error.to_string()))?;
-    pool.install(|| {
-        islands
-            .par_iter_mut()
-            .try_for_each(|island| genetics::evolve_epoch(island, target, limits, config, epoch))
-    })
-}
-
-#[cfg(not(feature = "parallel"))]
-fn run_island_epoch(
-    islands: &mut [IslandState],
-    target: &Semantics,
-    limits: &LimitsV1,
-    config: &SearchConfig,
-    epoch: u32,
-) -> Result<()> {
-    for island in islands {
-        genetics::evolve_epoch(island, target, limits, config, epoch)?;
-    }
-    Ok(())
 }
 
 fn seed_population(
@@ -542,6 +607,10 @@ fn default_thread_count() -> u16 {
         .min(usize::from(u16::MAX)) as u16
 }
 
+const fn default_shard_count() -> u32 {
+    1
+}
+
 extern crate alloc;
 
 #[cfg(test)]
@@ -587,6 +656,8 @@ mod tests {
             max_attempts: None,
             time_limit_ms: None,
             memory_limit_bytes: 32 * 1024 * 1024,
+            shard_index: 0,
+            shard_count: 1,
         };
         let first = mine(&task, &config, &SearchControl::default(), |_| {}).unwrap();
         let second = mine(&task, &config, &SearchControl::default(), |_| {}).unwrap();
@@ -624,5 +695,85 @@ mod tests {
             },
         });
         assert!(best_baseline(&forged, &limits).unwrap().exact);
+    }
+
+    #[cfg(feature = "parallel")]
+    #[test]
+    fn more_than_eight_threads_and_islands_are_not_capped() {
+        let task = terrain_task();
+        let config = SearchConfig {
+            threads: 12,
+            islands: 12,
+            population: 4,
+            elite_count: 1,
+            tournament_size: 2,
+            generations: 1,
+            epoch_generations: 1,
+            memory_limit_bytes: 128 * 1024 * 1024,
+            ..SearchConfig::default()
+        };
+        config.validate(&task.limits).unwrap();
+        let executor = IslandExecutor::new(&config).unwrap();
+        assert_eq!(executor.thread_count(), 12);
+        assert_eq!(config.islands, 12);
+    }
+
+    #[test]
+    fn checkpoint_resume_restores_population_and_matches_uninterrupted_search() {
+        let task = terrain_task();
+        let first_config = SearchConfig {
+            seed: 998,
+            threads: 1,
+            islands: 1,
+            population: 8,
+            generations: 2,
+            epoch_generations: 1,
+            elite_count: 2,
+            tournament_size: 2,
+            max_attempts: None,
+            time_limit_ms: None,
+            memory_limit_bytes: 32 * 1024 * 1024,
+            shard_index: 0,
+            shard_count: 1,
+        };
+        let first = mine(&task, &first_config, &SearchControl::default(), |_| {}).unwrap();
+        assert_eq!(first.checkpoint.islands.len(), 1);
+        assert_eq!(first.checkpoint.islands[0].population.len(), 8);
+        let resumed = resume(&task, &first.checkpoint, &SearchControl::default(), |_| {}).unwrap();
+        let uninterrupted_config = SearchConfig {
+            generations: 4,
+            ..first_config
+        };
+        let uninterrupted = mine(
+            &task,
+            &uninterrupted_config,
+            &SearchControl::default(),
+            |_| {},
+        )
+        .unwrap();
+        assert_eq!(resumed.best.encoding, uninterrupted.best.encoding);
+        assert_eq!(resumed.attempts, uninterrupted.attempts);
+        assert_eq!(resumed.generations, uninterrupted.generations);
+    }
+
+    #[test]
+    fn verified_elite_is_injected_into_an_island_population() {
+        let task = terrain_task();
+        let target = import_incumbent(
+            task.profile,
+            task.incumbent_format,
+            &task.incumbent_encoding,
+            &task.limits,
+        )
+        .unwrap();
+        let mut candidates = baseline_candidates(&target, &task.limits).unwrap();
+        candidates.sort_by(SearchCandidate::fitness_cmp);
+        let best = candidates[0].clone();
+        let mut population = vec![candidates.last().unwrap().clone(); 4];
+        inject_migrant(&mut population, &best);
+        assert!(population
+            .iter()
+            .any(|candidate| candidate.encoding == best.encoding));
+        assert_eq!(population[0].encoding, best.encoding);
     }
 }

@@ -31,6 +31,33 @@ SHA-256 entry in the signed-off static release manifest.
 
 ## Workflow
 
+NCM4 format dispatch and preflight:
+
+```bash
+nicechunk-miner inspect asset.ncm3
+nicechunk-miner ncm4 analyze asset.ncm3
+nicechunk-miner ncm4 encode asset.ncm3 --out candidate.nc4p
+nicechunk-miner ncm4 decode candidate.nc4p --out decoded.json
+nicechunk-miner ncm4 verify --source asset.ncm3 --candidate candidate.nc4p
+```
+
+Persistent NCM4 Building search accepts either NCM3 or NCM4 input:
+
+```bash
+nicechunk-miner mine asset.ncm3 --threads auto --islands 12 \
+  --population 64 --generations 200 --seed 123 \
+  --shard-index 0 --shard-count 1 \
+  --checkpoint state.nc4s.chk --out best.nc4p
+nicechunk-miner resume state.nc4s.chk --out resumed.nc4p
+```
+
+`ncm4 verify` returns validation exit code 4 when a candidate is exact but not
+strictly smaller. `selectedFormat` then remains NCM3. The NCM4 checkpoint binds
+both semantic root and source encoding hash and contains full island
+populations/RNG generations.
+
+The original TaskV1/ResultV1 VM workflow remains available for all profiles:
+
 Inspect an existing object:
 
 ```bash
@@ -66,9 +93,12 @@ Independently verify and decode:
 ```bash
 nicechunk-miner verify --task task.ncpow --result result.ncpow
 nicechunk-miner decode --result result.ncpow --out decoded.json
-nicechunk-miner benchmark --corpus test-vectors
+nicechunk-miner benchmark
 nicechunk-miner self-test
 ```
+
+`benchmark` defaults to `test-vectors` and reports the original PoUW v1
+candidate and deterministic NCM4 language audit for each vector.
 
 `verify` exits with validation code 4 when an encoding is exact but not
 strictly smaller. This is an honest no-improvement outcome, not corruption.

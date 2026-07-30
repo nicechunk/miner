@@ -43,6 +43,34 @@ try {
     assertEqual(wasm.decodeUnits, native.decodeUnits, `${vector.file} decode units`);
     assertEqual(wasm.mismatchCount, 0, `${vector.file} mismatch count`);
     assertEqual(wasm.exact, true, `${vector.file} exact`);
+
+    const { stdout: nativeNcm4Stdout } = await exec(binary, [
+      "--json",
+      "ncm4",
+      "analyze",
+      inputPath,
+      "--profile",
+      vector.profile,
+    ], { cwd: root });
+    const nativeNcm4 = JSON.parse(nativeNcm4Stdout);
+    const wasmNcm4 = JSON.parse(wasmModule.ncm4_analyze_json(vector.profile, input));
+    assertEqual(wasmNcm4.semanticRoot, nativeNcm4.semanticRoot, `${vector.file} NCM4 semantic root`);
+    assertEqual(wasmNcm4.encodingHash, nativeNcm4.encodingHash, `${vector.file} NCM4 encoding hash`);
+    assertEqual(wasmNcm4.ncm4TotalBytes, nativeNcm4.ncm4TotalBytes, `${vector.file} NCM4 total bytes`);
+    assertEqual(wasmNcm4.fixedHeaderBytes, nativeNcm4.fixedHeaderBytes, `${vector.file} NCM4 fixed header`);
+    assertEqual(wasmNcm4.profileHeaderBytes, nativeNcm4.profileHeaderBytes, `${vector.file} NCM4 profile header`);
+    assertEqual(wasmNcm4.bodyBytes, nativeNcm4.bodyBytes, `${vector.file} NCM4 body bytes`);
+    assertEqual(wasmNcm4.residualBytes, nativeNcm4.residualBytes, `${vector.file} NCM4 residual bytes`);
+    assertEqual(wasmNcm4.patches, nativeNcm4.patches, `${vector.file} NCM4 patches`);
+    assertEqual(wasmNcm4.decodeUnits, nativeNcm4.decodeUnits, `${vector.file} NCM4 decode units`);
+    assertEqual(wasmNcm4.exact, true, `${vector.file} NCM4 exact`);
+    const candidate = Buffer.from(wasmNcm4.candidateBase64, "base64");
+    const decodedNcm4 = JSON.parse(wasmModule.decode_ncm4_json(candidate));
+    assertEqual(decodedNcm4.semanticRoot, vector.semanticRoot, `${vector.file} decoded NCM4 root`);
+    assertEqual(decodedNcm4.stats.totalBytes, wasmNcm4.ncm4TotalBytes, `${vector.file} decoded NCM4 bytes`);
+    const verifiedNcm4 = JSON.parse(wasmModule.verify_ncm4_json(vector.profile, input, candidate));
+    assertEqual(verifiedNcm4.exact, true, `${vector.file} verified NCM4 exact`);
+    assertEqual(verifiedNcm4.mismatchCount, 0, `${vector.file} verified NCM4 mismatches`);
   }
 } finally {
   await rm(temporary, { recursive: true, force: true });

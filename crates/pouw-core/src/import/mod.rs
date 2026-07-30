@@ -26,6 +26,22 @@ pub fn import_asset(profile: Profile, input: &[u8], limits: &LimitsV1) -> Result
             "Input exceeds the task's byte limit.",
         ));
     }
+    if crate::ncm4::looks_like_ncm4(input) {
+        let decoded = crate::ncm4::decode_ncm4(input, limits)?;
+        if decoded.semantics.profile() != profile {
+            return Err(Error::invalid(
+                "profile-format-mismatch",
+                "NCM4 profile does not match the selected profile.",
+            ));
+        }
+        decoded.semantics.validate(limits)?;
+        return Ok(ImportedAsset {
+            profile,
+            format: IncumbentFormat::Ncm4PouwV1,
+            incumbent_encoding: decoded.raw_encoding,
+            semantics: decoded.semantics,
+        });
+    }
     let imported = match profile {
         Profile::TerrainDelta => terrain::import(input)?,
         Profile::Building => ncm3::import(input, limits)?,
@@ -52,6 +68,16 @@ pub fn import_incumbent(
         IncumbentFormat::PouwVmV1 => {
             return crate::vm::decode_candidate(input, profile, limits)
                 .map(|decoded| decoded.semantics)
+        }
+        IncumbentFormat::Ncm4PouwV1 => {
+            let decoded = crate::ncm4::decode_ncm4(input, limits)?;
+            if decoded.semantics.profile() != profile {
+                return Err(Error::invalid(
+                    "profile-format-mismatch",
+                    "NCM4 profile does not match the selected profile.",
+                ));
+            }
+            return Ok(decoded.semantics);
         }
         _ => {
             return Err(Error::invalid(

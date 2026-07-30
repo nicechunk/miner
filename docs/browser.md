@@ -21,6 +21,12 @@ VM, semantic root, encoding hash, or verifier.
 - Stop terminates Workers instead of waiting for cooperative completion.
 - Hiding the page pauses work; unloading terminates it.
 
+For NCM4 Building runs, each Worker owns a long-lived `BrowserNcm4Session`.
+Population, elite, generation, attempt count, strategy, and deterministic RNG
+generation persist across slices. Verified external elites are injected into
+the receiving population. Checkpoints are rate-limited into IndexedDB and bind
+semantic root plus incumbent encoding hash.
+
 SharedArrayBuffer, COOP/COEP, WebGPU, and WebGL are not required. A missing 3D
 capability degrades to semantic and byte summaries without affecting mining.
 
@@ -40,6 +46,19 @@ is no timer-driven fake mining rate or fabricated reduction.
 Candidate bytes, canonical ResultV1, TaskV1, and a JSON verification report can
 be downloaded locally. The copied CLI command verifies the binary Task/Result
 pair; it does not claim a chain submission.
+
+NCM4 input can be pasted as `NCM4P:` or imported as binary. Fast Analyze,
+Decode, Verify, Start Deep Search, checkpoint import/export, NCM4 export, and
+JSON reports all call the Rust/WASM core. The UI shows source/candidate formats,
+header/body/residual/total bytes, witness and fallback state, generation,
+strategy, islands, and the real best history. When NCM4 does not win it states
+that the source representation remains best.
+
+The current Chunk.js canvas switches among the existing Terrain/Building/Forge
+profile views and the comparison panel exposes exact semantic summaries. Alpha
+1 does not yet render two separate candidate voxel meshes with a colored
+per-cell difference overlay; exact mismatch-zero verification is complete, but
+that richer visualization remains follow-up work.
 
 ## Network behavior
 

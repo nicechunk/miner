@@ -43,6 +43,29 @@ for (const platform of platformConfig) {
   });
 }
 
+const webArchives = files.filter((path) => {
+  const name = basename(path);
+  return name.startsWith(`miner-${version}-`) && name.endsWith(".tar.gz");
+});
+if (webArchives.length !== 1) {
+  throw new Error(`Expected exactly one Web/WASM archive, found ${webArchives.length}`);
+}
+const webArchive = webArchives[0];
+const webArchiveName = basename(webArchive);
+const webDigest = await sha256(webArchive);
+const webSidecars = files.filter((path) => basename(path) === `${webArchiveName.slice(0, -7)}.sha256`);
+if (webSidecars.length !== 1) throw new Error(`Expected one checksum for ${webArchiveName}`);
+const webSidecar = (await readFile(webSidecars[0], "utf8")).trim();
+if (webSidecar !== `${webDigest}  ${webArchiveName}`) throw new Error(`${webArchiveName} checksum is invalid`);
+const releaseBaseUrl = `https://github.com/${repository}/releases/download/${tag}`;
+const webBundle = {
+  platform: "Web/WASM static bundle",
+  archive: webArchiveName,
+  downloadUrl: `${releaseBaseUrl}/${webArchiveName}`,
+  checksumUrl: `${releaseBaseUrl}/${basename(webSidecars[0])}`,
+  sha256: webDigest,
+};
+
 const manifest = {
   schemaVersion: 1,
   softwareVersion: version,
@@ -54,7 +77,8 @@ const manifest = {
   repository: `https://github.com/${repository}`,
   releaseUrl: `https://github.com/${repository}/releases/tag/${tag}`,
   artifacts,
-  message: "Every listed archive passed its native self-test before publication.",
+  webBundle,
+  message: "Every CLI archive passed its native self-test; the Web/WASM bundle passed native/WASM consistency and browser smoke tests before publication.",
 };
 await mkdir(dirname(output), { recursive: true });
 await writeFile(output, `${JSON.stringify(manifest, null, 2)}\n`);
@@ -65,8 +89,8 @@ if (options.notes) {
     + "- Protocol version: `1`\n"
     + "- VM version: `1`\n"
     + "- Cost model version: `1`\n\n"
-    + "All archives were built on their native GitHub-hosted runner, passed `nicechunk-miner self-test`, and include binary SHA-256 values in `SHA256SUMS`. Archive hashes are published as adjacent `.sha256` assets and in `release-manifest.json`.\n\n"
-    + "Compatibility: ChunkBroken v1, NCM3 v1, and complete NCF1 v15 import. This release is a native/WASM research preview and does not submit transactions or issue rewards.\n";
+    + "All CLI archives were built on their native GitHub-hosted runner, passed `nicechunk-miner self-test`, and include binary SHA-256 values in `SHA256SUMS`. The Web/WASM archive passed consistency and local-only browser tests. Archive hashes are published as adjacent `.sha256` assets, the aggregate `SHA256SUMS`, and `release-manifest.json`.\n\n"
+    + "NCM4 Alpha adds the distinct `NC4P`/`NCM4P:` exact building codec, language preflight, persistent multi-island search, checkpoint/resume, and NCM3 fallback when NCM4 is not smaller. ChunkBroken v1, unchanged NCM3 v1, and complete NCF1 v15 import remain supported. Terrain and forged-item NCM4 currently use exact wrappers rather than the compact building grammar. This native/WASM research preview does not submit transactions or issue rewards.\n";
   await writeFile(resolve(options.notes), notes);
 }
 

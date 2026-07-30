@@ -191,9 +191,14 @@
           </div>
 
           <label class="file-picker"><span data-i18n="controls.localFile">Local file</span>
-            <input id="fileInput" type="file" accept=".ncbk,.ncm,.ncm3,.ncf,.ncf1,.bin,.txt">
+            <input id="fileInput" type="file" accept=".ncbk,.ncm,.ncm3,.ncm4p,.nc4p,.ncf,.ncf1,.bin,.txt">
             <span id="fileName" data-i18n="controls.noFile">No file selected</span>
           </label>
+
+          <label class="paste-source"><span data-i18n="ncm4.pasteLabel">Paste NCM3 or NCM4P text</span>
+            <textarea id="inputText" rows="3" spellcheck="false" data-i18n-placeholder="ncm4.pastePlaceholder" placeholder="NCM3:... or NCM4P:..."></textarea>
+          </label>
+          <button id="loadTextButton" class="button compact secondary" type="button" data-i18n="ncm4.loadText">Load pasted input</button>
 
           <div class="control-row">
             <label><span data-i18n="controls.workers">Workers</span><input id="workerCount" type="number" min="1" max="16" value="1"></label>
@@ -205,6 +210,9 @@
           </div>
 
           <div class="transport" aria-label="Mining controls" data-i18n-aria-label="controls.miningAria">
+            <button id="analyzeButton" class="button secondary" type="button" disabled data-i18n="ncm4.fastAnalyze">Fast Analyze</button>
+            <button id="decodeButton" class="button ghost" type="button" disabled data-i18n="ncm4.decode">Decode</button>
+            <button id="verifyButton" class="button ghost" type="button" disabled data-i18n="ncm4.verify">Verify</button>
             <button id="startButton" class="button primary" type="button" disabled data-i18n="controls.start">Start</button>
             <button id="pauseButton" class="button ghost" type="button" disabled data-i18n="controls.pause">Pause</button>
             <button id="resumeButton" class="button ghost" type="button" disabled data-i18n="controls.resume">Resume</button>
@@ -216,6 +224,12 @@
 
         <div class="results-panel">
           <div class="panel-label"><span data-i18n="metrics.liveVerification">Live verification</span><span aria-hidden="true">02</span></div>
+          <div class="ncm4-preflight" aria-label="NCM4 language audit" data-i18n-aria-label="ncm4.auditAria">
+            <div><span data-i18n="ncm4.inputFormat">Input format</span><strong id="inputFormat">—</strong></div>
+            <div><span data-i18n="ncm4.witness">Shorter witness</span><strong id="witnessStatus">—</strong></div>
+            <div><span data-i18n="ncm4.seedBytes">Deterministic NCM4</span><strong id="ncm4SeedBytes">—</strong></div>
+            <div><span data-i18n="ncm4.selection">Selected representation</span><strong id="selectedFormat">—</strong></div>
+          </div>
           <div class="metric-grid">
             <article><span data-i18n="metrics.incumbent">Incumbent</span><strong id="incumbentBytes">-</strong><small data-i18n="metrics.storedBytes">stored bytes</small></article>
             <article><span data-i18n="metrics.currentBest">Current best</span><strong id="candidateBytes">-</strong><small data-i18n="metrics.totalBytes">total bytes</small></article>
@@ -223,6 +237,8 @@
             <article><span data-i18n="metrics.attempts">Attempts</span><strong id="attempts">0</strong><small id="attemptRate" data-i18n="runtime.initialRate">0/s</small></article>
             <article><span data-i18n="metrics.elapsed">Elapsed</span><strong id="elapsed" data-i18n="runtime.initialSeconds">0.0s</strong><small id="workerStatus" data-i18n="runtime.noWorkers">0 workers</small></article>
             <article><span data-i18n="metrics.decodeCost">Decode cost</span><strong id="decodeUnits">-</strong><small data-i18n="metrics.deterministicUnits">deterministic units</small></article>
+            <article><span data-i18n="ncm4.generation">Generation</span><strong id="generation">0</strong><small id="strategyName">—</small></article>
+            <article><span data-i18n="ncm4.islands">Worker islands</span><strong id="islandCount">0</strong><small data-i18n="ncm4.persistent">persistent sessions</small></article>
           </div>
 
           <div class="byte-breakdown" aria-label="Candidate byte breakdown" data-i18n-aria-label="metrics.breakdownAria">
@@ -238,13 +254,21 @@
             <div><span data-i18n="metrics.verification">Verification</span><code id="exactStatus" data-i18n="metrics.notRun">Not run</code></div>
           </div>
 
+          <div class="model-comparison" aria-label="Original and NCM4 semantic comparison" data-i18n-aria-label="ncm4.comparisonAria">
+            <div><span data-i18n="ncm4.originalModel">Original semantic model</span><strong id="originalModelSummary">—</strong></div>
+            <div><span data-i18n="ncm4.candidateModel">NCM4 semantic model</span><strong id="candidateModelSummary">—</strong></div>
+            <div><span data-i18n="ncm4.diffOverlay">Exact diff overlay</span><strong id="diffOverlaySummary">—</strong></div>
+          </div>
+
           <figure class="curve-card">
             <figcaption data-i18n="metrics.curve">Best stored bytes over real verified attempts</figcaption>
             <canvas id="curveCanvas" width="900" height="220" data-i18n="metrics.chartFallback">Compression history chart</canvas>
           </figure>
 
           <div class="result-actions">
-            <button id="downloadCandidate" class="button compact secondary" type="button" disabled data-i18n="actions.candidate">Candidate binary</button>
+            <button id="downloadCandidate" class="button compact secondary" type="button" disabled data-i18n="ncm4.export">Export NCM4</button>
+            <button id="downloadCheckpoint" class="button compact secondary" type="button" disabled data-i18n="ncm4.exportCheckpoint">Export checkpoint</button>
+            <label class="button compact ghost checkpoint-import"><span data-i18n="ncm4.importCheckpoint">Import checkpoint</span><input id="checkpointInput" type="file" accept=".chk,.nc4s" hidden></label>
             <button id="downloadResult" class="button compact secondary" type="button" disabled data-i18n="actions.result">Result file</button>
             <button id="downloadTask" class="button compact secondary" type="button" disabled data-i18n="actions.task">Task file</button>
             <button id="downloadReport" class="button compact secondary" type="button" disabled data-i18n="actions.report">JSON report</button>

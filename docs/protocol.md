@@ -38,8 +38,10 @@ Profiles use these canonical IDs:
 | 2 | `building` | NCM3 v1 |
 | 3 | `forged_item` | NCF1 v15 |
 
-Incumbent formats use IDs `1=ChunkBrokenV1`, `2=Ncm3V1`, `3=Ncf1V15`, and
-`4=PouwVmV1`.
+Incumbent formats use IDs `1=ChunkBrokenV1`, `2=Ncm3V1`, `3=Ncf1V15`,
+`4=PouwVmV1`, and `5=Ncm4PouwV1`. NCM4's own `NC4P` layout is specified in
+`ncm4-spec.md`; adding format ID 5 does not change the meaning of TaskV1 or any
+older incumbent ID.
 
 All integer varints are unsigned LEB128 with a maximum of five bytes for u32
 and ten bytes for u64. Redundant terminal zero groups, overflow, and truncation

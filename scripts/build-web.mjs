@@ -10,7 +10,13 @@ const web = resolve(root, "web");
 const dist = resolve(web, "dist");
 const assets = resolve(dist, "assets");
 const build = resolve(web, ".build");
-const chunkJsRoot = resolve(process.env.NICECHUNK_CHUNK_JS_ROOT || resolve(root, "..", "chunk.js"));
+const pinnedChunkJsRoot = resolve(root, ".dependencies", "chunk.js");
+const chunkJsRoot = resolve(
+  process.env.NICECHUNK_CHUNK_JS_ROOT
+    || ((await exists(resolve(pinnedChunkJsRoot, "ncm", "blueprint-codec.js")))
+      ? pinnedChunkJsRoot
+      : resolve(root, "..", "chunk.js")),
+);
 const cargoHome = resolve(root, ".toolchains", "cargo");
 const rustupHome = resolve(root, ".toolchains", "rustup");
 const localCargo = resolve(cargoHome, "bin", process.platform === "win32" ? "cargo.exe" : "cargo");

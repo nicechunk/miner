@@ -90,6 +90,7 @@ pub enum IncumbentFormat {
     Ncm3V1,
     Ncf1V15,
     PouwVmV1,
+    Ncm4PouwV1,
 }
 
 impl IncumbentFormat {
@@ -99,6 +100,7 @@ impl IncumbentFormat {
             Self::Ncm3V1 => 2,
             Self::Ncf1V15 => 3,
             Self::PouwVmV1 => 4,
+            Self::Ncm4PouwV1 => 5,
         }
     }
 
@@ -108,6 +110,7 @@ impl IncumbentFormat {
             Self::Ncm3V1 => "ncm3-v1",
             Self::Ncf1V15 => "ncf1-v15",
             Self::PouwVmV1 => "pouw-vm-v1",
+            Self::Ncm4PouwV1 => "ncm4-pouw-v1",
         }
     }
 
@@ -117,6 +120,7 @@ impl IncumbentFormat {
             2 => Ok(Self::Ncm3V1),
             3 => Ok(Self::Ncf1V15),
             4 => Ok(Self::PouwVmV1),
+            5 => Ok(Self::Ncm4PouwV1),
             _ => Err(Error::invalid(
                 "unknown-incumbent-format",
                 "Unknown incumbent encoding format.",

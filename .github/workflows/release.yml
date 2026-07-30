@@ -1,18 +1,22 @@
 name: NiceChunk PoUW Miner release
 
 on:
+  pull_request:
   push:
+    branches:
+      - main
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v*"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
   RUST_VERSION: "1.88.0"
   NICECHUNK_CHUNK_JS_ROOT: ${{ github.workspace }}/.dependencies/chunk.js
+  NICECHUNK_GAME_ROOT: ${{ github.workspace }}/.dependencies/game
 
 jobs:
   quality:
@@ -24,8 +28,15 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: nicechunk/chunk.js
-          ref: f3113bf0e376b3ccca59fe773d3995bb18e656ee
+          ref: 0198c1aeeadad513b6e05c75bdcbc31133d28776
           path: .dependencies/chunk.js
+          persist-credentials: false
+      - name: Check out pinned Game ChunkBroken decoder
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: nicechunk/game
+          ref: 58241acf2ec3c408e1af173a947e3d85753fc739
+          path: .dependencies/game
           persist-credentials: false
       - name: Install pinned Rust toolchain
         run: |
@@ -52,19 +63,42 @@ jobs:
           node scripts/build-web.mjs
           node scripts/check-web.mjs
           node scripts/test-wasm-consistency.mjs
-      - name: Compare source JavaScript codecs when present
-        run: |
-          if [ -f ../chunk.js/ncm/blueprint-codec.js ] && [ -f ../sdk/nicechunk-chunk.ts ]; then
-            NODE_NO_WARNINGS=1 node scripts/test-js-codec-compatibility.mjs
-          else
-            echo "Source codec differential test is performed in the NiceChunk source-of-truth workflow."
-          fi
+      - name: Compare pinned production JavaScript codecs
+        run: NODE_NO_WARNINGS=1 node scripts/test-js-codec-compatibility.mjs
+      - name: Run benchmark smoke test
+        run: cargo run --release -p pouw-cli -- --json benchmark --corpus test-vectors
       - name: Install browser engines
         run: npx playwright install --with-deps chromium firefox webkit
       - name: Run responsive local-only browser smoke
         env:
           POUW_BROWSER_TARGETS: chromium,firefox,webkit
         run: node scripts/test-browser.mjs
+      - name: Package Web/WASM test bundle
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          node scripts/build-web-release.mjs --version "$VERSION" --dist web/dist --output artifacts/web
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: nicechunk-miner-web-wasm
+          path: |
+            artifacts/web/*.tar.gz
+            artifacts/web/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  property:
+    name: Extended parser property tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup default "$RUST_VERSION"
+      - name: Run extended adversarial/property suite
+        env:
+          PROPTEST_CASES: "1024"
+        run: cargo test --release -p pouw-core --test protocol_adversarial
 
   build:
     name: ${{ matrix.label }}
@@ -134,8 +168,10 @@ jobs:
   publish:
     name: Publish verified GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [quality, property, build]
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
@@ -149,6 +185,7 @@ jobs:
           test "$VERSION" = "$EXPECTED"
           for archive in artifacts/*.tar.gz; do tar -tzf "$archive" >/dev/null; done
           for archive in artifacts/*.zip; do unzip -t "$archive" >/dev/null; done
+          sha256sum artifacts/*.tar.gz artifacts/*.zip | sed 's#  artifacts/#  #' > artifacts/SHA256SUMS
           node scripts/generate-release-manifest.mjs \
             --repository "$GITHUB_REPOSITORY" \
             --tag "$GITHUB_REF_NAME" \
@@ -164,6 +201,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             artifacts/* release-manifest.json \
             --verify-tag \
+            --prerelease \
             --title "NiceChunk PoUW Miner ${GITHUB_REF_NAME#v}" \
             --notes-file release-notes.md
           gh release view "$GITHUB_REF_NAME" --json url,assets

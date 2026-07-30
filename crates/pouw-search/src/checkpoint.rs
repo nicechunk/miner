@@ -6,9 +6,22 @@ use pouw_core::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{evaluate_program, SearchCandidate, SearchConfig, SEARCH_ENGINE_VERSION};
+use crate::{
+    evaluate_program, IslandState, IslandStrategy, SearchCandidate, SearchConfig,
+    SEARCH_ENGINE_VERSION,
+};
 
 const MAGIC: &[u8] = b"NCPC1\n";
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckpointIslandV1 {
+    pub index: u16,
+    pub generation: u32,
+    pub rng_generation: u32,
+    pub strategy: IslandStrategy,
+    pub population: Vec<SearchCandidate>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,6 +40,8 @@ pub struct CheckpointV1 {
     pub best_program: CandidateProgram,
     pub best_encoding: Vec<u8>,
     pub best_encoding_hash: Hash32,
+    #[serde(default)]
+    pub islands: Vec<CheckpointIslandV1>,
 }
 
 impl CheckpointV1 {
@@ -52,7 +67,31 @@ impl CheckpointV1 {
             best_program: best.program.clone(),
             best_encoding: best.encoding.clone(),
             best_encoding_hash: best.encoding_hash,
+            islands: Vec::new(),
         };
+        checkpoint.validate_for_task(task)?;
+        Ok(checkpoint)
+    }
+
+    pub(crate) fn new_with_islands(
+        task: &TaskV1,
+        config: SearchConfig,
+        generation: u32,
+        attempts: u64,
+        best: &SearchCandidate,
+        islands: &[IslandState],
+    ) -> Result<Self> {
+        let mut checkpoint = Self::new(task, config, generation, attempts, best)?;
+        checkpoint.islands = islands
+            .iter()
+            .map(|island| CheckpointIslandV1 {
+                index: island.index,
+                generation: island.generation,
+                rng_generation: island.generation,
+                strategy: island.strategy,
+                population: island.population.clone(),
+            })
+            .collect();
         checkpoint.validate_for_task(task)?;
         Ok(checkpoint)
     }
@@ -92,7 +131,74 @@ impl CheckpointV1 {
                 "Checkpoint best candidate is empty, oversized, or has the wrong encoding hash.",
             ));
         }
+        if !self.islands.is_empty() {
+            if self.islands.len() != usize::from(self.config.islands) {
+                return Err(Error::invalid(
+                    "checkpoint-islands",
+                    "Checkpoint island count does not match its search configuration.",
+                ));
+            }
+            let mut indices = self
+                .islands
+                .iter()
+                .map(|island| island.index)
+                .collect::<Vec<_>>();
+            indices.sort_unstable();
+            indices.dedup();
+            if indices.len() != self.islands.len()
+                || self.islands.iter().any(|island| {
+                    island.population.len() != self.config.population as usize
+                        || island.generation != self.generation
+                        || island.rng_generation != island.generation
+                })
+            {
+                return Err(Error::invalid(
+                    "checkpoint-island-state",
+                    "Checkpoint contains incomplete or inconsistent island state.",
+                ));
+            }
+        }
         Ok(())
+    }
+
+    pub(crate) fn restored_islands(
+        &self,
+        task: &TaskV1,
+        target: &Semantics,
+    ) -> Result<Option<Vec<IslandState>>> {
+        self.validate_for_task(task)?;
+        if self.islands.is_empty() {
+            return Ok(None);
+        }
+        let mut restored = Vec::with_capacity(self.islands.len());
+        for saved in &self.islands {
+            let mut population = Vec::with_capacity(saved.population.len());
+            for saved_candidate in &saved.population {
+                let replay =
+                    evaluate_program(saved_candidate.program.clone(), target, &task.limits)?;
+                if replay.encoding != saved_candidate.encoding
+                    || replay.encoding_hash != saved_candidate.encoding_hash
+                    || replay.semantic_root != saved_candidate.semantic_root
+                {
+                    return Err(Error::new(
+                        ErrorKind::HashMismatch,
+                        "checkpoint-population-replay",
+                        "Checkpoint population candidate failed deterministic replay.",
+                    ));
+                }
+                population.push(replay);
+            }
+            population.sort_by(SearchCandidate::fitness_cmp);
+            restored.push(IslandState {
+                index: saved.index,
+                generation: saved.generation,
+                attempts: 0,
+                population,
+                strategy: saved.strategy,
+            });
+        }
+        restored.sort_by_key(|island| island.index);
+        Ok(Some(restored))
     }
 
     pub(crate) fn best_candidate(
@@ -119,6 +225,48 @@ impl CheckpointV1 {
             ));
         }
         Ok(candidate)
+    }
+
+    pub fn migrate_verified_elite(&self, external: &Self) -> Result<Self> {
+        let task = TaskV1::from_bytes(&self.task_bytes)?;
+        self.validate_for_task(&task)?;
+        external.validate_for_task(&task)?;
+        if self.task_id != external.task_id || self.semantic_root != external.semantic_root {
+            return Err(Error::new(
+                ErrorKind::HashMismatch,
+                "checkpoint-migration-task",
+                "External elite belongs to a different task.",
+            ));
+        }
+        let target = pouw_core::import_incumbent(
+            task.profile,
+            task.incumbent_format,
+            &task.incumbent_encoding,
+            &task.limits,
+        )?;
+        let migrant = external.best_candidate(&task, &target)?;
+        let local_best = self.best_candidate(&task, &target)?;
+        let mut merged = self.clone();
+        if migrant.fitness_cmp(&local_best).is_lt() {
+            merged.best_program = migrant.program.clone();
+            merged.best_encoding = migrant.encoding.clone();
+            merged.best_encoding_hash = migrant.encoding_hash;
+        }
+        for island in &mut merged.islands {
+            if island
+                .population
+                .iter()
+                .any(|candidate| candidate.encoding == migrant.encoding)
+            {
+                continue;
+            }
+            if let Some(last) = island.population.last_mut() {
+                *last = migrant.clone();
+            }
+            island.population.sort_by(SearchCandidate::fitness_cmp);
+        }
+        merged.validate_for_task(&task)?;
+        Ok(merged)
     }
 
     pub fn to_bytes(&self) -> Result<Vec<u8>> {

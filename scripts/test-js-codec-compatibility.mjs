@@ -1,29 +1,53 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { build } from "esbuild";
-import { decodeNcm3, expandBlueprint } from "../../chunk.js/ncm/blueprint-codec.js";
-import {
-  decodeNcf1,
-  encodeForgeVolumeMm3,
-} from "../../chunk.js/forge/forge-core.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const sourceRoot = resolve(root, "..");
 const dist = resolve(root, "web", "dist");
+const pinnedChunkJsRoot = resolve(root, ".dependencies", "chunk.js");
+const chunkJsRoot = resolve(
+  process.env.NICECHUNK_CHUNK_JS_ROOT
+    || (existsSync(resolve(pinnedChunkJsRoot, "forge", "forge-core.js"))
+      ? pinnedChunkJsRoot
+      : resolve(root, "..", "chunk.js")),
+);
+const pinnedGameRoot = resolve(root, ".dependencies", "game");
+const gameRoot = resolve(
+  process.env.NICECHUNK_GAME_ROOT
+    || (existsSync(resolve(pinnedGameRoot, "play", "play-chain-chunk-deltas.js"))
+      ? pinnedGameRoot
+      : resolve(root, "..", "game")),
+);
+const ncmCodecPath = resolve(chunkJsRoot, "ncm", "blueprint-codec.js");
+const forgeCodecPath = resolve(chunkJsRoot, "forge", "forge-core.js");
+const terrainSourcePath = resolve(gameRoot, "play", "play-chain-chunk-deltas.js");
 const temporary = await mkdtemp(resolve(tmpdir(), "nicechunk-pouw-js-codec-"));
 
 try {
+  await Promise.all([
+    access(ncmCodecPath),
+    access(forgeCodecPath),
+    access(terrainSourcePath),
+  ]);
+  const { decodeNcm3, expandBlueprint } = await import(pathToFileURL(ncmCodecPath));
+  const { decodeNcf1, encodeForgeVolumeMm3 } = await import(pathToFileURL(forgeCodecPath));
+
   const terrainModulePath = resolve(temporary, "terrain-decoder.cjs");
+  const terrainSource = await readFile(terrainSourcePath, "utf8");
   await build({
     stdin: {
-      contents: `export { decodeChunkBrokenState } from ${JSON.stringify(resolve(sourceRoot, "sdk", "nicechunk-chunk.ts"))};`,
-      loader: "ts",
-      resolveDir: root,
-      sourcefile: "terrain-decoder-entry.ts",
+      // The production decoder is intentionally private. Export it only from
+      // this in-memory test entry so compatibility tests exercise the pinned
+      // Game implementation without changing or copying that repository.
+      contents: `${terrainSource}\nexport { decodeChunkBrokenDeltas };\n`,
+      loader: "js",
+      resolveDir: dirname(terrainSourcePath),
+      sourcefile: terrainSourcePath,
     },
     bundle: true,
     format: "cjs",
@@ -32,8 +56,16 @@ try {
     outfile: terrainModulePath,
     logLevel: "silent",
     treeShaking: true,
+    plugins: [{
+      name: "pinned-chunk-js-runtime",
+      setup(context) {
+        context.onResolve({ filter: /^\/chunk\.js\// }, ({ path }) => ({
+          path: resolve(chunkJsRoot, path.slice("/chunk.js/".length)),
+        }));
+      },
+    }],
   });
-  const { decodeChunkBrokenState } = await import(pathToFileURL(terrainModulePath));
+  const { decodeChunkBrokenDeltas } = await import(pathToFileURL(terrainModulePath));
 
   const manifest = JSON.parse(await readFile(resolve(dist, "asset-manifest.json"), "utf8"));
   const wasm = await import(pathToFileURL(resolve(dist, manifest.assets.wasmGlue)));
@@ -45,15 +77,12 @@ try {
     const rust = JSON.parse(wasm.inspect_json(vector.profile, input)).semantics;
     let javascript;
     if (vector.profile === "terrain_delta") {
-      javascript = normalizeTerrain(decodeChunkBrokenState({
-        data: Buffer.from(input),
-        chunkX: 0,
-        chunkZ: 0,
-      }));
+      const minY = input.readInt16LE(10);
+      javascript = normalizeTerrain(decodeChunkBrokenDeltas(input, 0, 0, 16, minY), minY);
     } else if (vector.profile === "building") {
-      javascript = normalizeBuilding(decodeNcm3(input.toString("utf8")));
+      javascript = normalizeBuilding(decodeNcm3(input.toString("utf8").trim()), expandBlueprint);
     } else if (vector.profile === "forged_item") {
-      javascript = normalizeForged(decodeNcf1(input, { requireCanonical: true }));
+      javascript = normalizeForged(decodeNcf1(input, { requireCanonical: true }), encodeForgeVolumeMm3);
     } else {
       throw new Error(`Unsupported compatibility profile ${vector.profile}`);
     }
@@ -65,17 +94,17 @@ try {
   await rm(temporary, { recursive: true, force: true });
 }
 
-function normalizeTerrain(decoded) {
-  const deleted = decoded.brokenBlocks
-    .map((block) => ({ x: block.localX, y: block.y - decoded.minY, z: block.localZ }))
+function normalizeTerrain(deltas, minY) {
+  const deleted = deltas
+    .map((delta) => ({ x: delta.worldX, y: delta.worldY - minY, z: delta.worldZ }))
     .sort((left, right) => terrainId(left) - terrainId(right));
   return {
     profile: "terrain_delta",
-    semantics: { deleted, minY: decoded.minY },
+    semantics: { deleted, minY },
   };
 }
 
-function normalizeBuilding(blueprint) {
+function normalizeBuilding(blueprint, expandBlueprint) {
   const size = [blueprint.size.x, blueprint.size.y, blueprint.size.z];
   const cells = new Map();
   for (const cuboid of expandBlueprint(blueprint)) {
@@ -96,7 +125,7 @@ function normalizeBuilding(blueprint) {
   };
 }
 
-function normalizeForged(design) {
+function normalizeForged(design, encodeForgeVolumeMm3) {
   const equipment = {
     attributes6: Array.from(design.equipment.attributes6),
     encodedVolume: encodeForgeVolumeMm3(design.equipment.volumeMm3),

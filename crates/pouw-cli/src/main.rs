@@ -8,13 +8,15 @@ use std::time::Instant;
 
 use clap::{Args, Parser, Subcommand};
 use pouw_core::{
-    candidate_encoding_hash, decode_candidate, encoding_hash, hash_hex, import_asset,
-    import_incumbent, semantic_root, verify_result, Error, ErrorKind, LimitsV1, Profile,
-    Result as CoreResult, ResultV1, SearchMetadataV1, TaskV1, VerificationReportV1,
-    COST_MODEL_VERSION, PROTOCOL_VERSION, VM_VERSION,
+    candidate_encoding_hash, decode_candidate, decode_ncm4, detect_format, deterministic_ncm4_seed,
+    encoding_hash, hash_hex, import_asset, import_incumbent, semantic_root, verify_result,
+    DetectedFormat, Error, ErrorKind, LimitsV1, Profile, Result as CoreResult, ResultV1,
+    SearchMetadataV1, TaskV1, VerificationReportV1, COST_MODEL_VERSION, NCM4_VERSION,
+    PROTOCOL_VERSION, VM_VERSION,
 };
 use pouw_search::{
-    best_baseline, mine, resume, CheckpointV1, SearchConfig, SearchControl, SearchProgress,
+    best_baseline, mine, resume, CheckpointV1, Ncm4SearchCheckpoint, Ncm4SearchProgress,
+    Ncm4SearchSession, SearchConfig, SearchControl, SearchProgress,
 };
 use serde_json::{json, Value};
 use tempfile::NamedTempFile;
@@ -30,8 +32,8 @@ const LONG_VERSION: &str = concat!(
 #[command(
     name = "nicechunk-miner",
     version = LONG_VERSION,
-    about = "NiceChunk Proof of Useful Work Miner v1",
-    long_about = "Deterministically compress, search, decode, and independently verify exact NiceChunk voxel assets."
+    about = "NiceChunk Proof of Useful Work Miner with NCM4 Alpha",
+    long_about = "Deterministically compress, search, decode, and independently verify exact NiceChunk voxel assets with unchanged NCM3 compatibility."
 )]
 struct Cli {
     #[arg(long, global = true, help = "Emit stable JSON reports on stdout")]
@@ -51,9 +53,11 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Command {
     Inspect(InspectArgs),
+    Ncm4(Ncm4Args),
     Task(TaskArgs),
     Baseline(BaselineArgs),
     Mine(MineArgs),
+    Resume(ResumeArgs),
     Verify(VerifyArgs),
     Decode(DecodeArgs),
     Benchmark(BenchmarkArgs),
@@ -64,7 +68,54 @@ enum Command {
 struct InspectArgs {
     input: PathBuf,
     #[arg(long)]
-    profile: Profile,
+    profile: Option<Profile>,
+}
+
+#[derive(Args, Debug)]
+struct Ncm4Args {
+    #[command(subcommand)]
+    command: Ncm4Command,
+}
+
+#[derive(Subcommand, Debug)]
+enum Ncm4Command {
+    Analyze(Ncm4AnalyzeArgs),
+    Encode(Ncm4EncodeArgs),
+    Decode(Ncm4DecodeArgs),
+    Verify(Ncm4VerifyArgs),
+}
+
+#[derive(Args, Debug)]
+struct Ncm4AnalyzeArgs {
+    input: PathBuf,
+    #[arg(long)]
+    profile: Option<Profile>,
+}
+
+#[derive(Args, Debug)]
+struct Ncm4EncodeArgs {
+    input: PathBuf,
+    #[arg(long)]
+    profile: Option<Profile>,
+    #[arg(long)]
+    out: PathBuf,
+}
+
+#[derive(Args, Debug)]
+struct Ncm4DecodeArgs {
+    input: PathBuf,
+    #[arg(long)]
+    out: PathBuf,
+}
+
+#[derive(Args, Debug)]
+struct Ncm4VerifyArgs {
+    #[arg(long)]
+    source: PathBuf,
+    #[arg(long)]
+    candidate: PathBuf,
+    #[arg(long)]
+    profile: Option<Profile>,
 }
 
 #[derive(Args, Debug)]
@@ -100,12 +151,19 @@ struct BaselineArgs {
 
 #[derive(Args, Debug)]
 struct MineArgs {
-    #[arg(long, required_unless_present = "resume", conflicts_with = "resume")]
+    #[arg(value_name = "INPUT", conflicts_with_all = ["task", "resume"])]
+    input: Option<PathBuf>,
+    #[arg(long, conflicts_with = "resume")]
     task: Option<PathBuf>,
-    #[arg(long, required_unless_present = "task", conflicts_with = "task")]
+    #[arg(long, conflicts_with = "task")]
     resume: Option<PathBuf>,
     #[arg(long, default_value = "auto")]
     threads: String,
+    #[arg(
+        long,
+        help = "Persistent island count (defaults to resolved thread count)"
+    )]
+    islands: Option<u16>,
     #[arg(long, default_value_t = 64)]
     population: u32,
     #[arg(long, default_value_t = 200)]
@@ -116,10 +174,23 @@ struct MineArgs {
     max_attempts: Option<u64>,
     #[arg(long, default_value_t = 1)]
     seed: u64,
+    #[arg(long, default_value_t = 0)]
+    shard_index: u32,
+    #[arg(long, default_value_t = 1)]
+    shard_count: u32,
     #[arg(long)]
     checkpoint: Option<PathBuf>,
     #[arg(long, default_value = "result.ncpow")]
     out: PathBuf,
+}
+
+#[derive(Args, Debug)]
+struct ResumeArgs {
+    checkpoint: PathBuf,
+    #[arg(long, default_value = "result.ncpow")]
+    out: PathBuf,
+    #[arg(long)]
+    checkpoint_out: Option<PathBuf>,
 }
 
 #[derive(Args, Debug)]
@@ -140,7 +211,7 @@ struct DecodeArgs {
 
 #[derive(Args, Debug)]
 struct BenchmarkArgs {
-    #[arg(long)]
+    #[arg(long, default_value = "test-vectors")]
     corpus: PathBuf,
 }
 
@@ -158,11 +229,37 @@ fn main() -> ExitCode {
 fn run(cli: Cli) -> CoreResult<()> {
     match cli.command {
         Command::Inspect(args) => inspect(args, cli.json),
+        Command::Ncm4(args) => match args.command {
+            Ncm4Command::Analyze(args) => ncm4_analyze(args, cli.json),
+            Ncm4Command::Encode(args) => ncm4_encode(args, cli.json),
+            Ncm4Command::Decode(args) => ncm4_decode(args, cli.json),
+            Ncm4Command::Verify(args) => ncm4_verify(args, cli.json),
+        },
         Command::Task(args) => match args.command {
             TaskCommand::Create(args) => create_task(args, cli.json),
         },
         Command::Baseline(args) => baseline(args, cli.json),
         Command::Mine(args) => mine_command(args, cli.json, cli.json_progress),
+        Command::Resume(args) => mine_command(
+            MineArgs {
+                input: None,
+                task: None,
+                resume: Some(args.checkpoint),
+                threads: "auto".into(),
+                islands: None,
+                population: 64,
+                generations: 200,
+                time_limit: None,
+                max_attempts: None,
+                seed: 1,
+                shard_index: 0,
+                shard_count: 1,
+                checkpoint: args.checkpoint_out,
+                out: args.out,
+            },
+            cli.json,
+            cli.json_progress,
+        ),
         Command::Verify(args) => verify(args, cli.json),
         Command::Decode(args) => decode(args, cli.json),
         Command::Benchmark(args) => benchmark(args, cli.json),
@@ -173,7 +270,8 @@ fn run(cli: Cli) -> CoreResult<()> {
 fn inspect(args: InspectArgs, json_output: bool) -> CoreResult<()> {
     let input = read_path(&args.input)?;
     let limits = LimitsV1::default();
-    let imported = import_asset(args.profile, &input, &limits)?;
+    let profile = resolve_profile(&args.input, &input, args.profile, &limits)?;
+    let imported = import_asset(profile, &input, &limits)?;
     let root = semantic_root(&imported.semantics);
     let hash = encoding_hash(
         imported.profile,
@@ -190,6 +288,145 @@ fn inspect(args: InspectArgs, json_output: bool) -> CoreResult<()> {
         "semantics": imported.semantics,
     });
     print_report(&report, json_output)
+}
+
+fn ncm4_analyze(args: Ncm4AnalyzeArgs, json_output: bool) -> CoreResult<()> {
+    let input = read_path(&args.input)?;
+    let limits = LimitsV1::default();
+    let profile = resolve_profile(&args.input, &input, args.profile, &limits)?;
+    let imported = import_asset(profile, &input, &limits)?;
+    if imported.format == pouw_core::IncumbentFormat::Ncm4PouwV1 {
+        let decoded = decode_ncm4(&imported.incumbent_encoding, &limits)?;
+        return print_report(
+            &json!({
+                "inputFormat": imported.format.as_str(),
+                "profile": profile.as_str(),
+                "semanticRoot": hash_hex(&decoded.semantic_root),
+                "encodingHash": hash_hex(&decoded.encoding_hash),
+                "exact": true,
+                "witnessExists": false,
+                "selectedFormat": imported.format.as_str(),
+                "ncm4": decoded.stats,
+            }),
+            json_output,
+        );
+    }
+    let seed = deterministic_ncm4_seed(&imported, &limits)?;
+    print_report(&ncm4_seed_json(&seed), json_output)
+}
+
+fn ncm4_encode(args: Ncm4EncodeArgs, json_output: bool) -> CoreResult<()> {
+    let input = read_path(&args.input)?;
+    let limits = LimitsV1::default();
+    let profile = resolve_profile(&args.input, &input, args.profile, &limits)?;
+    let imported = import_asset(profile, &input, &limits)?;
+    if imported.format == pouw_core::IncumbentFormat::Ncm4PouwV1 {
+        return Err(Error::invalid(
+            "ncm4-already-encoded",
+            "Input is already an NCM4 PoUW encoding.",
+        ));
+    }
+    let seed = deterministic_ncm4_seed(&imported, &limits)?;
+    write_atomic(&args.out, &seed.encoding)?;
+    let report = merge_json(ncm4_seed_json(&seed), json!({ "output": args.out }));
+    print_report(&report, json_output)
+}
+
+fn ncm4_decode(args: Ncm4DecodeArgs, json_output: bool) -> CoreResult<()> {
+    let limits = LimitsV1::default();
+    let decoded = decode_ncm4(&read_path(&args.input)?, &limits)?;
+    let report = json!({
+        "format": "ncm4-pouw-v1",
+        "profile": decoded.profile.as_str(),
+        "semanticRoot": hash_hex(&decoded.semantic_root),
+        "encodingHash": hash_hex(&decoded.encoding_hash),
+        "stats": decoded.stats,
+        "semantics": decoded.semantics,
+    });
+    write_atomic(
+        &args.out,
+        &serde_json::to_vec_pretty(&report).map_err(json_error)?,
+    )?;
+    print_report(
+        &json!({ "output": args.out, "report": report }),
+        json_output,
+    )
+}
+
+fn ncm4_verify(args: Ncm4VerifyArgs, json_output: bool) -> CoreResult<()> {
+    let limits = LimitsV1::default();
+    let source_bytes = read_path(&args.source)?;
+    let profile = resolve_profile(&args.source, &source_bytes, args.profile, &limits)?;
+    let source = import_asset(profile, &source_bytes, &limits)?;
+    let candidate = decode_ncm4(&read_path(&args.candidate)?, &limits)?;
+    let target_root = semantic_root(&source.semantics);
+    let mismatch_count = source.semantics.mismatch_count(&candidate.semantics);
+    let exact = candidate.profile == profile
+        && candidate.semantic_root == target_root
+        && mismatch_count == 0;
+    let source_size = source.incumbent_encoding.len() as i64;
+    let candidate_size = i64::from(candidate.stats.total_bytes);
+    let improved = exact && candidate_size < source_size;
+    let report = json!({
+        "accepted": improved,
+        "exact": exact,
+        "improved": improved,
+        "mismatchCount": mismatch_count,
+        "sourceFormat": source.format.as_str(),
+        "candidateFormat": "ncm4-pouw-v1",
+        "profile": profile.as_str(),
+        "targetSemanticRoot": hash_hex(&target_root),
+        "candidateSemanticRoot": hash_hex(&candidate.semantic_root),
+        "candidateEncodingHash": hash_hex(&candidate.encoding_hash),
+        "sourceBytes": source_size,
+        "candidateBytes": candidate_size,
+        "savedBytes": source_size - candidate_size,
+        "stats": candidate.stats,
+        "selectedFormat": if improved { "ncm4-pouw-v1" } else { source.format.as_str() },
+    });
+    print_report(&report, json_output)?;
+    if !exact {
+        return Err(Error::new(
+            ErrorKind::SemanticMismatch,
+            "ncm4-semantic-mismatch",
+            "NCM4 candidate is not exactly equivalent to the source.",
+        ));
+    }
+    if !improved {
+        return Err(Error::new(
+            ErrorKind::NotSmaller,
+            "ncm4-not-smaller",
+            "NCM4 candidate is exact but does not beat the source representation.",
+        ));
+    }
+    Ok(())
+}
+
+fn ncm4_seed_json(seed: &pouw_core::Ncm4Seed) -> Value {
+    json!({
+        "inputFormat": seed.audit.source_format,
+        "profile": seed.audit.profile.as_str(),
+        "semanticRoot": hash_hex(&seed.audit.semantic_root),
+        "candidateSemanticRoot": hash_hex(&seed.audit.candidate_semantic_root),
+        "encodingHash": hash_hex(&seed.decoded.encoding_hash),
+        "sourceBytes": seed.audit.source_bytes,
+        "fixedHeaderBytes": seed.audit.fixed_header_bytes,
+        "profileHeaderBytes": seed.audit.profile_header_bytes,
+        "bodyBytes": seed.audit.body_bytes,
+        "residualBytes": seed.audit.residual_bytes,
+        "patches": seed.decoded.stats.patches,
+        "ncm4TotalBytes": seed.audit.ncm4_total_bytes,
+        "theoreticalFixedLowerBound": seed.audit.theoretical_fixed_lower_bound,
+        "deterministicSeedBytes": seed.audit.deterministic_seed_bytes,
+        "savedBytes": seed.audit.saved_bytes,
+        "savedBps": seed.audit.saved_basis_points,
+        "decodeUnits": seed.decoded.stats.decode_units,
+        "exact": seed.audit.exact,
+        "witnessExists": seed.audit.witness_exists,
+        "recommendDeepSearch": seed.audit.recommend_deep_search,
+        "selectedFormat": seed.audit.selected_format,
+        "ncm4Version": NCM4_VERSION,
+    })
 }
 
 fn create_task(args: TaskCreateArgs, json_output: bool) -> CoreResult<()> {
@@ -239,6 +476,15 @@ fn baseline(args: BaselineArgs, json_output: bool) -> CoreResult<()> {
 }
 
 fn mine_command(args: MineArgs, json_output: bool, json_progress: bool) -> CoreResult<()> {
+    let ncm4_resume_bytes = args
+        .resume
+        .as_ref()
+        .map(|path| read_path(path))
+        .transpose()?
+        .filter(|bytes| bytes.starts_with(b"NC4S1\n"));
+    if args.input.is_some() || ncm4_resume_bytes.is_some() {
+        return mine_ncm4_command(args, ncm4_resume_bytes, json_output, json_progress);
+    }
     let (task, checkpoint, config) = if let Some(path) = &args.resume {
         let checkpoint = CheckpointV1::from_bytes(&read_path(path)?)?;
         let task = TaskV1::from_bytes(&checkpoint.task_bytes)?;
@@ -254,13 +500,15 @@ fn mine_command(args: MineArgs, json_output: bool, json_progress: bool) -> CoreR
         let config = SearchConfig {
             seed: args.seed,
             threads,
-            islands: threads.clamp(1, 8),
+            islands: args.islands.unwrap_or(threads),
             population: args.population,
             generations: args.generations,
             elite_count: (args.population / 16).clamp(1, u32::from(u16::MAX)) as u16,
             tournament_size: args.population.clamp(2, 3) as u8,
             max_attempts: args.max_attempts,
             time_limit_ms: args.time_limit.as_deref().map(parse_duration).transpose()?,
+            shard_index: args.shard_index,
+            shard_count: args.shard_count,
             ..SearchConfig::default()
         };
         (task, None, config)
@@ -334,6 +582,188 @@ fn mine_command(args: MineArgs, json_output: bool, json_progress: bool) -> CoreR
         }),
     );
     print_report(&value, json_output)
+}
+
+fn mine_ncm4_command(
+    args: MineArgs,
+    resume_bytes: Option<Vec<u8>>,
+    json_output: bool,
+    json_progress: bool,
+) -> CoreResult<()> {
+    let limits = LimitsV1::default();
+    let mut session = if let Some(bytes) = resume_bytes {
+        let checkpoint = Ncm4SearchCheckpoint::from_bytes(&bytes)?;
+        Ncm4SearchSession::from_checkpoint(&checkpoint)?
+    } else {
+        let path = args.input.as_ref().ok_or_else(|| {
+            Error::invalid(
+                "ncm4-mine-input",
+                "NCM4 mining requires an input asset or NCM4 search checkpoint.",
+            )
+        })?;
+        let input = read_path(path)?;
+        let profile = resolve_profile(path, &input, None, &limits)?;
+        if profile != Profile::Building {
+            return Err(Error::new(
+                ErrorKind::UnsupportedVersion,
+                "ncm4-search-profile",
+                "NCM4 alpha deep search supports building inputs; other profiles still use the v1 task miner.",
+            ));
+        }
+        let imported = import_asset(profile, &input, &limits)?;
+        if !matches!(
+            imported.format,
+            pouw_core::IncumbentFormat::Ncm3V1 | pouw_core::IncumbentFormat::Ncm4PouwV1
+        ) {
+            return Err(Error::new(
+                ErrorKind::UnsupportedVersion,
+                "ncm4-search-format",
+                "NCM4 alpha deep search supports NCM3 and NCM4 PoUW building inputs.",
+            ));
+        }
+        let threads = parse_threads(&args.threads)?;
+        let config = SearchConfig {
+            seed: args.seed,
+            threads,
+            islands: args.islands.unwrap_or(threads),
+            population: args.population,
+            generations: args.generations,
+            epoch_generations: 1,
+            elite_count: (args.population / 16).clamp(1, u32::from(u16::MAX)) as u16,
+            tournament_size: args.population.clamp(2, 3) as u8,
+            max_attempts: args.max_attempts,
+            time_limit_ms: args.time_limit.as_deref().map(parse_duration).transpose()?,
+            memory_limit_bytes: 512 * 1024 * 1024,
+            shard_index: args.shard_index,
+            shard_count: args.shard_count,
+        };
+        Ncm4SearchSession::new(imported, config)?
+    };
+
+    let control = SearchControl::default();
+    let signal_control = control.clone();
+    ctrlc::set_handler(move || signal_control.stop())
+        .map_err(|error| Error::new(ErrorKind::Internal, "ctrl-c-handler", error.to_string()))?;
+    let started = Instant::now();
+    let start_generation = session.generation();
+    let target_generation = start_generation.saturating_add(session.config().generations);
+    while session.generation() < target_generation && !control.is_stopped() {
+        if session
+            .config()
+            .max_attempts
+            .is_some_and(|maximum| session.attempts() >= maximum)
+            || session
+                .config()
+                .time_limit_ms
+                .is_some_and(|maximum| elapsed_ms(started) >= maximum)
+        {
+            break;
+        }
+        let remaining = target_generation - session.generation();
+        let epoch = u32::from(session.config().epoch_generations).min(remaining);
+        session.step(epoch, |progress| {
+            print_ncm4_progress(progress, json_progress, elapsed_ms(started));
+        })?;
+    }
+    let checkpoint = session.checkpoint()?;
+    let best = session.best().clone();
+    let independently_decoded = decode_ncm4(&best.encoding, &limits)?;
+    if independently_decoded.semantic_root != best.semantic_root {
+        return Err(Error::new(
+            ErrorKind::SemanticMismatch,
+            "ncm4-final-verification",
+            "NCM4 CLI final candidate failed independent verification.",
+        ));
+    }
+    write_atomic(&args.out, &best.encoding)?;
+    let checkpoint_path = if let Some(path) = &args.checkpoint {
+        write_atomic(path, &checkpoint.to_bytes()?)?;
+        Some(path.clone())
+    } else if control.is_stopped() {
+        let path = args.out.with_extension("nc4s.chk");
+        write_atomic(&path, &checkpoint.to_bytes()?)?;
+        Some(path)
+    } else {
+        None
+    };
+    let source_bytes = session.source_bytes();
+    let saved_bytes = i64::from(source_bytes) - i64::from(best.stats.total_bytes);
+    let improved = best.stats.total_bytes < source_bytes;
+    let report = json!({
+        "format": "ncm4-pouw-v1",
+        "exact": best.exact,
+        "improved": improved,
+        "witnessExists": improved,
+        "selectedFormat": if improved { "ncm4-pouw-v1" } else { session.source_format().as_str() },
+        "semanticRoot": hash_hex(&best.semantic_root),
+        "encodingHash": hash_hex(&best.encoding_hash),
+        "sourceBytes": source_bytes,
+        "fixedHeaderBytes": best.stats.fixed_header_bytes,
+        "profileHeaderBytes": best.stats.profile_header_bytes,
+        "bodyBytes": best.stats.body_bytes,
+        "residualBytes": best.stats.residual_bytes,
+        "candidateBytes": best.stats.total_bytes,
+        "savedBytes": saved_bytes,
+        "savedBps": if source_bytes == 0 { 0 } else { saved_bytes * 10000 / i64::from(source_bytes) },
+        "decodeUnits": best.stats.decode_units,
+        "attempts": session.attempts(),
+        "attemptsPerSecond": if elapsed_ms(started) == 0 { 0.0 } else { session.attempts() as f64 * 1000.0 / elapsed_ms(started) as f64 },
+        "generation": session.generation(),
+        "elapsedMs": elapsed_ms(started),
+        "threads": session.config().threads,
+        "islands": session.config().islands,
+        "strategy": "beam-rewrite+typed-island-lns",
+        "seed": session.config().seed,
+        "shardIndex": session.config().shard_index,
+        "shardCount": session.config().shard_count,
+        "output": args.out,
+        "checkpoint": checkpoint_path,
+        "stopped": control.is_stopped(),
+    });
+    print_report(&report, json_output)
+}
+
+fn print_ncm4_progress(progress: &Ncm4SearchProgress, json_progress: bool, elapsed: u64) {
+    let rate = if elapsed == 0 {
+        0.0
+    } else {
+        progress.attempts as f64 * 1000.0 / elapsed as f64
+    };
+    if json_progress {
+        eprintln!(
+            "{}",
+            json!({
+                "type": "ncm4-progress",
+                "generation": progress.generation,
+                "attempts": progress.attempts,
+                "attemptsPerSecond": rate,
+                "elapsedMs": elapsed,
+                "headerBytes": progress.header_bytes,
+                "bodyBytes": progress.body_bytes,
+                "residualBytes": progress.residual_bytes,
+                "totalBytes": progress.best_bytes,
+                "decodeUnits": progress.decode_units,
+                "semanticRoot": hash_hex(&progress.semantic_root),
+                "exact": true,
+                "witnessExists": progress.witness_exists,
+                "strategy": progress.strategy,
+            })
+        );
+    } else {
+        eprintln!(
+            "generation={} attempts={} rate={:.2}/s elapsed={:.3}s bytes={} (header={}, body={}, residual={}) decodeUnits={} exact=true strategy={}",
+            progress.generation,
+            progress.attempts,
+            rate,
+            elapsed as f64 / 1000.0,
+            progress.best_bytes,
+            progress.header_bytes,
+            progress.body_bytes,
+            progress.residual_bytes,
+            progress.decode_units,
+            progress.strategy,
+        );
+    }
 }
 
 fn verify(args: VerifyArgs, json_output: bool) -> CoreResult<()> {
@@ -411,12 +841,17 @@ fn benchmark(args: BenchmarkArgs, json_output: bool) -> CoreResult<()> {
         let imported = import_asset(profile, &input, &limits)?;
         let started = Instant::now();
         let candidate = best_baseline(&imported.semantics, &limits)?;
-        let elapsed = elapsed_ms(started);
+        let pouw_elapsed = elapsed_ms(started);
+        let ncm4_started = Instant::now();
+        let ncm4 = deterministic_ncm4_seed(&imported, &limits)?;
+        let ncm4_elapsed = elapsed_ms(ncm4_started);
         let original = imported.incumbent_encoding.len() as i64;
         let candidate_bytes = i64::from(candidate.stats.total_bytes);
+        let ncm4_bytes = i64::from(ncm4.audit.ncm4_total_bytes);
         rows.push(json!({
             "file": path,
             "profile": profile.as_str(),
+            "inputFormat": imported.format.as_str(),
             "incumbentBytes": original,
             "candidateBytes": candidate_bytes,
             "savedBytes": original - candidate_bytes,
@@ -427,7 +862,42 @@ fn benchmark(args: BenchmarkArgs, json_output: bool) -> CoreResult<()> {
             "decodeUnits": candidate.stats.decode_units,
             "semanticRoot": hash_hex(&candidate.semantic_root),
             "exact": candidate.exact,
-            "elapsedMs": elapsed,
+            "elapsedMs": pouw_elapsed,
+            "selectedFormat": if ncm4_bytes < original && ncm4_bytes <= candidate_bytes {
+                "ncm4-pouw-v1"
+            } else if candidate_bytes < original {
+                "pouw-vm-v1"
+            } else {
+                imported.format.as_str()
+            },
+            "selectedBytes": original.min(candidate_bytes).min(ncm4_bytes),
+            "pouwV1": {
+                "totalBytes": candidate_bytes,
+                "savedBytes": original - candidate_bytes,
+                "programBytes": candidate.stats.program_bytes,
+                "residualBytes": candidate.stats.residual_bytes,
+                "overheadBytes": candidate.stats.overhead_bytes,
+                "decodeUnits": candidate.stats.decode_units,
+                "exact": candidate.exact,
+                "elapsedMs": pouw_elapsed,
+            },
+            "ncm4": {
+                "fixedHeaderBytes": ncm4.audit.fixed_header_bytes,
+                "profileHeaderBytes": ncm4.audit.profile_header_bytes,
+                "bodyBytes": ncm4.audit.body_bytes,
+                "residualBytes": ncm4.audit.residual_bytes,
+                "totalBytes": ncm4.audit.ncm4_total_bytes,
+                "savedBytes": original - ncm4_bytes,
+                "savedBps": ncm4.audit.saved_basis_points,
+                "decodeUnits": ncm4.decoded.stats.decode_units,
+                "theoreticalFixedLowerBound": ncm4.audit.theoretical_fixed_lower_bound,
+                "witnessExists": ncm4.audit.witness_exists,
+                "recommendDeepSearch": ncm4.audit.recommend_deep_search,
+                "exact": ncm4.audit.exact,
+                "semanticRoot": hash_hex(&ncm4.audit.candidate_semantic_root),
+                "encodingHash": hash_hex(&ncm4.decoded.encoding_hash),
+                "elapsedMs": ncm4_elapsed,
+            },
         }));
     }
     if rows.is_empty() {
@@ -618,6 +1088,34 @@ fn parse_threads(value: &str) -> CoreResult<u16> {
                 "--threads must be auto or an integer in 1..=65535.",
             )
         })
+}
+
+fn resolve_profile(
+    path: &Path,
+    input: &[u8],
+    requested: Option<Profile>,
+    limits: &LimitsV1,
+) -> CoreResult<Profile> {
+    if let Some(profile) = requested {
+        return Ok(profile);
+    }
+    match detect_format(input) {
+        DetectedFormat::ChunkBrokenV1 => Ok(Profile::TerrainDelta),
+        DetectedFormat::Ncm3V1 => Ok(Profile::Building),
+        DetectedFormat::Ncf1V15 => Ok(Profile::ForgedItem),
+        DetectedFormat::Ncm4PouwV1 => Ok(decode_ncm4(input, limits)?.profile),
+        DetectedFormat::PouwVmV1 => input
+            .get(5)
+            .copied()
+            .ok_or_else(|| Error::new(ErrorKind::Truncated, "candidate-header", "Candidate header is truncated."))
+            .and_then(Profile::from_u8),
+        DetectedFormat::Unknown => profile_from_path(path).ok_or_else(|| {
+            Error::invalid(
+                "profile-required",
+                "Input format is ambiguous; pass --profile terrain_delta, building, or forged_item.",
+            )
+        }),
+    }
 }
 
 fn parse_duration(value: &str) -> CoreResult<u64> {
