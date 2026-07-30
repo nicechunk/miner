@@ -75,7 +75,7 @@
     "forgeDetail": "Inspección de artículos"
   },
   "demo": {
-    "kicker": "Los archivos y la consola informática local permanecen en este dispositivo",
+    "kicker": "Consola informática local / el NCM pegado permanece en este dispositivo",
     "title": "Laboratorio de compresión del navegador",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "Perfil de compresión",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "Listo",
-    "readyDetail": "Cargue un archivo de muestra o local y luego presione Iniciar.",
+    "readyDetail": "La casa predeterminada está cargada. Pegue NCM3 o NCM4P y pulse Iniciar.",
     "exactNoImprovement": "Coincidencia exacta · sin mejora de almacenamiento",
     "exactSmaller": "Coincidencia exacta · estrictamente más pequeño",
     "hiddenPaused": "La página quedó oculta, por lo que se detuvo el trabajo de la CPU local.",
     "inputChanged": "La entrada cambió.",
     "inspecting": "Inspeccionar localmente",
     "inspectingDetail": "El núcleo Rust/WASM está canonicalizando este activo.",
-    "loadFirst": "Cargue primero un archivo local o de muestra.",
+    "loadFirst": "Pegue primero un valor NCM3 o NCM4P y cárguelo.",
     "mismatchDetail": "El verificador encontró {count} discrepancias.",
     "noImprovementDetail": "El candidato verificado es igual o mayor que el titular. {suffix}",
     "pageClosed": "La página estaba cerrada.",
@@ -115,7 +115,6 @@
     "searchingDetail": "Las islas de trabajadores tipificadas están evaluando programas VM exactos y residuos canónicos.",
     "stopped": "Detenido",
     "stoppedByUser": "Detenido por el usuario.",
-    "timeCompleted": "El presupuesto de tiempo configurado se completó.",
     "verificationFailed": "La verificación falló"
   },
   "preview": {
@@ -133,16 +132,8 @@
   "controls": {
     "panelAria": "Controles mineros",
     "configuration": "Configuración",
-    "builtIn": "Vector incorporado",
-    "normal": "normales",
-    "complex": "complejo",
-    "boundary": "Límite",
-    "loadSample": "Cargar muestra",
-    "localFile": "archivo local",
-    "noFile": "Ningún archivo seleccionado",
     "workers": "Workers",
     "seed": "semilla",
-    "budget": "Presupuesto de tiempo (s)",
     "population": "Tamaño de población",
     "miningAria": "Controles mineros",
     "start": "Empezar",
@@ -150,7 +141,7 @@
     "resume": "Reanudar",
     "stop": "Detener",
     "reset": "Reiniciar",
-    "note": "La minería nunca comienza automáticamente. El valor predeterminado deja al menos un núcleo lógico disponible para la página."
+    "note": "La búsqueda continúa hasta Pausar o Detener. Nunca comienza automáticamente y deja al menos un núcleo lógico libre para la página."
   },
   "ncm4": {
     "pasteLabel": "Pegar texto NCM3 o NCM4P",
@@ -291,8 +282,8 @@
     "exactAnswer": "No. El verificador compara la semántica canónica y cada identidad coordinada/material. Un vóxel, material, campo de forja inmutable o agarre modificado cambia el resultado.",
     "optimalQuestion": "¿El minero demuestra una codificación global más corta?",
     "optimalAnswer": "No. Demuestra que un candidato es exacto, acotado y estrictamente más bajo que el titular. Ninguna mejora encontrada es un resultado válido.",
-    "uploadQuestion": "¿Se cargan archivos locales?",
-    "uploadAnswer": "No. Los archivos se pasan directamente al Web Workers local. La página no incluye punto final de carga, telemetría, CDN de terceros, solicitud de API GitHub, billetera ni cliente RPC.",
+    "uploadQuestion": "¿El NCM pegado sale de este navegador?",
+    "uploadAnswer": "No. El NCM pegado se pasa directamente a los Web Workers locales. La página no incluye punto final de carga, telemetría, CDN de terceros, solicitud de API GitHub, billetera ni cliente RPC.",
     "negativeQuestion": "¿Por qué un perfil puede mostrar ahorros negativos?",
     "negativeAnswer": "Algunos activos NCM3 o NCF1 existentes ya son muy compactos. La demostración informa que honestamente y nunca vuelve a etiquetar bytes iguales o mayores como ahorro de almacenamiento."
   },
@@ -319,8 +310,6 @@
     "engine": "WASM error del motor",
     "generic": "El motor minero local se detuvo. Consulte la consola del navegador para obtener detalles técnicos y vuelva a intentarlo.",
     "manifestHttp": "El manifiesto de lanzamiento devolvió HTTP {status}.",
-    "sampleHttp": "El ejemplo integrado devolvió HTTP {status}.",
-    "sampleMissing": "No hay ningún vector incorporado disponible para {key}.",
     "stopped": "Detenido tras un error del motor.",
     "title": "error",
     "workerFailed": "Error del trabajador {index}.",

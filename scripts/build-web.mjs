@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { access, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { dirname, extname, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuildBuild } from "esbuild";
 
@@ -57,28 +57,6 @@ let glue = await readFile(resolve(build, "wasm", "pouw_wasm.js"), "utf8");
 glue = glue.replaceAll("pouw_wasm_bg.wasm", wasmName);
 const glueName = `pouw_wasm.${hash(glue)}.js`;
 await writeFile(resolve(assets, glueName), glue);
-
-const sampleSources = {
-  "terrain_delta:normal": "terrain_delta/normal-row.ncbk",
-  "terrain_delta:complex": "terrain_delta/complex-cavity.ncbk",
-  "terrain_delta:boundary": "terrain_delta/boundary.ncbk",
-  "building:normal": "building/normal-box.ncm3",
-  "building:complex": "building/complex-cottage.ncm3",
-  "building:boundary": "building/boundary.ncm3",
-  "forged_item:normal": "forged_item/normal-full.ncf1",
-  "forged_item:complex": "forged_item/complex-painted-cavity.ncf1",
-  "forged_item:boundary": "forged_item/boundary.ncf1",
-};
-const sampleUrls = {};
-await mkdir(resolve(assets, "samples"), { recursive: true });
-for (const [key, relative] of Object.entries(sampleSources)) {
-  const bytes = await readFile(resolve(root, "test-vectors", relative));
-  const extension = extname(relative);
-  const base = relative.replaceAll("/", "-").slice(0, -extension.length);
-  const name = `${base}.${hash(bytes)}${extension}`;
-  await writeFile(resolve(assets, "samples", name), bytes);
-  sampleUrls[key] = `./samples/${name}`;
-}
 
 const localeUrls = {};
 await mkdir(resolve(assets, "locales"), { recursive: true });
@@ -147,8 +125,7 @@ app = app
   .replace("__I18N_URL__", `./${i18nName}`)
   .replace("__WORKER_URL__", `./${workerName}`)
   .replace("__SCENE_URL__", `./${sceneName}`)
-  .replace("__SITE_CONFIG_URL__", `./${configName}`)
-  .replace("__SAMPLE_URLS__", JSON.stringify(sampleUrls));
+  .replace("__SITE_CONFIG_URL__", `./${configName}`);
 const appName = `app.${hash(app)}.js`;
 await writeFile(resolve(assets, appName), app);
 
@@ -190,7 +167,6 @@ const manifest = {
     forgedImage: `assets/${workloadImageNames.forged}`,
     siteConfig: `assets/${configName}`,
   },
-  samples: sampleUrls,
   locales: localeUrls,
 };
 await writeFile(resolve(dist, "asset-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);

@@ -75,7 +75,7 @@
     "forgeDetail": "품목검사"
   },
   "demo": {
-    "kicker": "로컬 컴퓨팅 콘솔/파일이 이 장치에 유지됩니다.",
+    "kicker": "로컬 컴퓨팅 콘솔 / 붙여 넣은 NCM은 이 기기에만 남습니다",
     "title": "브라우저 압축 연구실",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "압축 프로필",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "준비",
-    "readyDetail": "샘플 또는 로컬 파일을 로드한 다음 시작을 누릅니다.",
+    "readyDetail": "기본 코티지가 로드되었습니다. NCM3 또는 NCM4P를 붙여 넣고 시작을 누르세요.",
     "exactNoImprovement": "정확히 일치 · 저장용량 개선 없음",
     "exactSmaller": "정확한 일치 · 엄격하게 더 작음",
     "hiddenPaused": "페이지가 숨겨져서 로컬 CPU 작업이 일시 중지되었습니다.",
     "inputChanged": "입력이 변경되었습니다.",
     "inspecting": "로컬에서 검사 중",
     "inspectingDetail": "Rust/WASM 코어가 이 자산을 정규화하는 중입니다.",
-    "loadFirst": "먼저 샘플 또는 로컬 파일을 로드하세요.",
+    "loadFirst": "먼저 NCM3 또는 NCM4P를 붙여 넣고 불러오세요.",
     "mismatchDetail": "검증자가 {count} 불일치를 발견했습니다.",
     "noImprovementDetail": "검증된 후보자는 현직 후보자와 동일하거나 그 이상입니다. {suffix}",
     "pageClosed": "페이지가 닫혔습니다.",
@@ -115,7 +115,6 @@
     "searchingDetail": "형식화된 작업자 섬은 정확한 VM 프로그램과 정식 잔차를 평가합니다.",
     "stopped": "중지됨",
     "stoppedByUser": "사용자에 의해 중지되었습니다.",
-    "timeCompleted": "구성된 시간 예산이 완료되었습니다.",
     "verificationFailed": "확인 실패"
   },
   "preview": {
@@ -133,16 +132,8 @@
   "controls": {
     "panelAria": "광부 제어",
     "configuration": "구성",
-    "builtIn": "내장 벡터",
-    "normal": "보통",
-    "complex": "복잡한",
-    "boundary": "경계",
-    "loadSample": "샘플 로드",
-    "localFile": "로컬 파일",
-    "noFile": "선택한 파일이 없습니다.",
     "workers": "워커",
     "seed": "종자",
-    "budget": "시간 예산(초)",
     "population": "개체군 크기",
     "miningAria": "채굴 통제",
     "start": "시작",
@@ -150,7 +141,7 @@
     "resume": "재개",
     "stop": "중지",
     "reset": "재설정",
-    "note": "채굴은 자동으로 시작되지 않습니다. 기본값은 페이지에 사용할 수 있는 논리 코어를 하나 이상 남겨 둡니다."
+    "note": "검색은 일시 중지 또는 중지를 누를 때까지 계속됩니다. 자동으로 시작되지 않으며 페이지용 논리 코어를 하나 이상 남겨 둡니다."
   },
   "ncm4": {
     "pasteLabel": "NCM3 또는 NCM4P 텍스트 붙여넣기",
@@ -291,8 +282,8 @@
     "exactAnswer": "아니요. 검증자는 표준 의미와 모든 좌표/물질 ID를 비교합니다. 복셀, 재질, 불변 단조 필드 또는 그립이 변경되면 결과가 변경됩니다.",
     "optimalQuestion": "광부가 전 세계적으로 가장 짧은 인코딩을 증명합니까?",
     "optimalAnswer": "아니요. 이는 한 후보자가 현직 후보자보다 정확하고 제한적이며 엄격하게 키가 작다는 것을 증명합니다. 개선 사항이 발견되지 않은 것은 유효한 결과입니다.",
-    "uploadQuestion": "로컬 파일이 업로드됩니까?",
-    "uploadAnswer": "아니요. 파일은 로컬 Web Workers로 직접 전달됩니다. 페이지에는 업로드 엔드포인트, 원격 분석, 타사 CDN, GitHub API 요청, 지갑 또는 RPC 클라이언트가 포함되어 있지 않습니다.",
+    "uploadQuestion": "붙여 넣은 NCM이 이 브라우저 밖으로 전송됩니까?",
+    "uploadAnswer": "아니요. 붙여 넣은 NCM은 로컬 Web Workers로 직접 전달됩니다. 페이지에는 업로드 엔드포인트, 원격 분석, 타사 CDN, GitHub API 요청, 지갑 또는 RPC 클라이언트가 포함되어 있지 않습니다.",
     "negativeQuestion": "프로필에 마이너스 절감액이 표시되는 이유는 무엇입니까?",
     "negativeAnswer": "일부 기존 NCM3 또는 NCF1 자산은 이미 매우 컴팩트합니다. 데모에서는 동일하거나 더 큰 바이트를 스토리지 절약으로 정직하게 다시 표시하지 않는다고 보고합니다."
   },
@@ -319,8 +310,6 @@
     "engine": "WASM 엔진 오류",
     "generic": "로컬 마이닝 엔진이 중지되었습니다. 브라우저 콘솔에서 기술 세부정보를 확인하고 다시 시도하세요.",
     "manifestHttp": "릴리스 매니페스트가 HTTP {status}을(를) 반환했습니다.",
-    "sampleHttp": "기본 제공 샘플이 HTTP {status}을 반환했습니다.",
-    "sampleMissing": "{key}에는 내장 벡터를 사용할 수 없습니다.",
     "stopped": "엔진 오류 후 중지되었습니다.",
     "title": "오류",
     "workerFailed": "작업자 {index}이(가) 실패했습니다.",

@@ -75,7 +75,7 @@
     "forgeDetail": "物品檢視"
   },
   "demo": {
-    "kicker": "本機計算控制台 / 檔案僅保留在此設備",
+    "kicker": "本機計算控制台 / 貼上的 NCM 僅保留在此設備",
     "title": "瀏覽器壓縮實驗室",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "壓縮類型",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "就緒",
-    "readyDetail": "載入範例或本機文件，然後點擊“開始”。",
+    "readyDetail": "預設基礎小屋已載入。貼上 NCM3 或 NCM4P 後點擊“開始”。",
     "exactNoImprovement": "精確匹配 · 未節省儲存空間",
     "exactSmaller": "精確匹配 · 編碼更小",
     "hiddenPaused": "頁面進入後台，本地 CPU 計算已暫停。",
     "inputChanged": "輸入已更改。",
     "inspecting": "正在本地檢驗",
     "inspectingDetail": "Rust/WASM 核心正在規範此資源。",
-    "loadFirst": "請先載入範例或本機檔案。",
+    "loadFirst": "請先貼上並載入 NCM3 或 NCM4P 內容。",
     "mismatchDetail": "驗證器發現 {count} 處不符。",
     "noImprovementDetail": "驗證後的候選編碼不小於現有編碼。 {suffix}",
     "pageClosed": "頁面已關閉。",
@@ -115,7 +115,6 @@
     "searchingDetail": "各工作線程島正在評估精確的 VM 程式與規範殘差。",
     "stopped": "已停止",
     "stoppedByUser": "用戶已停止。",
-    "timeCompleted": "設定的時間預算已用完。",
     "verificationFailed": "驗證失敗"
   },
   "preview": {
@@ -133,16 +132,8 @@
   "controls": {
     "panelAria": "Miner 控制",
     "configuration": "配置",
-    "builtIn": "內建測試向量",
-    "normal": "普通",
-    "complex": "複雜",
-    "boundary": "邊界",
-    "loadSample": "載入範例",
-    "localFile": "本地文件",
-    "noFile": "未選擇文件",
     "workers": "工作執行緒",
     "seed": "種子",
-    "budget": "時間預算（秒）",
     "population": "族群規模",
     "miningAria": "搜尋控制",
     "start": "開始",
@@ -150,7 +141,7 @@
     "resume": "繼續",
     "stop": "停止",
     "reset": "重置",
-    "note": "搜尋不會自動啟動。預設配置會為頁面至少保留一個邏輯 CPU 核心。"
+    "note": "搜尋會持續運行，直到點擊暫停或停止；不會自動啟動，並會為頁面至少保留一個邏輯 CPU 核心。"
   },
   "ncm4": {
     "pasteLabel": "貼上 NCM3 或 NCM4P 文字",
@@ -291,8 +282,8 @@
     "exactAnswer": "不是。驗證器會比較規範語意以及每個座標和材質身分。任何一個體素、材質、不可變鍛造場或握持點發生變化，結果都會不同。",
     "optimalQuestion": "Miner 能證明這是全域最短編碼嗎？",
     "optimalAnswer": "不能。它只能證明某個候選編碼精確、有界且嚴格小於現有編碼。未找到改進同樣是有效結果。",
-    "uploadQuestion": "本機檔案會被上傳嗎？",
-    "uploadAnswer": "不會。檔案只會直接傳給本機 Web Workers。頁面沒有上傳端點、遙測、第三方 CDN、GitHub API 請求、錢包或 RPC 用戶端。",
+    "uploadQuestion": "貼上的 NCM 會離開目前瀏覽器嗎？",
+    "uploadAnswer": "不會。貼上的 NCM 只會直接傳給本機 Web Workers。頁面沒有上傳端點、遙測、第三方 CDN、GitHub API 請求、錢包或 RPC 用戶端。",
     "negativeQuestion": "為什麼某些類型會顯示負節省？",
     "negativeAnswer": "部分 NCM3 或 NCF1 資源本身已高度緊湊。演示會如實報告，絕不會將相同或更大的編碼標記為節省儲存。"
   },
@@ -319,8 +310,6 @@
     "engine": "WASM 引擎錯誤",
     "generic": "本地礦工引擎已停止。請在瀏覽器控制台查看技術詳情後重試。",
     "manifestHttp": "發布清單回傳 HTTP {status}。",
-    "sampleHttp": "內建範例傳回 HTTP {status}。",
-    "sampleMissing": "沒有適用於 {key} 的內建測試向量。",
     "stopped": "因引擎錯誤而停止。",
     "title": "錯誤",
     "workerFailed": "工作執行緒 {index} 運行失敗。",

@@ -75,7 +75,7 @@
     "forgeDetail": "Inspection des articles"
   },
   "demo": {
-    "kicker": "La console de calcul locale/les fichiers restent sur cet appareil",
+    "kicker": "Console de calcul locale / le NCM collé reste sur cet appareil",
     "title": "Laboratoire de compression de navigateur",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "Profil de compression",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "Prêt",
-    "readyDetail": "Chargez un échantillon ou un fichier local, puis appuyez sur Démarrer.",
+    "readyDetail": "Le cottage par défaut est chargé. Collez du NCM3 ou NCM4P, puis appuyez sur Démarrer.",
     "exactNoImprovement": "Correspondance exacte · aucune amélioration du stockage",
     "exactSmaller": "Correspondance exacte · strictement plus petit",
     "hiddenPaused": "La page est devenue masquée, le travail du processeur local a donc été suspendu.",
     "inputChanged": "L'entrée a été modifiée.",
     "inspecting": "Inspecter localement",
     "inspectingDetail": "Le noyau Rust/WASM canonise cet actif.",
-    "loadFirst": "Chargez d'abord un exemple ou un fichier local.",
+    "loadFirst": "Collez d'abord une valeur NCM3 ou NCM4P et chargez-la.",
     "mismatchDetail": "Le vérificateur a trouvé des incohérences {count}.",
     "noImprovementDetail": "Le candidat vérifié est égal ou supérieur au titulaire. {suffix}",
     "pageClosed": "La page était fermée.",
@@ -115,7 +115,6 @@
     "searchingDetail": "Les îlots de travail typés évaluent les programmes VM exacts et les résidus canoniques.",
     "stopped": "Arrêté",
     "stoppedByUser": "Arrêté par l'utilisateur.",
-    "timeCompleted": "Le budget temps configuré est terminé.",
     "verificationFailed": "La vérification a échoué"
   },
   "preview": {
@@ -133,16 +132,8 @@
   "controls": {
     "panelAria": "Contrôles des mineurs",
     "configuration": "Configuration",
-    "builtIn": "Vecteur intégré",
-    "normal": "Normale",
-    "complex": "Complexe",
-    "boundary": "Limite",
-    "loadSample": "Charger un exemple",
-    "localFile": "Fichier local",
-    "noFile": "Aucun fichier sélectionné",
     "workers": "Workers",
     "seed": "Semence",
-    "budget": "Budget temps (s)",
     "population": "Taille de la population",
     "miningAria": "Contrôles miniers",
     "start": "Commencer",
@@ -150,7 +141,7 @@
     "resume": "Reprendre",
     "stop": "Arrêter",
     "reset": "Réinitialiser",
-    "note": "Le minage ne démarre jamais automatiquement. La valeur par défaut laisse au moins un cœur logique disponible pour la page."
+    "note": "La recherche continue jusqu'à Pause ou Arrêt. Elle ne démarre jamais automatiquement et laisse au moins un cœur logique libre pour la page."
   },
   "ncm4": {
     "pasteLabel": "Coller du texte NCM3 ou NCM4P",
@@ -291,8 +282,8 @@
     "exactAnswer": "Non. Le vérificateur compare la sémantique canonique et chaque identité coordonnée/matérielle. Un voxel, un matériau, un champ de forge immuable ou une poignée modifié change le résultat.",
     "optimalQuestion": "Le mineur prouve-t-il un codage globalement le plus court ?",
     "optimalAnswer": "Non. Cela prouve qu’un candidat est exact, limité et strictement plus petit que le candidat sortant. Aucune amélioration trouvée n’est un résultat valide.",
-    "uploadQuestion": "Les fichiers locaux sont-ils téléchargés ?",
-    "uploadAnswer": "Non. Les fichiers sont transmis directement au Web Workers local. La page ne comprend aucun point de terminaison de téléchargement, télémétrie, CDN tiers, demande d'API GitHub, portefeuille ou client RPC.",
+    "uploadQuestion": "Le NCM collé quitte-t-il ce navigateur ?",
+    "uploadAnswer": "Non. Le NCM collé est transmis directement aux Web Workers locaux. La page ne comprend aucun point de terminaison de téléversement, télémétrie, CDN tiers, demande d'API GitHub, portefeuille ou client RPC.",
     "negativeQuestion": "Pourquoi un profil peut-il afficher des économies négatives ?",
     "negativeAnswer": "Certains actifs NCM3 ou NCF1 existants sont déjà très compacts. La démo rapporte qu'honnêtement et jamais, on ne réétiquete jamais les octets égaux ou plus grands comme des économies de stockage."
   },
@@ -319,8 +310,6 @@
     "engine": "Erreur moteur WASM",
     "generic": "Le moteur minier local s'est arrêté. Consultez la console du navigateur pour plus de détails techniques et réessayez.",
     "manifestHttp": "Le manifeste de version a renvoyé HTTP {status}.",
-    "sampleHttp": "L'exemple intégré a renvoyé HTTP {status}.",
-    "sampleMissing": "Aucun vecteur intégré n'est disponible pour {key}.",
     "stopped": "Arrêt après une erreur du moteur.",
     "title": "Erreur",
     "workerFailed": "Le travailleur {index} a échoué.",

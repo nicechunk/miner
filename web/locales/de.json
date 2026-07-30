@@ -75,7 +75,7 @@
     "forgeDetail": "Artikelinspektion"
   },
   "demo": {
-    "kicker": "Lokale Computerkonsole/Dateien bleiben auf diesem Gerät",
+    "kicker": "Lokale Rechenkonsole / eingefügter NCM-Text bleibt auf diesem Gerät",
     "title": "Labor zur Browserkomprimierung",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "Kompressionsprofil",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "Bereit",
-    "readyDetail": "Laden Sie ein Beispiel oder eine lokale Datei und drücken Sie dann Start.",
+    "readyDetail": "Das Standard-Cottage ist geladen. Fügen Sie NCM3 oder NCM4P ein und drücken Sie Start.",
     "exactNoImprovement": "Exakte Übereinstimmung · keine Speicherverbesserung",
     "exactSmaller": "Genaue Übereinstimmung · streng kleiner",
     "hiddenPaused": "Die Seite wurde ausgeblendet, sodass die lokale CPU-Arbeit angehalten wurde.",
     "inputChanged": "Eingabe geändert.",
     "inspecting": "Wird lokal geprüft",
     "inspectingDetail": "Der Rust/WASM-Kern kanonisiert dieses Asset.",
-    "loadFirst": "Laden Sie zuerst ein Beispiel oder eine lokale Datei.",
+    "loadFirst": "Fügen Sie zuerst NCM3 oder NCM4P ein und laden Sie den Text.",
     "mismatchDetail": "Der Prüfer hat {count} Nichtübereinstimmungen festgestellt.",
     "noImprovementDetail": "Der verifizierte Kandidat ist gleich oder größer als der Amtsinhaber. {suffix}",
     "pageClosed": "Die Seite wurde geschlossen.",
@@ -115,7 +115,6 @@
     "searchingDetail": "Typisierte Worker-Inseln werten exakte VM-Programme und kanonische Residuen aus.",
     "stopped": "Angehalten",
     "stoppedByUser": "Vom Benutzer gestoppt.",
-    "timeCompleted": "Das konfigurierte Zeitbudget ist abgeschlossen.",
     "verificationFailed": "Die Überprüfung ist fehlgeschlagen"
   },
   "preview": {
@@ -133,16 +132,8 @@
   "controls": {
     "panelAria": "Miner-Kontrollen",
     "configuration": "Konfiguration",
-    "builtIn": "Eingebauter Vektor",
-    "normal": "Normal",
-    "complex": "Komplex",
-    "boundary": "Grenze",
-    "loadSample": "Beispiel laden",
-    "localFile": "Lokale Datei",
-    "noFile": "Keine Datei ausgewählt",
     "workers": "Worker",
     "seed": "Samen",
-    "budget": "Zeitbudget (s)",
     "population": "Populationsgröße",
     "miningAria": "Bergbaukontrollen",
     "start": "Starten",
@@ -150,7 +141,7 @@
     "resume": "Fortsetzen",
     "stop": "Stopp",
     "reset": "Zurücksetzen",
-    "note": "Der Bergbau startet nie automatisch. Standardmäßig bleibt mindestens ein logischer Kern für die Seite verfügbar."
+    "note": "Die Suche läuft bis Pause oder Stopp weiter. Sie startet nie automatisch und lässt mindestens einen logischen Kern für die Seite frei."
   },
   "ncm4": {
     "pasteLabel": "NCM3- oder NCM4P-Text einfügen",
@@ -291,8 +282,8 @@
     "exactAnswer": "Nein. Der Prüfer vergleicht die kanonische Semantik und jede Koordinaten-/Materialidentität. Ein geändertes Voxel, Material, unveränderliches Schmiedefeld oder Griff ändert das Ergebnis.",
     "optimalQuestion": "Beweist der Miner eine weltweit kürzeste Kodierung?",
     "optimalAnswer": "Nein. Es beweist, dass ein Kandidat exakt, begrenzt und strikt kürzer ist als der Amtsinhaber. Keine gefundene Verbesserung ist ein gültiges Ergebnis.",
-    "uploadQuestion": "Werden lokale Dateien hochgeladen?",
-    "uploadAnswer": "Nein. Dateien werden direkt an den lokalen Web Workers übergeben. Die Seite enthält keinen Upload-Endpunkt, keine Telemetrie, kein Drittanbieter-CDN, keine GitHub-API-Anfrage, kein Wallet und keinen RPC-Client.",
+    "uploadQuestion": "Verlässt eingefügter NCM-Text diesen Browser?",
+    "uploadAnswer": "Nein. Eingefügter NCM-Text wird direkt an lokale Web Workers übergeben. Die Seite enthält keinen Upload-Endpunkt, keine Telemetrie, kein Drittanbieter-CDN, keine GitHub-API-Anfrage, kein Wallet und keinen RPC-Client.",
     "negativeQuestion": "Warum kann ein Profil negative Einsparungen anzeigen?",
     "negativeAnswer": "Einige vorhandene NCM3- oder NCF1-Assets sind bereits sehr kompakt. Die Demo berichtet, dass gleiche oder größere Bytes ehrlich gesagt niemals als Speichereinsparungen umetikettiert werden."
   },
@@ -319,8 +310,6 @@
     "engine": "WASM Engine-Fehler",
     "generic": "Die lokale Mining-Engine wurde gestoppt. Überprüfen Sie die Browserkonsole auf technische Details und versuchen Sie es erneut.",
     "manifestHttp": "Das Release-Manifest hat HTTP {status} zurückgegeben.",
-    "sampleHttp": "Das integrierte Beispiel gab HTTP {status} zurück.",
-    "sampleMissing": "Für {key} ist kein integrierter Vektor verfügbar.",
     "stopped": "Nach einem Engine-Fehler gestoppt.",
     "title": "Fehler",
     "workerFailed": "Worker {index} ist fehlgeschlagen.",

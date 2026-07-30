@@ -75,7 +75,7 @@
     "forgeDetail": "物品检视"
   },
   "demo": {
-    "kicker": "本地计算控制台 / 文件仅保留在此设备",
+    "kicker": "本地计算控制台 / 粘贴的 NCM 仅保留在此设备",
     "title": "浏览器压缩实验室",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "压缩类型",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "就绪",
-    "readyDetail": "加载示例或本地文件，然后点击“开始”。",
+    "readyDetail": "默认基础小屋已加载。粘贴 NCM3 或 NCM4P 后点击“开始”。",
     "exactNoImprovement": "精确匹配 · 未节省存储空间",
     "exactSmaller": "精确匹配 · 编码更小",
     "hiddenPaused": "页面进入后台，本地 CPU 计算已暂停。",
     "inputChanged": "输入已更改。",
     "inspecting": "正在本地检验",
     "inspectingDetail": "Rust/WASM 核心正在规范化此资源。",
-    "loadFirst": "请先加载示例或本地文件。",
+    "loadFirst": "请先粘贴并加载 NCM3 或 NCM4P 内容。",
     "mismatchDetail": "验证器发现 {count} 处不匹配。",
     "noImprovementDetail": "验证后的候选编码不小于现有编码。{suffix}",
     "pageClosed": "页面已关闭。",
@@ -115,7 +115,6 @@
     "searchingDetail": "各工作线程岛正在评估精确的 VM 程序与规范残差。",
     "stopped": "已停止",
     "stoppedByUser": "用户已停止。",
-    "timeCompleted": "设定的时间预算已用完。",
     "verificationFailed": "验证失败"
   },
   "preview": {
@@ -133,16 +132,8 @@
   "controls": {
     "panelAria": "Miner 控制",
     "configuration": "配置",
-    "builtIn": "内置测试向量",
-    "normal": "普通",
-    "complex": "复杂",
-    "boundary": "边界",
-    "loadSample": "加载示例",
-    "localFile": "本地文件",
-    "noFile": "未选择文件",
     "workers": "工作线程",
     "seed": "种子",
-    "budget": "时间预算（秒）",
     "population": "种群规模",
     "miningAria": "搜索控制",
     "start": "开始",
@@ -150,7 +141,7 @@
     "resume": "继续",
     "stop": "停止",
     "reset": "重置",
-    "note": "搜索不会自动启动。默认配置会为页面至少保留一个逻辑 CPU 核心。"
+    "note": "搜索会持续运行，直到点击暂停或停止；不会自动启动，并会为页面至少保留一个逻辑 CPU 核心。"
   },
   "ncm4": {
     "pasteLabel": "粘贴 NCM3 或 NCM4P 文本",
@@ -291,8 +282,8 @@
     "exactAnswer": "不是。验证器会比较规范语义以及每个坐标和材质身份。任意一个体素、材质、不可变锻造字段或握持点发生变化，结果都会不同。",
     "optimalQuestion": "Miner 能证明这是全局最短编码吗？",
     "optimalAnswer": "不能。它只能证明某个候选编码精确、有界且严格小于现有编码。未找到改进同样是有效结果。",
-    "uploadQuestion": "本地文件会被上传吗？",
-    "uploadAnswer": "不会。文件只会直接传给本地 Web Workers。页面没有上传端点、遥测、第三方 CDN、GitHub API 请求、钱包或 RPC 客户端。",
+    "uploadQuestion": "粘贴的 NCM 会离开当前浏览器吗？",
+    "uploadAnswer": "不会。粘贴的 NCM 只会直接传给本地 Web Workers。页面没有上传端点、遥测、第三方 CDN、GitHub API 请求、钱包或 RPC 客户端。",
     "negativeQuestion": "为什么某些类型会显示负节省？",
     "negativeAnswer": "部分 NCM3 或 NCF1 资源本身已高度紧凑。演示会如实报告，绝不会把相同或更大的编码标记为节省存储。"
   },
@@ -319,8 +310,6 @@
     "engine": "WASM 引擎错误",
     "generic": "本地矿工引擎已停止。请在浏览器控制台查看技术详情后重试。",
     "manifestHttp": "发布清单返回 HTTP {status}。",
-    "sampleHttp": "内置示例返回 HTTP {status}。",
-    "sampleMissing": "没有适用于 {key} 的内置测试向量。",
     "stopped": "因引擎错误而停止。",
     "title": "错误",
     "workerFailed": "工作线程 {index} 运行失败。",

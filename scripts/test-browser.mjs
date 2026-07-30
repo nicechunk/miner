@@ -9,6 +9,15 @@ import { chromium, firefox, webkit } from "playwright";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = resolve(root, "web", "dist");
+const sourceHtml = await readFile(resolve(root, "web", "index.html"), "utf8");
+const defaultCottageNcm3 = sourceHtml.match(/<textarea id="inputText"[^>]*>(NCM3:[^<]+)<\/textarea>/u)?.[1];
+assert(defaultCottageNcm3, "Default Hollow Cottage NCM3 input is missing");
+const buildingInputs = Object.fromEntries(await Promise.all(
+  ["normal-box", "boundary", "complex-cottage"].map(async (name) => [
+    name,
+    (await readFile(resolve(root, "test-vectors", "building", `${name}.ncm3`), "utf8")).trim(),
+  ]),
+));
 const wasmDelayMs = Math.max(0, Number(process.env.POUW_WASM_DELAY_MS || 0));
 const requestedBrowserNames = String(process.env.POUW_BROWSER_TARGETS || "")
   .split(",")
@@ -162,9 +171,31 @@ async function testBrowser(browser, label, origin, requests) {
     assert(await page.locator(".miner-world-fallback").isVisible(), `${label} static world fallback is hidden`);
   }
   await page.waitForFunction(() => document.getElementById("engineBadge")?.classList.contains("ready"), null, { timeout: initializationTimeout });
-  assert(await page.locator("#incumbentBytes").textContent() !== "—", "sample inspection should populate bytes");
-  assert(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-profile") === "terrain_delta", `${label} preview must track the inspected profile`);
+  await page.waitForFunction(() => document.getElementById("inputFormat")?.textContent === "ncm3-v1", null, { timeout: 30_000 });
+  await page.locator("#ncmPreviewFrame").scrollIntoViewIfNeeded();
+  try {
+    await page.waitForFunction(() => {
+      const canvas = document.getElementById("ncmPreviewCanvas");
+      return canvas?.dataset.previewProfile === "building"
+        && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
+    }, null, { timeout: 30_000 });
+  } catch (error) {
+    console.error(`${label} default NCM preview diagnostics`, {
+      canvas: await page.locator("#ncmPreviewCanvas").evaluate((canvas) => ({ ...canvas.dataset })),
+      frame: await page.locator("#ncmPreviewFrame").getAttribute("data-preview-state"),
+      message: await page.locator("#ncmPreviewMessage").textContent(),
+      status: await page.locator("#statusBanner").textContent(),
+      errors,
+    });
+    throw error;
+  }
+  assert(await page.locator("#inputText").inputValue() === defaultCottageNcm3, `${label} default paste input is not the current Hollow Cottage NCM3`);
+  assert(await page.locator("#incumbentBytes").textContent() !== "—", "default pasted NCM inspection should populate bytes");
+  assert(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-profile") === "building", `${label} preview must track the default NCM building`);
   assert(await page.locator("#ncmPreviewRoot").textContent() === await page.locator("#targetRoot").textContent(), `${label} preview root must come from the WASM inspection`);
+  for (const removedId of ["sampleSelect", "loadSampleButton", "fileInput", "fileName", "timeBudget"]) {
+    assert(await page.locator(`#${removedId}`).count() === 0, `${label} still exposes removed control #${removedId}`);
+  }
   if (label === "WebKit") assert(await page.locator("#workerCount").inputValue() === "1", "WebKit must default to one mining worker");
   if (observeWorkers) {
     assert(await page.evaluate(() => window.__nicechunkWorkerNames.filter((name) => name === "nicechunk-pouw-control").length) === 1, `${label} must reuse one WASM control worker`);
@@ -191,162 +222,123 @@ async function testBrowser(browser, label, origin, requests) {
   await page.locator("#localeSelect").selectOption("en");
   await page.waitForFunction(() => document.documentElement.lang === "en");
 
-  const profileViews = { terrain_delta: "terrain", building: "building", forged_item: "forged" };
-  for (const profile of ["terrain_delta", "building", "forged_item"]) {
-    await page.locator("#sampleSelect").selectOption(profile === "building" ? "complex" : "normal");
-    const startDisabledDuringInspection = await page.evaluate((value) => {
-      document.querySelector(`[data-scene-profile="${value}"]`)?.click();
-      document.getElementById("startButton")?.click();
-      return document.getElementById("startButton")?.disabled;
-    }, profile);
-    assert(startDisabledDuringInspection, `${label} Start must stay disabled while ${profile} is being inspected`);
-    await page.waitForFunction((value) => document.querySelector(`[data-profile="${value}"]`)?.getAttribute("aria-selected") === "true", profile);
-    await page.waitForFunction((view) => document.getElementById("minerWorldCanvas")?.dataset.sceneView === view, profileViews[profile]);
-    if (profile === "forged_item" && hasWebGlScene) {
-      await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.sceneActorRoles === "forged-item");
-      assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-actor-count") === "1", `${label} forge view must isolate one forged item`);
-    }
-    try {
-      await page.waitForFunction(() => document.getElementById("statusBanner")?.textContent.includes("Ready"), null, { timeout: 30_000 });
-    } catch (error) {
-      console.error("profile load diagnostics", {
-        profile,
-        language: await page.locator("html").getAttribute("lang"),
-        status: await page.locator("#statusBanner").textContent(),
-        engine: await page.locator("#engineBadge").textContent(),
-        errors,
-      });
-      throw error;
-    }
-    if (profile === "building") {
-      await page.waitForFunction(() => {
-        const canvas = document.getElementById("ncmPreviewCanvas");
-        return canvas?.dataset.previewProfile === "building"
-          && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
-      }, null, { timeout: 30_000 });
-      assert(await page.locator("#ncmPreviewFormat").textContent() === "ncm3-v1", `${label} building preview must identify the real NCM3 source`);
-      assert(/^\d+ × \d+ × \d+$/u.test(await page.locator("#ncmPreviewDimensions").textContent()), `${label} building preview dimensions are missing`);
-      assert(Number((await page.locator("#ncmPreviewVoxels").textContent()).replaceAll(",", "")) > 0, `${label} building preview voxel count is missing`);
-      assert(await page.locator("#ncmPreviewRoot").textContent() === await page.locator("#targetRoot").textContent(), `${label} building preview semantic root differs from verification`);
-      if (hasWebGlScene) {
-        assert(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-ready") === "true", `${label} NCM preview did not render through Chunk.js WebGL2`);
-        assert(Number(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-chunks")) > 0, `${label} NCM preview has no rendered chunks`);
-      } else {
-        assert(await page.locator("#ncmPreviewFrame").getAttribute("data-preview-state") === "error", `${label} NCM preview did not expose its WebGL fallback`);
-        assert(await page.locator(".ncm-preview-fallback").isVisible(), `${label} NCM preview fallback is hidden`);
-      }
+  await page.locator('[data-scene-profile="terrain_delta"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-profile="terrain_delta"]')?.getAttribute("aria-selected") === "true");
+  await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.sceneView === "terrain");
+  assert(await page.locator("#inputText").inputValue() === "", `${label} profile switch must not inject a built-in sample`);
+  assert(await page.locator("#startButton").isDisabled(), `${label} Start must remain disabled until pasted input is inspected`);
+  await page.locator("#resetButton").click();
+  await page.waitForFunction(() => document.querySelector('[data-profile="building"]')?.getAttribute("aria-selected") === "true");
+  await page.waitForFunction(() => document.getElementById("inputFormat")?.textContent === "ncm3-v1");
+  assert(await page.locator("#inputText").inputValue() === defaultCottageNcm3, `${label} Reset did not restore the default cottage paste value`);
 
-      const complexPreview = await previewSnapshot(page);
-      for (const variant of ["normal", "boundary"]) {
-        await page.locator("#sampleSelect").selectOption(variant);
-        await page.waitForFunction((previousRoot) => {
-          const canvas = document.getElementById("ncmPreviewCanvas");
-          return canvas?.dataset.previewProfile === "building"
-            && Boolean(canvas.dataset.previewSemanticRoot)
-            && canvas.dataset.previewSemanticRoot !== previousRoot
-            && document.getElementById("targetRoot")?.textContent === canvas.dataset.previewSemanticRoot
-            && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
-        }, complexPreview.root, { timeout: 30_000 });
-        await page.waitForFunction(() => document.getElementById("statusBanner")?.textContent.includes("Ready"), null, { timeout: 30_000 });
-        const variantPreview = await previewSnapshot(page);
-        assert(variantPreview.root !== complexPreview.root, `${label} ${variant} NCM fixture reused the complex semantic root`);
-        assert(variantPreview.root === await page.locator("#targetRoot").textContent(), `${label} ${variant} preview root differs from verification`);
-        assert(JSON.stringify(variantPreview) !== JSON.stringify(complexPreview), `${label} ${variant} NCM preview data did not change`);
-      }
-      await page.locator("#sampleSelect").selectOption("complex");
-      await page.waitForFunction((complexRoot) => (
-        document.getElementById("ncmPreviewCanvas")?.dataset.previewSemanticRoot === complexRoot
-        && document.getElementById("targetRoot")?.textContent === complexRoot
-        && (document.getElementById("ncmPreviewCanvas")?.dataset.previewReady === "true"
-          || Boolean(document.getElementById("ncmPreviewCanvas")?.dataset.previewError))
-      ), complexPreview.root, { timeout: 30_000 });
-      await page.waitForFunction(() => document.getElementById("statusBanner")?.textContent.includes("Ready"), null, { timeout: 30_000 });
-    }
-    if (observeWorkers) {
-      assert(await page.evaluate(() => window.__nicechunkWorkerNames.filter((name) => name === "nicechunk-pouw-control").length) === 1, `${label} created duplicate WASM control workers`);
-    }
-    await page.locator("#timeBudget").fill(profile === "forged_item" ? "2" : "30");
-    await page.locator("#workerCount").fill(label === "WebKit" ? "1" : "2");
-    await page.locator("#populationInput").fill("8");
-    await page.locator("#startButton").click();
-    await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "running");
-    if (profile === "terrain_delta") {
-      await page.locator("#pauseButton").click();
-      await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "paused");
-      await page.waitForFunction(() => !document.getElementById("resumeButton")?.disabled);
-      await page.locator("#resumeButton").click();
-      await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "running");
-      await page.waitForFunction(() => !document.getElementById("pauseButton")?.disabled);
-    }
-    assert(await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => resolveFrame(true)))), `${label} main thread did not reach an animation frame`);
-    try {
-      await page.waitForFunction(() => document.getElementById("exactStatus")?.textContent === "Exact Match", null, { timeout: 30_000 });
-    } catch (error) {
-      console.error("browser diagnostics", {
-        profile,
-        status: await page.locator("#statusBanner").textContent(),
-        engine: await page.locator("#engineBadge").textContent(),
-        errors,
-      });
-      throw error;
-    }
-    assert(await page.locator("#mismatchCount").textContent() === "0", `${profile} mismatch count should be zero`);
-    if (profile === "building") {
-      await page.waitForFunction(() => Number(document.getElementById("generation")?.textContent || 0) >= 2);
-      const generationBeforePause = Number(await page.locator("#generation").textContent());
-      await page.locator("#pauseButton").click();
-      await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "paused");
-      await page.locator("#resumeButton").click();
-      await page.waitForFunction((previous) => Number(document.getElementById("generation")?.textContent || 0) > previous, generationBeforePause);
-      assert(await page.locator("#inputFormat").textContent() === "ncm3-v1", `${label} building source format was not detected`);
-      assert(await page.locator("#selectedFormat").textContent() === "ncm4-pouw-v1", `${label} shorter NCM4 witness was not selected`);
-      assert(await page.locator("#candidateBytes").textContent() === "57 B", `${label} deterministic NCM4 witness byte count changed`);
-      assert(!(await page.locator("#downloadCandidate").isDisabled()), `${label} NCM4 candidate download should be enabled`);
-      assert(!(await page.locator("#downloadCheckpoint").isDisabled()), `${label} NCM4 checkpoint download should be enabled`);
-      assert(!(await page.locator("#downloadReport").isDisabled()), `${label} NCM4 JSON report should be enabled`);
-      assert(await page.locator("#downloadResult").isDisabled(), `${label} NCM4 must not expose a nonexistent NCPV result`);
-      assert(await page.locator("#downloadTask").isDisabled(), `${label} NCM4 must not expose a nonexistent NCPV task`);
-      const downloadPromise = page.waitForEvent("download");
-      await page.locator("#downloadCandidate").click();
-      const download = await downloadPromise;
-      ncm4CandidateBytes = await readFile(await download.path());
-      assert(ncm4CandidateBytes.length === 57, `${label} downloaded NCM4 candidate has the wrong byte length`);
-    } else {
-      assert(!(await page.locator("#downloadResult").isDisabled()), `${profile} result download should be enabled`);
-    }
-    await page.evaluate(() => {
-      const button = document.getElementById("stopButton");
-      if (button && !button.disabled) button.click();
-    });
-    await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "stopped");
-    await page.waitForFunction(() => document.getElementById("workerStatus")?.textContent.startsWith("0 worker"), null, { timeout: 5_000 });
-    if (profile === "building") {
-      const semanticRoot = await page.locator("#targetRoot").textContent();
-      await page.waitForFunction((root) => new Promise((resolveCheckpoint) => {
-        const request = indexedDB.open("nicechunk-miner", 3);
-        request.onerror = () => resolveCheckpoint(false);
-        request.onsuccess = () => {
-          const database = request.result;
-          const lookup = database.transaction("ncm4-checkpoints-v2", "readonly")
-            .objectStore("ncm4-checkpoints-v2")
-            .getAll();
-          lookup.onerror = () => resolveCheckpoint(false);
-          lookup.onsuccess = () => {
-            database.close();
-            resolveCheckpoint(lookup.result.some((record) => (
-              record.key?.startsWith(`${root}:`) && record.checkpointBase64
-            )));
-          };
-        };
-      }), semanticRoot, { timeout: 5_000 });
-    }
+  const defaultPreview = await previewSnapshot(page);
+  for (const variant of ["normal-box", "boundary"]) {
+    await page.locator("#inputText").fill(buildingInputs[variant]);
+    await page.locator("#loadTextButton").click();
+    await page.waitForFunction((previousRoot) => {
+      const canvas = document.getElementById("ncmPreviewCanvas");
+      return canvas?.dataset.previewProfile === "building"
+        && Boolean(canvas.dataset.previewSemanticRoot)
+        && canvas.dataset.previewSemanticRoot !== previousRoot
+        && document.getElementById("targetRoot")?.textContent === canvas.dataset.previewSemanticRoot
+        && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
+    }, defaultPreview.root, { timeout: 30_000 });
+    const variantPreview = await previewSnapshot(page);
+    assert(variantPreview.root !== defaultPreview.root, `${label} ${variant} reused the default cottage semantic root`);
+    assert(variantPreview.root === await page.locator("#targetRoot").textContent(), `${label} ${variant} preview root differs from verification`);
+    assert(JSON.stringify(variantPreview) !== JSON.stringify(defaultPreview), `${label} ${variant} NCM preview data did not change`);
   }
+
+  await page.locator("#inputText").fill(buildingInputs["complex-cottage"]);
+  await page.locator("#loadTextButton").click();
+  await page.waitForFunction(() => document.getElementById("statusBanner")?.textContent.includes("Ready"), null, { timeout: 30_000 });
+  await page.waitForFunction(() => {
+    const canvas = document.getElementById("ncmPreviewCanvas");
+    return canvas?.dataset.previewProfile === "building"
+      && (canvas.dataset.previewReady === "true" || Boolean(canvas.dataset.previewError));
+  }, null, { timeout: 30_000 });
+  assert(await page.locator("#ncmPreviewFormat").textContent() === "ncm3-v1", `${label} building preview must identify the real NCM3 source`);
+  assert(/^\d+ × \d+ × \d+$/u.test(await page.locator("#ncmPreviewDimensions").textContent()), `${label} building preview dimensions are missing`);
+  assert(Number((await page.locator("#ncmPreviewVoxels").textContent()).replaceAll(",", "")) > 0, `${label} building preview voxel count is missing`);
+  assert(await page.locator("#ncmPreviewRoot").textContent() === await page.locator("#targetRoot").textContent(), `${label} building preview semantic root differs from verification`);
+  if (hasWebGlScene) {
+    assert(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-ready") === "true", `${label} NCM preview did not render through Chunk.js WebGL2`);
+    assert(Number(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-chunks")) > 0, `${label} NCM preview has no rendered chunks`);
+  } else {
+    assert(await page.locator("#ncmPreviewFrame").getAttribute("data-preview-state") === "error", `${label} NCM preview did not expose its WebGL fallback`);
+    assert(await page.locator(".ncm-preview-fallback").isVisible(), `${label} NCM preview fallback is hidden`);
+  }
+  if (observeWorkers) {
+    assert(await page.evaluate(() => window.__nicechunkWorkerNames.filter((name) => name === "nicechunk-pouw-control").length) === 1, `${label} created duplicate WASM control workers`);
+  }
+
+  await page.locator("#workerCount").fill(label === "WebKit" ? "1" : "2");
+  await page.locator("#populationInput").fill("8");
+  await page.locator("#startButton").click();
+  await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "running");
+  assert(await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => resolveFrame(true)))), `${label} main thread did not reach an animation frame`);
+  try {
+    await page.waitForFunction(() => document.getElementById("exactStatus")?.textContent === "Exact Match", null, { timeout: 30_000 });
+  } catch (error) {
+    console.error("browser diagnostics", {
+      profile: "building",
+      status: await page.locator("#statusBanner").textContent(),
+      engine: await page.locator("#engineBadge").textContent(),
+      errors,
+    });
+    throw error;
+  }
+  assert(await page.locator("#mismatchCount").textContent() === "0", "building mismatch count should be zero");
+  await page.waitForFunction(() => Number(document.getElementById("generation")?.textContent || 0) >= 2);
+  const generationWhileRunning = Number(await page.locator("#generation").textContent());
+  await page.waitForTimeout(750);
+  assert(await page.locator("#minerWorldCanvas").getAttribute("data-scene-phase") === "running", `${label} search stopped without a user action`);
+  await page.waitForFunction((previous) => Number(document.getElementById("generation")?.textContent || 0) > previous, generationWhileRunning);
+  const generationBeforePause = Number(await page.locator("#generation").textContent());
+  await page.locator("#pauseButton").click();
+  await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "paused");
+  await page.locator("#resumeButton").click();
+  await page.waitForFunction((previous) => Number(document.getElementById("generation")?.textContent || 0) > previous, generationBeforePause);
+  assert(await page.locator("#inputFormat").textContent() === "ncm3-v1", `${label} building source format was not detected`);
+  assert(await page.locator("#selectedFormat").textContent() === "ncm4-pouw-v1", `${label} shorter NCM4 witness was not selected`);
+  assert(await page.locator("#candidateBytes").textContent() === "57 B", `${label} deterministic NCM4 witness byte count changed`);
+  assert(!(await page.locator("#downloadCandidate").isDisabled()), `${label} NCM4 candidate download should be enabled`);
+  assert(!(await page.locator("#downloadCheckpoint").isDisabled()), `${label} NCM4 checkpoint download should be enabled`);
+  assert(!(await page.locator("#downloadReport").isDisabled()), `${label} NCM4 JSON report should be enabled`);
+  assert(await page.locator("#downloadResult").isDisabled(), `${label} NCM4 must not expose a nonexistent NCPV result`);
+  assert(await page.locator("#downloadTask").isDisabled(), `${label} NCM4 must not expose a nonexistent NCPV task`);
+  const downloadPromise = page.waitForEvent("download");
+  await page.locator("#downloadCandidate").click();
+  const download = await downloadPromise;
+  ncm4CandidateBytes = await readFile(await download.path());
+  assert(ncm4CandidateBytes.length === 57, `${label} downloaded NCM4 candidate has the wrong byte length`);
+  await page.evaluate(() => document.getElementById("stopButton")?.click());
+  await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "stopped");
+  await page.waitForFunction(() => document.getElementById("workerStatus")?.textContent.startsWith("0 worker"), null, { timeout: 5_000 });
+  const semanticRoot = await page.locator("#targetRoot").textContent();
+  await page.waitForFunction((root) => new Promise((resolveCheckpoint) => {
+    const request = indexedDB.open("nicechunk-miner", 3);
+    request.onerror = () => resolveCheckpoint(false);
+    request.onsuccess = () => {
+      const database = request.result;
+      const lookup = database.transaction("ncm4-checkpoints-v2", "readonly")
+        .objectStore("ncm4-checkpoints-v2")
+        .getAll();
+      lookup.onerror = () => resolveCheckpoint(false);
+      lookup.onsuccess = () => {
+        database.close();
+        resolveCheckpoint(lookup.result.some((record) => (
+          record.key?.startsWith(`${root}:`) && record.checkpointBase64
+        )));
+      };
+    };
+  }), semanticRoot, { timeout: 5_000 });
 
   assert(ncm4CandidateBytes, `${label} did not produce an NCM4 candidate for import testing`);
   {
     await page.locator('[data-scene-profile="terrain_delta"]').click();
     await page.waitForFunction(() => document.querySelector('[data-profile="terrain_delta"]')?.getAttribute("aria-selected") === "true");
-    await page.waitForFunction(() => document.getElementById("statusBanner")?.textContent.includes("Ready"));
     const textEncoding = `NCM4P:${Buffer.from(ncm4CandidateBytes).toString("base64url")}`;
     await page.locator("#inputText").fill(textEncoding);
     await page.locator("#loadTextButton").click();
@@ -361,7 +353,6 @@ async function testBrowser(browser, label, origin, requests) {
     assert(await page.locator("#candidateBytes").textContent() === "57 B", `${label} imported NCM4P text changed size`);
     await page.locator("#workerCount").fill("1");
     await page.locator("#populationInput").fill("4");
-    await page.locator("#timeBudget").fill("2");
     await page.locator("#startButton").click();
     await page.waitForFunction(() => Number(document.getElementById("generation")?.textContent || 0) > 0);
     assert(await page.locator("#exactStatus").textContent() === "Exact Match", `${label} NCM4 source search lost exactness`);
@@ -429,6 +420,7 @@ async function testBrowser(browser, label, origin, requests) {
   const diagnostics = browserRequests.filter((request) => request.url !== "/miner/assets/does-not-exist.js");
   assert(errors.length === 0, `${label} browser errors: ${errors.join(" | ")} · requests: ${diagnostics.map((request) => `${request.method} ${request.url}`).join(", ")}`);
   assert(browserRequests.every((request) => request.method === "GET"), `${label} observed a non-GET request`);
+  assert(browserRequests.every((request) => !request.url.includes("/samples/")), `${label} requested a removed built-in sample asset`);
   console.log(`${label} browser smoke passed with ${browserRequests.length} local GET requests and no uploads`);
 }
 

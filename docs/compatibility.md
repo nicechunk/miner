@@ -159,9 +159,10 @@ task/result protocol and is not wired into this miner.
 ## Website and Nginx
 
 The Miner build emits one static `web/dist` tree with content-hashed JS, CSS,
-WASM, locale, sample, image, and configuration assets. NiceChunk's complete
-static-site build publishes that output at `/miner/`; it never publishes the
-Rust source tree, test tools, dependency checkout, or build cache.
+WASM, locale, image, and configuration assets. It does not publish built-in
+test vectors; browser asset input is paste-only. NiceChunk's complete static-site
+build publishes that output at `/miner/`; it never publishes the Rust source
+tree, test tools, dependency checkout, or build cache.
 
 The production route serves existing `/miner/` files, but its current generic
 fallback still returns homepage HTML with HTTP 200 for missing JavaScript and

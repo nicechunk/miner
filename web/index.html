@@ -138,21 +138,21 @@
     <section id="demo" class="section demo-section" aria-labelledby="demoTitle">
       <div class="section-heading demo-heading">
         <div>
-          <p class="section-kicker" data-i18n="demo.kicker">Local compute console / files stay on this device</p>
+          <p class="section-kicker" data-i18n="demo.kicker">Local compute console / pasted NCM stays on this device</p>
           <h2 id="demoTitle" data-i18n="demo.title">Browser compression lab</h2>
         </div>
         <p class="workspace-id" data-i18n="demo.workspaceId">NC-POUW / VM-1</p>
       </div>
 
       <div class="profile-tabs" role="tablist" aria-label="Compression profile" data-i18n-aria-label="demo.profileAria">
-        <button type="button" role="tab" aria-selected="true" data-profile="terrain_delta" data-scene-view="terrain">
+        <button type="button" role="tab" aria-selected="false" data-profile="terrain_delta" data-scene-view="terrain">
           <img src="__TERRAIN_IMAGE_URL__" alt="" aria-hidden="true">
           <span class="profile-shade" aria-hidden="true"></span>
           <span class="profile-index" data-i18n="demo.tab1">Workload 01</span>
           <strong data-i18n="demo.terrain">Terrain Delta</strong>
           <small data-i18n="demo.terrainDetail">Canonical broken-block coordinates</small>
         </button>
-        <button type="button" role="tab" aria-selected="false" data-profile="building" data-scene-view="building">
+        <button type="button" role="tab" aria-selected="true" data-profile="building" data-scene-view="building">
           <img src="__BUILDING_IMAGE_URL__" alt="" aria-hidden="true">
           <span class="profile-shade" aria-hidden="true"></span>
           <span class="profile-index" data-i18n="demo.tab2">Workload 02</span>
@@ -173,7 +173,7 @@
           <div id="engineBadge" class="engine-badge" role="status" data-i18n="demo.engineLoading">WASM engine loading...</div>
           <div id="statusBanner" class="status-banner idle" role="status" aria-live="polite">
             <span class="status-dot" aria-hidden="true"></span>
-            <div class="status-copy"><strong data-i18n="status.ready">Ready</strong><span data-i18n="status.readyDetail">Load a sample or local file, then press Start.</span></div>
+            <div class="status-copy"><strong data-i18n="status.ready">Ready</strong><span data-i18n="status.readyDetail">The default cottage is loaded. Paste NCM3 or NCM4P, then press Start.</span></div>
           </div>
         </div>
 
@@ -201,24 +201,8 @@
 
         <aside class="control-panel" aria-label="Miner controls" data-i18n-aria-label="controls.panelAria">
           <div class="panel-label"><span data-i18n="controls.configuration">Configuration</span><span aria-hidden="true">02</span></div>
-          <div class="input-source">
-            <label><span data-i18n="controls.builtIn">Built-in vector</span>
-              <select id="sampleSelect">
-                <option value="normal" data-i18n="controls.normal">Normal</option>
-                <option value="complex" data-i18n="controls.complex">Complex</option>
-                <option value="boundary" data-i18n="controls.boundary">Boundary</option>
-              </select>
-            </label>
-            <button id="loadSampleButton" class="button compact secondary" type="button" data-i18n="controls.loadSample">Load sample</button>
-          </div>
-
-          <label class="file-picker"><span data-i18n="controls.localFile">Local file</span>
-            <input id="fileInput" type="file" accept=".ncbk,.ncm,.ncm3,.ncm4p,.nc4p,.ncf,.ncf1,.bin,.txt">
-            <span id="fileName" data-i18n="controls.noFile">No file selected</span>
-          </label>
-
           <label class="paste-source"><span data-i18n="ncm4.pasteLabel">Paste NCM3 or NCM4P text</span>
-            <textarea id="inputText" rows="3" spellcheck="false" data-i18n-placeholder="ncm4.pastePlaceholder" placeholder="NCM3:... or NCM4P:..."></textarea>
+            <textarea id="inputText" rows="7" spellcheck="false" data-i18n-placeholder="ncm4.pastePlaceholder" placeholder="NCM3:... or NCM4P:...">NCM3:ARgWEhkBRAMAAg8ADAE3BAEDDQAKAUYEAgMCCAABRgsCAwYIAAFGBwkDAwEAAUYEAg0NCAABRgQCBAAICAFGEQIEAAgCAUYRAgsACAEBRhECBwABAwFGEQgHAAIDATkEAgMACAABORECAwAIAAE5BAINAAgAATkRAg0ACAABOQMKAg8AAQE5AwoNDwABAUQHAAADAAIBRAgBAQIAAQpGBAsDAAoKRhELAwAKCGADCgIPDAk5AwoCDwwBPg0OBwEEAQFEDBMGAwAD</textarea>
           </label>
           <button id="loadTextButton" class="button compact secondary" type="button" data-i18n="ncm4.loadText">Load pasted input</button>
 
@@ -227,8 +211,7 @@
             <label><span data-i18n="controls.seed">Seed</span><input id="seedInput" type="number" min="0" max="4294967295" value="123"></label>
           </div>
           <div class="control-row">
-            <label><span data-i18n="controls.budget">Budget (s)</span><input id="timeBudget" type="number" min="1" max="300" value="8"></label>
-            <label><span data-i18n="controls.population">Population</span><input id="populationInput" type="number" min="4" max="256" step="4" value="24"></label>
+            <label class="population-control"><span data-i18n="controls.population">Population</span><input id="populationInput" type="number" min="4" max="256" step="4" value="24"></label>
           </div>
 
           <div class="transport" aria-label="Mining controls" data-i18n-aria-label="controls.miningAria">
@@ -241,7 +224,7 @@
             <button id="stopButton" class="button danger" type="button" disabled data-i18n="controls.stop">Stop</button>
             <button id="resetButton" class="button ghost" type="button" data-i18n="controls.reset">Reset</button>
           </div>
-          <p class="control-note" data-i18n="controls.note">Mining never starts automatically. The default leaves at least one logical core available for the page.</p>
+          <p class="control-note" data-i18n="controls.note">Search runs continuously until Pause or Stop. It never starts automatically and leaves at least one logical core available for the page.</p>
         </aside>
 
         <div class="results-panel">
@@ -353,7 +336,7 @@ nicechunk-miner verify --task task.ncpow --result result.ncpow</code></pre>
         <h2 id="faqTitle" data-i18n="faq.title">FAQ</h2>
         <details><summary data-i18n="faq.exactQuestion">Does exact mean visually similar?</summary><p data-i18n="faq.exactAnswer">No. The verifier compares canonical semantics and every coordinate/material identity. One changed voxel, material, immutable forge field, or grip changes the result.</p></details>
         <details><summary data-i18n="faq.optimalQuestion">Does the miner prove a globally shortest encoding?</summary><p data-i18n="faq.optimalAnswer">No. It proves that one candidate is exact, bounded, and strictly shorter than the incumbent. No improvement found is a valid result.</p></details>
-        <details><summary data-i18n="faq.uploadQuestion">Are local files uploaded?</summary><p data-i18n="faq.uploadAnswer">No. Files are passed directly to local Web Workers. The page includes no upload endpoint, telemetry, third-party CDN, GitHub API request, wallet, or RPC client.</p></details>
+        <details><summary data-i18n="faq.uploadQuestion">Does pasted NCM leave this browser?</summary><p data-i18n="faq.uploadAnswer">No. Pasted NCM is passed directly to local Web Workers. The page includes no upload endpoint, telemetry, third-party CDN, GitHub API request, wallet, or RPC client.</p></details>
         <details><summary data-i18n="faq.negativeQuestion">Why can a profile show negative savings?</summary><p data-i18n="faq.negativeAnswer">Some existing NCM3 or NCF1 assets are already highly compact. The demo reports that honestly and never relabels equal or larger bytes as storage savings.</p></details>
       </div>
 

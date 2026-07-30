@@ -40,7 +40,8 @@ In the NiceChunk source-of-truth checkout also run
 current real ChunkBroken SDK, NCM3, and NCF1 JavaScript decoders.
 
 `web/dist` uses relative asset URLs and is valid at `/miner/`. JS, CSS, WASM,
-logo, locale, and fixture names contain a 12-hex SHA-256 prefix. HTML and the
+logo, locale, and presentation-image names contain a 12-hex SHA-256 prefix.
+Repository test vectors are not included in the public bundle. HTML and the
 release manifest are deliberately unhashed.
 
 Create a content-addressed handoff artifact:

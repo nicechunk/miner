@@ -4,7 +4,6 @@ const WORKER_URL = new URL("__WORKER_URL__", import.meta.url);
 const SCENE_URL = new URL("__SCENE_URL__", import.meta.url);
 const SITE_CONFIG_URL = new URL("__SITE_CONFIG_URL__", import.meta.url);
 const RELEASE_MANIFEST_URL = new URL("../release-manifest.json", import.meta.url);
-const SAMPLE_URLS = __SAMPLE_URLS__;
 const ENGINE_REQUEST_TIMEOUT_MS = 120_000;
 let worldScene = null;
 let ncmPreviewScene = null;
@@ -19,9 +18,8 @@ const checkpointPersistence = {
 };
 
 const elements = Object.fromEntries([
-  "localeSelect", "sampleSelect", "loadSampleButton", "fileInput", "fileName",
-  "inputText", "loadTextButton", "analyzeButton", "decodeButton", "verifyButton",
-  "workerCount", "seedInput", "timeBudget", "populationInput", "startButton",
+  "localeSelect", "inputText", "loadTextButton", "analyzeButton", "decodeButton", "verifyButton",
+  "workerCount", "seedInput", "populationInput", "startButton",
   "pauseButton", "resumeButton", "stopButton", "resetButton", "statusBanner",
   "engineBadge", "incumbentBytes", "candidateBytes", "savedBytes", "savedPercent",
   "attempts", "attemptRate", "elapsed", "workerStatus", "decodeUnits", "programBytes",
@@ -36,7 +34,7 @@ const elements = Object.fromEntries([
 ].map((id) => [id, document.getElementById(id)]));
 
 const state = {
-  profile: "terrain_delta",
+  profile: "building",
   input: null,
   inputName: "",
   inspect: null,
@@ -75,21 +73,26 @@ async function initialize() {
   await loadSiteConfig();
   await loadReleaseManifest();
   await probeEngine();
-  await loadSample();
+  await loadPastedInput();
   drawCurve();
 }
 
 function bindEvents() {
   bindHeaderMenu();
   document.querySelectorAll("[data-profile]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      if (state.phase === "running" || state.phase === "paused") stopWorkers("status.profileChanged");
-      state.profile = button.dataset.profile;
-      document.querySelectorAll("[data-profile]").forEach((item) => {
-        item.setAttribute("aria-selected", String(item === button));
-      });
-      dispatchSceneProfile();
-      await loadSample();
+    button.addEventListener("click", () => {
+      if (button.dataset.profile === state.profile) {
+        dispatchSceneProfile();
+        return;
+      }
+      beginInputLoad();
+      state.phase = "idle";
+      selectProfileWithoutLoading(button.dataset.profile);
+      elements.inputText.value = "";
+      dispatchScenePhase();
+      setTranslatedStatus("idle", "status.ready", "status.loadFirst");
+      updateButtons();
+      render();
     });
   });
   document.querySelectorAll("[data-scene-profile]").forEach((button) => {
@@ -97,9 +100,6 @@ function bindEvents() {
       document.querySelector(`.profile-tabs [data-profile="${button.dataset.sceneProfile}"]`)?.click();
     });
   });
-  elements.loadSampleButton.addEventListener("click", () => loadSample().catch(fail));
-  elements.sampleSelect.addEventListener("change", () => loadSample().catch(fail));
-  elements.fileInput.addEventListener("change", () => loadLocalFile().catch(fail));
   elements.loadTextButton.addEventListener("click", () => loadPastedInput().catch(fail));
   elements.analyzeButton.addEventListener("click", () => analyzeNcm4(true).catch(fail));
   elements.decodeButton.addEventListener("click", () => decodeCurrent().catch(fail));
@@ -233,33 +233,13 @@ function renderEngineBadge() {
   }
 }
 
-async function loadSample() {
-  const revision = beginInputLoad();
-  const key = `${state.profile}:${elements.sampleSelect.value}`;
-  const url = SAMPLE_URLS[key];
-  if (!url) throw new Error(t("errors.sampleMissing", { key }));
-  const response = await fetch(new URL(url, import.meta.url), { cache: "no-cache" });
-  if (!response.ok) throw new Error(t("errors.sampleHttp", { status: response.status }));
-  const input = new Uint8Array(await response.arrayBuffer());
-  if (revision !== state.inputRevision) return;
-  await setInput(input, url.split("/").at(-1), revision);
-}
-
-async function loadLocalFile() {
-  const file = elements.fileInput.files?.[0];
-  if (!file) return;
-  const revision = beginInputLoad();
-  const input = new Uint8Array(await file.arrayBuffer());
-  if (revision !== state.inputRevision) return;
-  await setInput(input, file.name, revision);
-}
-
 async function loadPastedInput() {
   const value = elements.inputText.value.trim();
   if (!value) throw new Error(t("ncm4.pasteRequired"));
   const revision = beginInputLoad();
   const input = new TextEncoder().encode(value);
-  await setInput(input, "pasted-input.txt", revision);
+  const name = value.startsWith("NCM4P:") ? "pasted-input.nc4p" : "pasted-input.ncm3";
+  await setInput(input, name, revision);
 }
 
 function beginInputLoad() {
@@ -294,8 +274,6 @@ async function setInput(input, name, revision) {
   state.workerAttempts.clear();
   state.curve = [];
   state.elapsedBeforePause = 0;
-  elements.fileName.removeAttribute("data-i18n");
-  elements.fileName.textContent = name;
   const detectedProfile = detectInputProfile(input, name);
   if (detectedProfile && detectedProfile !== state.profile) selectProfileWithoutLoading(detectedProfile);
   setTranslatedStatus("idle", "status.inspecting", "status.inspectingDetail");
@@ -533,17 +511,12 @@ async function reset() {
   stopWorkers("status.reset", false);
   state.phase = "idle";
   dispatchScenePhase();
-  elements.fileInput.value = "";
-  await loadSample();
+  elements.inputText.value = elements.inputText.defaultValue.trim();
+  await loadPastedInput();
 }
 
 function tick() {
   if (state.phase !== "running") return;
-  const budgetMs = clampInteger(elements.timeBudget.value, 1, 300) * 1000;
-  if (elapsedMs() >= budgetMs) {
-    stopWorkers("status.timeCompleted");
-    return;
-  }
   renderDynamicMetrics();
 }
 

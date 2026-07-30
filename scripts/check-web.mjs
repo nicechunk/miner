@@ -18,6 +18,15 @@ const expectedLocales = ["en", "es", "fr", "de", "ja", "ru", "ko", "zh-Hant", "z
 if (/__[A-Z0-9_]+__/u.test(html) || /(?:src|href)=["']\/assets\//u.test(html)) throw new Error("index.html contains an unresolved placeholder or root asset path");
 if (/<(?:script|link)[^>]+https?:\/\//iu.test(html)) throw new Error("index.html includes a third-party script or stylesheet");
 if (!/<button id="startButton"[^>]*\bdisabled\b/iu.test(html)) throw new Error("Miner Start must be disabled before inspection completes");
+if (/id="(?:sampleSelect|loadSampleButton|fileInput|fileName|timeBudget)"/u.test(html)) {
+  throw new Error("Miner must expose paste-only asset input without a time budget");
+}
+if ("samples" in manifest || (await readdir(resolve(dist, "assets"))).includes("samples")) {
+  throw new Error("Built-in test vectors must not be published with the Miner web app");
+}
+if (/\b(?:SAMPLE_URLS|loadSample|loadLocalFile|timeBudget)\b/u.test(sourceApp)) {
+  throw new Error("Miner runtime still contains a sample, file-upload, or time-budget path");
+}
 if (release.available === false && (release.artifacts.length || release.releaseUrl || release.repository)) {
   throw new Error("Unreleased manifest contains release links or artifacts");
 }
@@ -40,6 +49,11 @@ if (!sourceScene.includes("NCM3:") || !sourceScene.includes("EQUIPMENT_MODEL_ID.
 if (!sourceScene.includes('"leftBlade"') || !sourceScene.includes('"rightBlade"')) {
   throw new Error("Forged item display must retain a recognizable two-sided pickaxe silhouette");
 }
+const defaultNcm = html.match(/<textarea id="inputText"[^>]*>(NCM3:[^<]+)<\/textarea>/u)?.[1];
+const sceneCottage = sourceScene.match(/const COTTAGE_NCM3 = "([^"]+)"/u)?.[1];
+if (!defaultNcm || defaultNcm !== sceneCottage) {
+  throw new Error("Paste input must default to the current Hollow Cottage NCM3 encoding");
+}
 if (!html.includes('id="ncmPreviewCanvas"') || !sourceScene.includes("createNcmPreviewScene") || !sourceScene.includes("createCanonicalBuildingPlacement")) {
   throw new Error("Miner must render Rust/WASM canonical NCM semantics in the left 3D preview");
 }
@@ -55,7 +69,6 @@ for (const [key, suffix] of Object.entries({ source: "", docs: "/tree/main/docs"
 }
 
 for (const path of Object.values(manifest.assets)) await access(resolve(dist, path));
-for (const path of Object.values(manifest.samples)) await access(resolve(dist, "assets", path.replace(/^\.\//u, "")));
 for (const path of Object.values(manifest.locales)) await access(resolve(dist, "assets", path.replace(/^\.\//u, "")));
 
 const localeNames = Object.keys(manifest.locales);

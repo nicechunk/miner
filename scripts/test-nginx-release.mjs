@@ -135,7 +135,8 @@ async function smoke(origin, expectedRelease) {
   assert(assetManifest.headers.get("cache-control")?.includes("no-cache"), "Asset manifest is not no-cache");
   assert(assetManifest.headers.get("x-content-type-options") === "nosniff", "Asset manifest is missing nosniff");
   assert(JSON.stringify(await assetManifest.json()) === JSON.stringify(manifest), "Published asset manifest does not match the release");
-  const paths = [...Object.values(manifest.assets), ...Object.values(manifest.samples), ...Object.values(manifest.locales)]
+  assert(!("samples" in manifest), "Public Miner manifest must not contain built-in samples");
+  const paths = [...Object.values(manifest.assets), ...Object.values(manifest.locales)]
     .map((path) => path.replace(/^\.\//u, "assets/"));
   for (const path of paths) {
     const response = await fetch(`${origin}/miner/${path}`);

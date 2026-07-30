@@ -8,8 +8,8 @@ VM, semantic root, encoding hash, or verifier.
 
 ## Execution model
 
-- The main thread loads static configuration, reads local files, renders the
-  UI, and draws the lightweight gain curve.
+- The main thread loads static configuration, accepts pasted NCM3/NCM4P text,
+  renders the UI, and draws the lightweight gain curve.
 - Each ordinary Web Worker initializes its own WASM instance and one
   single-threaded search island.
 - Work runs in bounded one-generation slices so Pause/Stop/UI messages have a
@@ -32,9 +32,12 @@ capability degrades to semantic and byte summaries without affecting mining.
 
 ## Controls and truthful metrics
 
-The app offers distinct Terrain, Building, and Forged Item fixtures plus local
-file input. It never starts CPU work automatically and defaults to at most
-`hardwareConcurrency - 1` Workers. Start, Pause, Resume, Stop, and Reset operate
+The app accepts asset input only through the NCM3/NCM4P paste field. It opens
+with the current Hollow Cottage NCM3 code in that field; repository fixtures
+remain test-only and are not bundled into the public site. It never starts CPU
+work automatically and defaults to at most `hardwareConcurrency - 1` Workers.
+After Start, search continues without a time budget until Pause, Stop, page
+visibility suspension, or unload. Start, Pause, Resume, Stop, and Reset operate
 on real Workers.
 
 All displayed byte counts, semantic roots, encoding hashes, mismatch counts,
@@ -47,7 +50,7 @@ Candidate bytes, canonical ResultV1, TaskV1, and a JSON verification report can
 be downloaded locally. The copied CLI command verifies the binary Task/Result
 pair; it does not claim a chain submission.
 
-NCM4 input can be pasted as `NCM4P:` or imported as binary. Fast Analyze,
+NCM4 input can be pasted as `NCM4P:`. Fast Analyze,
 Decode, Verify, Start Deep Search, checkpoint import/export, NCM4 export, and
 JSON reports all call the Rust/WASM core. The UI shows source/candidate formats,
 header/body/residual/total bytes, witness and fallback state, generation,
@@ -63,10 +66,10 @@ that richer visualization remains follow-up work.
 ## Network behavior
 
 Production runtime requests are limited to same-origin static HTML, hashed
-CSS/JS/WASM/logo/locales/examples, site configuration, and the no-cache release
-manifest. No user file is uploaded. There is no backend, database, service
-worker, wallet, RPC, IPFS, GitHub API, third-party CDN/font, analytics, beacon,
-WebSocket, or telemetry integration.
+CSS/JS/WASM/logo/locales, site configuration, and the no-cache release
+manifest. Pasted NCM text never leaves the browser. There is no backend,
+database, service worker, wallet, RPC, IPFS, GitHub API, third-party CDN/font,
+analytics, beacon, WebSocket, or telemetry integration.
 
 The page visibly states:
 

@@ -75,7 +75,7 @@
     "forgeDetail": "Item inspection"
   },
   "demo": {
-    "kicker": "Local compute console / files stay on this device",
+    "kicker": "Local compute console / pasted NCM stays on this device",
     "title": "Browser compression lab",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "Compression profile",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "Ready",
-    "readyDetail": "Load a sample or local file, then press Start.",
+    "readyDetail": "The default cottage is loaded. Paste NCM3 or NCM4P, then press Start.",
     "exactNoImprovement": "Exact Match · no storage improvement",
     "exactSmaller": "Exact Match · strictly smaller",
     "hiddenPaused": "The page became hidden, so local CPU work was paused.",
     "inputChanged": "Input changed.",
     "inspecting": "Inspecting locally",
     "inspectingDetail": "The Rust/WASM core is canonicalizing this asset.",
-    "loadFirst": "Load a sample or local file first.",
+    "loadFirst": "Paste an NCM3 or NCM4P value and load it first.",
     "mismatchDetail": "The verifier found {count} mismatches.",
     "noImprovementDetail": "The verified candidate is equal to or larger than the incumbent. {suffix}",
     "pageClosed": "The page was closed.",
@@ -115,7 +115,6 @@
     "searchingDetail": "Typed worker islands are evaluating exact VM programs and canonical residuals.",
     "stopped": "Stopped",
     "stoppedByUser": "Stopped by user.",
-    "timeCompleted": "The configured time budget completed.",
     "verificationFailed": "Verification failed"
   },
   "preview": {
@@ -133,16 +132,8 @@
   "controls": {
     "panelAria": "Miner controls",
     "configuration": "Configuration",
-    "builtIn": "Built-in vector",
-    "normal": "Normal",
-    "complex": "Complex",
-    "boundary": "Boundary",
-    "loadSample": "Load sample",
-    "localFile": "Local file",
-    "noFile": "No file selected",
     "workers": "Workers",
     "seed": "Seed",
-    "budget": "Budget (s)",
     "population": "Population",
     "miningAria": "Mining controls",
     "start": "Start",
@@ -150,7 +141,7 @@
     "resume": "Resume",
     "stop": "Stop",
     "reset": "Reset",
-    "note": "Mining never starts automatically. The default leaves at least one logical core available for the page."
+    "note": "Search runs continuously until Pause or Stop. It never starts automatically and leaves at least one logical core available for the page."
   },
   "ncm4": {
     "pasteLabel": "Paste NCM3 or NCM4P text",
@@ -291,8 +282,8 @@
     "exactAnswer": "No. The verifier compares canonical semantics and every coordinate/material identity. One changed voxel, material, immutable forge field, or grip changes the result.",
     "optimalQuestion": "Does the miner prove a globally shortest encoding?",
     "optimalAnswer": "No. It proves that one candidate is exact, bounded, and strictly shorter than the incumbent. No improvement found is a valid result.",
-    "uploadQuestion": "Are local files uploaded?",
-    "uploadAnswer": "No. Files are passed directly to local Web Workers. The page includes no upload endpoint, telemetry, third-party CDN, GitHub API request, wallet, or RPC client.",
+    "uploadQuestion": "Does pasted NCM leave this browser?",
+    "uploadAnswer": "No. Pasted NCM is passed directly to local Web Workers. The page includes no upload endpoint, telemetry, third-party CDN, GitHub API request, wallet, or RPC client.",
     "negativeQuestion": "Why can a profile show negative savings?",
     "negativeAnswer": "Some existing NCM3 or NCF1 assets are already highly compact. The demo reports that honestly and never relabels equal or larger bytes as storage savings."
   },
@@ -319,8 +310,6 @@
     "engine": "WASM engine error",
     "generic": "The local mining engine stopped. Check the browser console for technical details and try again.",
     "manifestHttp": "The release manifest returned HTTP {status}.",
-    "sampleHttp": "The built-in sample returned HTTP {status}.",
-    "sampleMissing": "No built-in vector is available for {key}.",
     "stopped": "Stopped after an engine error.",
     "title": "Error",
     "workerFailed": "Worker {index} failed.",
