@@ -4,6 +4,13 @@ All notable Miner changes are documented here. The project uses Semantic
 Versioning while protocol, VM, cost-model, and codec versions are tracked
 independently.
 
+## 0.2.0-alpha.2 - 2026-07-30
+
+### Fixed
+
+- Give the browser pause/resume smoke test enough search budget on slower CI
+  runners so it cannot finish naturally before Playwright clicks Pause.
+
 ## 0.2.0-alpha.1 - 2026-07-30
 
 ### Added

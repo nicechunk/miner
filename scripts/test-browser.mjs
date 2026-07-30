@@ -219,7 +219,7 @@ async function testBrowser(browser, label, origin, requests) {
     if (observeWorkers) {
       assert(await page.evaluate(() => window.__nicechunkWorkerNames.filter((name) => name === "nicechunk-pouw-control").length) === 1, `${label} created duplicate WASM control workers`);
     }
-    await page.locator("#timeBudget").fill(profile === "terrain_delta" ? "10" : "2");
+    await page.locator("#timeBudget").fill(profile === "forged_item" ? "2" : "30");
     await page.locator("#workerCount").fill(label === "WebKit" ? "1" : "2");
     await page.locator("#populationInput").fill("8");
     await page.locator("#startButton").click();

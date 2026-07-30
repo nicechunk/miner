@@ -133,8 +133,8 @@ marks the tag release as a pre-release.
 Release tags must exactly equal the workspace/package version, for example:
 
 ```bash
-git tag -a v0.2.0-alpha.1 -m "Release NCM4 Alpha 1"
-git push origin v0.2.0-alpha.1
+git tag -a v0.2.0-alpha.2 -m "Release NCM4 Alpha 2"
+git push origin v0.2.0-alpha.2
 ```
 
 Do not create or advertise download links until the workflow has uploaded and

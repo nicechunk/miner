@@ -1,7 +1,7 @@
 # NiceChunk Proof of Useful Work Miner
 
 This repository is the source of truth for the NiceChunk Proof of Useful Work
-Miner. Version `0.2.0-alpha.1` adds the experimental NCM4 PoUW codec and a
+Miner. Version `0.2.0-alpha.2` adds the experimental NCM4 PoUW codec and a
 persistent multi-island search session while preserving NCM3 byte-for-byte.
 It contains the deterministic core and verifier, native CLI, WASM bindings,
 static browser miner, schemas, vectors, benchmarks, and release automation.

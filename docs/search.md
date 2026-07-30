@@ -1,7 +1,7 @@
 # PoUW Search v1
 
 This document describes the original cross-profile PoUW VM search. Miner
-`0.2.0-alpha.1` also includes a separate persistent NCM4 Building session; see
+`0.2.0-alpha.2` also includes a separate persistent NCM4 Building session; see
 `ncm4-search.md`. Newly written checkpoints for both engines store complete
 island populations, strategies, and deterministic RNG-generation state. The
 original `CheckpointV1` reader still accepts older best-only files and resumes
