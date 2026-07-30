@@ -1,66 +1,66 @@
 {
   "schemaVersion": 1,
-  "softwareVersion": "0.2.0-alpha.3",
+  "softwareVersion": "0.2.0-alpha.4",
   "protocolVersion": 1,
   "vmVersion": 1,
   "costModelVersion": 1,
-  "commit": "f5a09d7e786be29f17c34c26f5fd8f405bec150a",
+  "commit": "662d7695f783e6dcf439c600ecae46bd39e9cb5f",
   "available": true,
   "repository": "https://github.com/nicechunk/miner",
-  "releaseUrl": "https://github.com/nicechunk/miner/releases/tag/v0.2.0-alpha.3",
+  "releaseUrl": "https://github.com/nicechunk/miner/releases/tag/v0.2.0-alpha.4",
   "artifacts": [
     {
       "platform": "Linux x86_64",
       "platformId": "linux-x86_64",
       "target": "x86_64-unknown-linux-gnu",
-      "archive": "nicechunk-miner-0.2.0-alpha.3-linux-x86_64.tar.gz",
-      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-linux-x86_64.tar.gz",
-      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-linux-x86_64.tar.gz.sha256",
-      "sha256": "a687fb1d3bbacd9097e4922673bdbaee4166ed1135d99f843c16add178374e6b"
+      "archive": "nicechunk-miner-0.2.0-alpha.4-linux-x86_64.tar.gz",
+      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.4/nicechunk-miner-0.2.0-alpha.4-linux-x86_64.tar.gz",
+      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.4/nicechunk-miner-0.2.0-alpha.4-linux-x86_64.tar.gz.sha256",
+      "sha256": "e643f03e2d8c6c98155c789ee9c68397d2db54d35cb303b3ec11b6839aa4c392"
     },
     {
       "platform": "Linux ARM64",
       "platformId": "linux-aarch64",
       "target": "aarch64-unknown-linux-gnu",
-      "archive": "nicechunk-miner-0.2.0-alpha.3-linux-aarch64.tar.gz",
-      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-linux-aarch64.tar.gz",
-      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-linux-aarch64.tar.gz.sha256",
-      "sha256": "0167ceab30adca420dd52f93844c712263e2a7365f58efb31e1c99db57894cb1"
+      "archive": "nicechunk-miner-0.2.0-alpha.4-linux-aarch64.tar.gz",
+      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.4/nicechunk-miner-0.2.0-alpha.4-linux-aarch64.tar.gz",
+      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.4/nicechunk-miner-0.2.0-alpha.4-linux-aarch64.tar.gz.sha256",
+      "sha256": "8d7ea58a8dfc1f9fa10e813ef16abb8567847ce1ae5f704373a02069cce5aa42"
     },
     {
       "platform": "Windows x86_64",
       "platformId": "windows-x86_64",
       "target": "x86_64-pc-windows-msvc",
-      "archive": "nicechunk-miner-0.2.0-alpha.3-windows-x86_64.zip",
-      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-windows-x86_64.zip",
-      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-windows-x86_64.zip.sha256",
-      "sha256": "8df7d0cc156f1d2d52ba0045f64fb3062cc9c076e3aef194d99c5731a20331c9"
+      "archive": "nicechunk-miner-0.2.0-alpha.4-windows-x86_64.zip",
+      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.4/nicechunk-miner-0.2.0-alpha.4-windows-x86_64.zip",
+      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.4/nicechunk-miner-0.2.0-alpha.4-windows-x86_64.zip.sha256",
+      "sha256": "c0b108ebabfdff2dea689f90b42622afa3c9dd9980b003347f21afeed80cc22f"
     },
     {
       "platform": "macOS Apple Silicon",
       "platformId": "macos-aarch64",
       "target": "aarch64-apple-darwin",
-      "archive": "nicechunk-miner-0.2.0-alpha.3-macos-aarch64.tar.gz",
-      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-macos-aarch64.tar.gz",
-      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-macos-aarch64.tar.gz.sha256",
-      "sha256": "b01ddcceba348544faba9fb6268067faa7e9d75abcfd0289cddc2795a5ef000b"
+      "archive": "nicechunk-miner-0.2.0-alpha.4-macos-aarch64.tar.gz",
+      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.4/nicechunk-miner-0.2.0-alpha.4-macos-aarch64.tar.gz",
+      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.4/nicechunk-miner-0.2.0-alpha.4-macos-aarch64.tar.gz.sha256",
+      "sha256": "405eabbaadc93c2d8e8cf26c9b8244200bb4beaae53709f556840367d26fa7d7"
     },
     {
       "platform": "macOS Intel",
       "platformId": "macos-x86_64",
       "target": "x86_64-apple-darwin",
-      "archive": "nicechunk-miner-0.2.0-alpha.3-macos-x86_64.tar.gz",
-      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-macos-x86_64.tar.gz",
-      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/nicechunk-miner-0.2.0-alpha.3-macos-x86_64.tar.gz.sha256",
-      "sha256": "1d818ad47d42e870f315e0f315dc7220f27e305ea6ba3b6056ce9fc21e69ec9f"
+      "archive": "nicechunk-miner-0.2.0-alpha.4-macos-x86_64.tar.gz",
+      "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.4/nicechunk-miner-0.2.0-alpha.4-macos-x86_64.tar.gz",
+      "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.4/nicechunk-miner-0.2.0-alpha.4-macos-x86_64.tar.gz.sha256",
+      "sha256": "9eea7f571830acbe28e3a888038976d8292151eaa541ffc236c2a2b47578b402"
     }
   ],
   "webBundle": {
     "platform": "Web/WASM static bundle",
-    "archive": "miner-0.2.0-alpha.3-0eca71a61707dc0a.tar.gz",
-    "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/miner-0.2.0-alpha.3-0eca71a61707dc0a.tar.gz",
-    "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.3/miner-0.2.0-alpha.3-0eca71a61707dc0a.sha256",
-    "sha256": "26c55512022695c3edede23f68e49f68936b335a56e59b76fad5ad61fb8c0826"
+    "archive": "miner-0.2.0-alpha.4-81a70a85c8f1d1f2.tar.gz",
+    "downloadUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.4/miner-0.2.0-alpha.4-81a70a85c8f1d1f2.tar.gz",
+    "checksumUrl": "https://github.com/nicechunk/miner/releases/download/v0.2.0-alpha.4/miner-0.2.0-alpha.4-81a70a85c8f1d1f2.sha256",
+    "sha256": "924b2924ed1482c6ffc1037590e8dd53d566f68cdff7ea9d473a94f4fab20f16"
   },
   "message": "Every CLI archive passed its native self-test; the Web/WASM bundle passed native/WASM consistency and browser smoke tests before publication."
 }
