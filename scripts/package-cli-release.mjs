@@ -50,7 +50,25 @@ const archiveName = `nicechunk-miner-${version}-${platform}.${entry.archiveExten
 const archive = resolve(output, archiveName);
 await rm(archive, { force: true });
 if (entry.archiveExtension === "zip") {
-  execFileSync("tar", ["-a", "-cf", archiveName, "-C", stageName, "."], { cwd: output, stdio: "inherit" });
+  if (process.platform !== "win32") throw new Error("ZIP release packaging requires Windows");
+  execFileSync("powershell.exe", [
+    "-NoLogo",
+    "-NoProfile",
+    "-NonInteractive",
+    "-Command",
+    "[System.IO.Compression.ZipFile]::CreateFromDirectory($env:NICECHUNK_RELEASE_STAGE, $env:NICECHUNK_RELEASE_ARCHIVE, [System.IO.Compression.CompressionLevel]::Optimal, $false)",
+  ], {
+    env: {
+      ...process.env,
+      NICECHUNK_RELEASE_ARCHIVE: archive,
+      NICECHUNK_RELEASE_STAGE: stage,
+    },
+    stdio: "inherit",
+  });
+  const signature = (await readFile(archive)).subarray(0, 4).toString("hex");
+  if (!["504b0304", "504b0506", "504b0708"].includes(signature)) {
+    throw new Error("Windows release archive is not a valid ZIP container");
+  }
 } else {
   execFileSync("tar", ["-czf", archiveName, "-C", stageName, "."], { cwd: output, stdio: "inherit" });
 }

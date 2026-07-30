@@ -25,6 +25,7 @@ for (const platform of platformConfig) {
   const matches = files.filter((path) => basename(path) === name);
   if (matches.length !== 1) throw new Error(`Expected exactly one ${name}, found ${matches.length}`);
   const archive = matches[0];
+  await verifyArchiveSignature(archive, platform.archiveExtension);
   const digest = await sha256(archive);
   const sidecars = files.filter((path) => basename(path) === `${name}.sha256`);
   if (sidecars.length !== 1) throw new Error(`Expected exactly one ${name}.sha256`);
@@ -83,6 +84,16 @@ async function walk(path) {
 
 async function sha256(path) {
   return createHash("sha256").update(await readFile(path)).digest("hex");
+}
+
+async function verifyArchiveSignature(path, extension) {
+  const header = (await readFile(path)).subarray(0, 4).toString("hex");
+  if (extension === "zip" && !["504b0304", "504b0506", "504b0708"].includes(header)) {
+    throw new Error(`${basename(path)} is not a ZIP container`);
+  }
+  if (extension === "tar.gz" && !header.startsWith("1f8b")) {
+    throw new Error(`${basename(path)} is not a gzip container`);
+  }
 }
 
 function parseArgs(args) {

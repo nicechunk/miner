@@ -147,6 +147,8 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           EXPECTED="$(node -p "require('./package.json').version")"
           test "$VERSION" = "$EXPECTED"
+          for archive in artifacts/*.tar.gz; do tar -tzf "$archive" >/dev/null; done
+          for archive in artifacts/*.zip; do unzip -t "$archive" >/dev/null; done
           node scripts/generate-release-manifest.mjs \
             --repository "$GITHUB_REPOSITORY" \
             --tag "$GITHUB_REF_NAME" \
