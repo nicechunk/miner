@@ -313,7 +313,11 @@ async function testBrowser(browser, label, origin, requests) {
     await page.locator("#startButton").click();
     await page.waitForFunction(() => Number(document.getElementById("generation")?.textContent || 0) > 0);
     assert(await page.locator("#exactStatus").textContent() === "Exact Match", `${label} NCM4 source search lost exactness`);
-    await page.locator("#stopButton").click();
+    await page.evaluate(() => {
+      const button = document.getElementById("stopButton");
+      if (button && !button.disabled) button.click();
+    });
+    await page.waitForFunction(() => document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "stopped");
     await page.waitForFunction(() => document.getElementById("workerStatus")?.textContent.startsWith("0 worker"));
   }
 

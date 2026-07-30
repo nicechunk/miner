@@ -4,6 +4,13 @@ All notable Miner changes are documented here. The project uses Semantic
 Versioning while protocol, VM, cost-model, and codec versions are tracked
 independently.
 
+## 0.2.0-alpha.3 - 2026-07-30
+
+### Fixed
+
+- Make the imported-NCM4 browser stop assertion idempotent when a constrained
+  search finishes naturally before Playwright requests Stop.
+
 ## 0.2.0-alpha.2 - 2026-07-30
 
 ### Fixed

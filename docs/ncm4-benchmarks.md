@@ -3,7 +3,7 @@
 ## Method
 
 Measurements were taken on 2026-07-30 UTC with
-`nicechunk-miner 0.2.0-alpha.2`, Rust 1.88.0, and the NCM4 Alpha change set
+`nicechunk-miner 0.2.0-alpha.3`, Rust 1.88.0, and the NCM4 Alpha change set
 based on Miner commit `f88b6773be9f5a13fa505dffd1a76092b3d28afc`. The
 release tag/manifest records the final immutable commit SHA. Host:
 
