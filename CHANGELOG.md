@@ -6,6 +6,8 @@ independently.
 
 ## Unreleased
 
+## 0.2.0-alpha.5 - 2026-07-30
+
 ### Fixed
 
 - Evaluate every island's offspring in one ordered Rayon batch so native

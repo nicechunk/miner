@@ -90,6 +90,7 @@ if (options.notes) {
     + "- VM version: `1`\n"
     + "- Cost model version: `1`\n\n"
     + "All CLI archives were built on their native GitHub-hosted runner, passed `nicechunk-miner self-test`, and include binary SHA-256 values in `SHA256SUMS`. The Web/WASM archive passed consistency and local-only browser tests. Archive hashes are published as adjacent `.sha256` assets, the aggregate `SHA256SUMS`, and `release-manifest.json`.\n\n"
+    + "Native NCM4 offspring evaluation is batched across all persistent islands, allowing `--threads` to use cores beyond the configured island count while preserving fixed-seed and checkpoint results.\n\n"
     + "NCM4 Alpha adds the distinct `NC4P`/`NCM4P:` exact building codec, language preflight, persistent multi-island search, checkpoint/resume, and NCM3 fallback when NCM4 is not smaller. ChunkBroken v1, unchanged NCM3 v1, and complete NCF1 v15 import remain supported. Terrain and forged-item NCM4 currently use exact wrappers rather than the compact building grammar. This native/WASM research preview does not submit transactions or issue rewards.\n";
   await writeFile(resolve(options.notes), notes);
 }

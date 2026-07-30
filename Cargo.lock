@@ -391,7 +391,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "pouw-cli"
-version = "0.2.0-alpha.4"
+version = "0.2.0-alpha.5"
 dependencies = [
  "base64",
  "clap",
@@ -405,7 +405,7 @@ dependencies = [
 
 [[package]]
 name = "pouw-core"
-version = "0.2.0-alpha.4"
+version = "0.2.0-alpha.5"
 dependencies = [
  "base64",
  "proptest",
@@ -416,7 +416,7 @@ dependencies = [
 
 [[package]]
 name = "pouw-search"
-version = "0.2.0-alpha.4"
+version = "0.2.0-alpha.5"
 dependencies = [
  "pouw-core",
  "rand_chacha 0.3.1",
@@ -428,7 +428,7 @@ dependencies = [
 
 [[package]]
 name = "pouw-wasm"
-version = "0.2.0-alpha.4"
+version = "0.2.0-alpha.5"
 dependencies = [
  "base64",
  "pouw-core",

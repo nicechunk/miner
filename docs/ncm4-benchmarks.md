@@ -3,9 +3,11 @@
 ## Method
 
 Measurements were taken on 2026-07-30 UTC with
-`nicechunk-miner 0.2.0-alpha.4`, Rust 1.88.0, and the NCM4 Alpha change set
-based on Miner commit `f88b6773be9f5a13fa505dffd1a76092b3d28afc`. The
-release tag/manifest records the final immutable commit SHA. Host:
+`nicechunk-miner 0.2.0-alpha.5`, Rust 1.88.0, and the NCM4 Alpha change set
+based on Miner commit `f88b6773be9f5a13fa505dffd1a76092b3d28afc` for the
+storage fixtures and `af54e076c1359a62efb2549bdb4939f16fe93060` for the
+population-parallel comparison. The release tag/manifest records the final
+immutable commit SHA. Host:
 
 - x86_64 Linux;
 - two Intel Xeon E5-2680 v2 sockets at 2.80 GHz;
@@ -100,6 +102,25 @@ The 12-thread run created and evolved 12 islands, providing direct evidence
 that the former eight-island ceiling is gone. Scaling is not linear because
 candidate serialization/decoding, allocation, memory bandwidth, and the mixed
 island workloads remain significant.
+
+### Threads beyond the island count
+
+Alpha 5 also flattens every island's offspring into one ordered Rayon batch.
+This keeps 12 persistent islands while allowing a larger thread pool to evaluate
+their combined population. The comparison used 40 threads, 12 islands,
+population 64, 50 generations, and seed 123 on `complex-cottage`:
+
+| Evaluator | Attempts | Elapsed ms | Mean CPU cores | Attempts/s | Relative elapsed |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Island-only parallelism | 36,000 | 16,592 | 8.56 | 2,169.72 | 1.00x |
+| Ordered population batch | 36,000 | 8,046 | 24.57 | 4,474.27 | 0.48x |
+
+The candidate archive and complete checkpoint had identical SHA-256 values in
+both runs. A separate oversubscription check with `--threads 190 --islands 12`
+created 192 process threads (190 Rayon workers plus the main and signal threads)
+and completed 144,000 exact attempts in 26,898 ms on this 40-logical-CPU host.
+Thread creation does not imply 190 simultaneously executing cores when the host
+has fewer hardware threads.
 
 ## Upgrade comparison
 
