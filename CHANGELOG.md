@@ -6,6 +6,12 @@ independently.
 
 ## Unreleased
 
+### Fixed
+
+- Evaluate every island's offspring in one ordered Rayon batch so native
+  `--threads` can use cores beyond the configured island count while preserving
+  fixed-seed and checkpoint behavior.
+
 ## 0.2.0-alpha.4 - 2026-07-30
 
 ### Added

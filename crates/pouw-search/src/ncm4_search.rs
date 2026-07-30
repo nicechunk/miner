@@ -442,6 +442,8 @@ impl Ncm4SearchSession {
 #[cfg(feature = "parallel")]
 struct Ncm4Executor {
     pool: rayon::ThreadPool,
+    #[cfg(test)]
+    probe: Option<std::sync::Arc<ParallelEvaluationProbe>>,
 }
 
 #[cfg(feature = "parallel")]
@@ -454,6 +456,8 @@ impl Ncm4Executor {
                 .map_err(|error| {
                     Error::new(ErrorKind::Internal, "ncm4-rayon-pool", error.to_string())
                 })?,
+            #[cfg(test)]
+            probe: None,
         })
     }
 
@@ -466,11 +470,20 @@ impl Ncm4Executor {
         generations: u32,
     ) -> Result<()> {
         use rayon::prelude::*;
-        self.pool.install(|| {
-            islands
-                .par_iter_mut()
-                .try_for_each(|island| evolve(island, target, limits, config, generations))
-        })
+        for _ in 0..generations {
+            let (prepared, work) = prepare_generation_batch(islands, config);
+            let evaluated = self.pool.install(|| {
+                work.into_par_iter()
+                    .map(|work| {
+                        #[cfg(test)]
+                        let _probe_guard = self.probe.as_ref().map(|probe| probe.enter());
+                        evaluate_work(work, target, limits)
+                    })
+                    .collect()
+            });
+            commit_generation_batch(islands, prepared, evaluated)?;
+        }
+        Ok(())
     }
 }
 
@@ -491,23 +504,46 @@ impl Ncm4Executor {
         config: &SearchConfig,
         generations: u32,
     ) -> Result<()> {
-        for island in islands {
-            evolve(island, target, limits, config, generations)?;
+        for _ in 0..generations {
+            let (prepared, work) = prepare_generation_batch(islands, config);
+            let evaluated = work
+                .into_iter()
+                .map(|work| evaluate_work(work, target, limits))
+                .collect();
+            commit_generation_batch(islands, prepared, evaluated)?;
         }
         Ok(())
     }
 }
 
-fn evolve(
-    island: &mut Ncm4IslandState,
-    target: &BuildingSemantics,
-    limits: &LimitsV1,
+struct PreparedIslandGeneration {
+    next: Vec<Ncm4SearchCandidate>,
+    offspring_count: usize,
+}
+
+struct OffspringWork {
+    program: Ncm4BuildingProgram,
+    fallback: Ncm4SearchCandidate,
+}
+
+struct EvaluatedOffspring {
+    candidate: Result<Ncm4SearchCandidate>,
+    fallback: Ncm4SearchCandidate,
+}
+
+fn prepare_generation_batch(
+    islands: &mut [Ncm4IslandState],
     config: &SearchConfig,
-    generations: u32,
-) -> Result<()> {
-    for _ in 0..generations {
+) -> (Vec<PreparedIslandGeneration>, Vec<OffspringWork>) {
+    let mut prepared = Vec::with_capacity(islands.len());
+    let offspring_per_island = config
+        .population
+        .saturating_sub(u32::from(config.elite_count)) as usize;
+    let mut work = Vec::with_capacity(offspring_per_island.saturating_mul(islands.len()));
+
+    for island in islands {
         island.population.sort_by(Ncm4SearchCandidate::fitness_cmp);
-        let mut next = island
+        let next = island
             .population
             .iter()
             .take(usize::from(config.elite_count))
@@ -517,7 +553,8 @@ fn evolve(
             .saturating_mul(u64::from(config.islands))
             .saturating_add(u64::from(island.index));
         let mut rng = generation_rng(config.seed, stream, island.generation);
-        while next.len() < config.population as usize {
+        let work_start = work.len();
+        while work.len() - work_start < offspring_per_island {
             let parent = tournament(&island.population, &mut rng, config.tournament_size).clone();
             let mut program =
                 if island.strategy == IslandStrategy::Genetic && rng.next_u32() % 100 < 40 {
@@ -536,19 +573,141 @@ fn evolve(
             }
             local_rewrite(&mut program);
             island.attempts = island.attempts.saturating_add(1);
-            match evaluate(program, target, limits) {
+            work.push(OffspringWork {
+                program,
+                fallback: parent,
+            });
+        }
+
+        prepared.push(PreparedIslandGeneration {
+            next,
+            offspring_count: offspring_per_island,
+        });
+    }
+
+    (prepared, work)
+}
+
+fn evaluate_work(
+    work: OffspringWork,
+    target: &BuildingSemantics,
+    limits: &LimitsV1,
+) -> EvaluatedOffspring {
+    EvaluatedOffspring {
+        candidate: evaluate(work.program, target, limits),
+        fallback: work.fallback,
+    }
+}
+
+fn commit_generation_batch(
+    islands: &mut [Ncm4IslandState],
+    prepared: Vec<PreparedIslandGeneration>,
+    evaluated: Vec<EvaluatedOffspring>,
+) -> Result<()> {
+    if islands.len() != prepared.len()
+        || evaluated.len()
+            != prepared
+                .iter()
+                .map(|island| island.offspring_count)
+                .sum::<usize>()
+    {
+        return Err(Error::new(
+            ErrorKind::Internal,
+            "ncm4-evaluation-batch",
+            "NCM4 parallel evaluation batch is incomplete.",
+        ));
+    }
+
+    // Indexed parallel iteration preserves this order. Committing in the same
+    // order as the old serial loop keeps seen-set and fallback behavior stable.
+    let mut evaluated = evaluated.into_iter();
+    for (island, mut prepared) in islands.iter_mut().zip(prepared) {
+        for _ in 0..prepared.offspring_count {
+            let Some(result) = evaluated.next() else {
+                return Err(Error::new(
+                    ErrorKind::Internal,
+                    "ncm4-evaluation-order",
+                    "NCM4 evaluation results ended before the generation was committed.",
+                ));
+            };
+            match result.candidate {
                 Ok(candidate) if island.seen.insert(candidate.encoding_hash) => {
-                    next.push(candidate)
+                    prepared.next.push(candidate)
                 }
-                _ => next.push(parent),
+                _ => prepared.next.push(result.fallback),
             }
         }
-        next.sort_by(Ncm4SearchCandidate::fitness_cmp);
-        island.population = next;
+        prepared.next.sort_by(Ncm4SearchCandidate::fitness_cmp);
+        island.population = prepared.next;
         island.generation = island.generation.saturating_add(1);
         island.rng_generation = island.generation;
     }
     Ok(())
+}
+
+#[cfg(all(test, feature = "parallel"))]
+struct ParallelEvaluationProbe {
+    active: std::sync::atomic::AtomicUsize,
+    max_active: std::sync::atomic::AtomicUsize,
+    workers: std::sync::Mutex<BTreeSet<usize>>,
+    delay: std::time::Duration,
+}
+
+#[cfg(all(test, feature = "parallel"))]
+impl ParallelEvaluationProbe {
+    fn new(delay: std::time::Duration) -> Self {
+        Self {
+            active: std::sync::atomic::AtomicUsize::new(0),
+            max_active: std::sync::atomic::AtomicUsize::new(0),
+            workers: std::sync::Mutex::new(BTreeSet::new()),
+            delay,
+        }
+    }
+
+    fn enter(&self) -> ParallelEvaluationGuard<'_> {
+        use std::sync::atomic::Ordering;
+
+        let active = self.active.fetch_add(1, Ordering::SeqCst) + 1;
+        let mut observed = self.max_active.load(Ordering::SeqCst);
+        while active > observed {
+            match self.max_active.compare_exchange_weak(
+                observed,
+                active,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            ) {
+                Ok(_) => break,
+                Err(current) => observed = current,
+            }
+        }
+        if let Some(index) = rayon::current_thread_index() {
+            self.workers.lock().unwrap().insert(index);
+        }
+        std::thread::sleep(self.delay);
+        ParallelEvaluationGuard { probe: self }
+    }
+
+    fn max_active(&self) -> usize {
+        self.max_active.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    fn worker_count(&self) -> usize {
+        self.workers.lock().unwrap().len()
+    }
+}
+
+#[cfg(all(test, feature = "parallel"))]
+struct ParallelEvaluationGuard<'a> {
+    probe: &'a ParallelEvaluationProbe,
+}
+
+#[cfg(all(test, feature = "parallel"))]
+impl Drop for ParallelEvaluationGuard<'_> {
+    fn drop(&mut self) {
+        self.probe
+            .active
+            .fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    }
 }
 
 fn evaluate(
@@ -1120,6 +1279,48 @@ mod tests {
             shard_index: 0,
             shard_count: 1,
         }
+    }
+
+    #[cfg(feature = "parallel")]
+    #[test]
+    fn population_batch_uses_more_workers_than_islands() {
+        let mut search_config = config(1);
+        search_config.threads = 8;
+        search_config.islands = 2;
+        search_config.population = 65;
+        search_config.memory_limit_bytes = 128 * 1024 * 1024;
+        let mut session = Ncm4SearchSession::new(fixture(), search_config).unwrap();
+        let probe = std::sync::Arc::new(ParallelEvaluationProbe::new(
+            std::time::Duration::from_millis(2),
+        ));
+        session.executor.probe = Some(probe.clone());
+
+        session.step(1, |_| {}).unwrap();
+
+        assert!(probe.max_active() > 2, "max active={}", probe.max_active());
+        assert!(
+            probe.worker_count() > 2,
+            "worker count={}",
+            probe.worker_count()
+        );
+    }
+
+    #[cfg(feature = "parallel")]
+    #[test]
+    fn parallel_batch_preserves_fixed_seed_trajectory() {
+        let mut single_config = config(3);
+        single_config.population = 12;
+        let mut parallel_config = single_config.clone();
+        parallel_config.threads = 8;
+
+        let mut single = Ncm4SearchSession::new(fixture(), single_config).unwrap();
+        let mut parallel = Ncm4SearchSession::new(fixture(), parallel_config).unwrap();
+        let single_outcome = single.step(3, |_| {}).unwrap();
+        let parallel_outcome = parallel.step(3, |_| {}).unwrap();
+
+        assert_eq!(single_outcome.best, parallel_outcome.best);
+        assert_eq!(single_outcome.attempts, parallel_outcome.attempts);
+        assert_eq!(single.state.islands, parallel.state.islands);
     }
 
     #[test]
