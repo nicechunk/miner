@@ -88,7 +88,7 @@ assert that malformed inputs return errors instead of panicking.
 
 ## Current chain boundary
 
-Alpha 1 is a native/WASM verifier. It has not been compiled, deployed, or
+Version 1 is a native/WASM verifier. It has not been compiled, deployed, or
 benchmarked as a Solana BPF program. No Program ID, PDA migration, reward,
 wallet, RPC submission, or mainnet confirmation is claimed.
 

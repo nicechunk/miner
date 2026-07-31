@@ -33,7 +33,7 @@ const LONG_VERSION: &str = concat!(
 #[command(
     name = "nicechunk-miner",
     version = LONG_VERSION,
-    about = "NiceChunk Proof of Useful Work Miner with NCM4 Alpha",
+    about = "NiceChunk Proof of Useful Work Miner with NCM4",
     long_about = "Deterministically compress, search, decode, and independently verify exact NiceChunk voxel assets with unchanged NCM3 compatibility."
 )]
 struct Cli {
@@ -659,7 +659,7 @@ fn mine_ncm4_command(
             return Err(Error::new(
                 ErrorKind::UnsupportedVersion,
                 "ncm4-search-profile",
-                "NCM4 alpha deep search supports building inputs; other profiles still use the v1 task miner.",
+                "NCM4 deep search supports building inputs; other profiles use the v1 task miner.",
             ));
         }
         let imported = import_asset(profile, &input, &limits)?;
@@ -670,7 +670,7 @@ fn mine_ncm4_command(
             return Err(Error::new(
                 ErrorKind::UnsupportedVersion,
                 "ncm4-search-format",
-                "NCM4 alpha deep search supports NCM3 and NCM4 PoUW building inputs.",
+                "NCM4 deep search supports NCM3 and NCM4 PoUW building inputs.",
             ));
         }
         let threads = parse_threads(&args.threads)?;

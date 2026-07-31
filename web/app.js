@@ -35,7 +35,7 @@ const elements = Object.fromEntries([
   "strategyName", "islandCount", "originalModelSummary", "candidateModelSummary",
   "diffOverlaySummary",
   "ncmPreviewFrame", "ncmPreviewCanvas", "ncmPreviewMessage", "ncmPreviewFormat",
-  "ncmPreviewDimensions", "ncmPreviewVoxels", "ncmPreviewRoot",
+  "ncmPreviewDimensions", "ncmPreviewVoxels", "ncmPreviewRoot", "previewResetButton",
 ].map((id) => [id, document.getElementById(id)]));
 
 const state = {
@@ -114,6 +114,7 @@ function bindEvents() {
   elements.resumeButton.addEventListener("click", resumeMining);
   elements.stopButton.addEventListener("click", () => stopWorkers("status.stoppedByUser"));
   elements.resetButton.addEventListener("click", () => reset().catch(fail));
+  elements.previewResetButton?.addEventListener("click", () => ncmPreviewScene?.resetView());
   elements.localeSelect.addEventListener("change", () => changeLocale(elements.localeSelect.value).catch(fail));
   elements.downloadCandidate.addEventListener("click", () => downloadBase64(
     state.best?.candidateBase64,
@@ -179,6 +180,10 @@ async function initializeWorldScene() {
   if (elements.ncmPreviewCanvas) {
     try {
       ncmPreviewScene = sceneModule.createNcmPreviewScene(elements.ncmPreviewCanvas, {
+        onReady: () => {
+          elements.ncmPreviewMessage.removeAttribute("data-i18n");
+          elements.ncmPreviewMessage.textContent = t("preview.interactive");
+        },
         onUnavailable: () => {
           elements.ncmPreviewMessage.removeAttribute("data-i18n");
           elements.ncmPreviewMessage.textContent = t("preview.webglUnavailable");
@@ -317,8 +322,7 @@ async function loadPastedInput() {
   if (!value) throw new Error(t("ncm4.pasteRequired"));
   const revision = beginInputLoad();
   const input = new TextEncoder().encode(value);
-  const name = value.startsWith("NCM4P:") ? "pasted-input.nc4p" : "pasted-input.ncm3";
-  await setInput(input, name, revision);
+  await setInput(input, "pasted-input", revision);
 }
 
 function beginInputLoad() {
@@ -353,18 +357,24 @@ async function setInput(input, name, revision) {
   state.workerAttempts.clear();
   state.curve = [];
   state.elapsedBeforePause = 0;
-  const detectedProfile = detectInputProfile(input, name);
-  if (detectedProfile && detectedProfile !== state.profile) selectProfileWithoutLoading(detectedProfile);
   setTranslatedStatus("idle", "status.inspecting", "status.inspectingDetail");
   updateButtons();
   render();
-  const profile = state.profile;
   try {
     await probeEngine();
     if (revision !== state.inputRevision) return;
+    const detectionInput = input.slice();
+    const detected = await requestEngine(
+      { type: "detect", input: detectionInput },
+      [detectionInput.buffer],
+    );
+    if (revision !== state.inputRevision) return;
+    if (detected.profile !== state.profile) selectProfileWithoutLoading(detected.profile);
+    const profile = detected.profile;
+    const inspectionInput = input.slice();
     const response = await requestEngine(
-      { type: "inspect", profile, input },
-      [input.slice().buffer],
+      { type: "inspect", profile, input: inspectionInput },
+      [inspectionInput.buffer],
     );
     if (revision !== state.inputRevision) return;
     state.inspect = response;
@@ -441,33 +451,6 @@ function normalizeNcm4Analysis(analysis) {
     attempts: 0,
     strategy: "deterministic-language-audit",
   };
-}
-
-function detectInputProfile(input, name) {
-  if (input.length >= 6 && String.fromCharCode(...input.slice(0, 4)) === "NC4P") {
-    return { 1: "terrain_delta", 2: "building", 3: "forged_item" }[input[5]] || null;
-  }
-  const prefix = new TextDecoder().decode(input.slice(0, Math.min(input.length, 24)));
-  if (prefix.startsWith("NCM4P:")) return detectNcm4TextProfile(prefix);
-  if (prefix.startsWith("NCM3:")) return "building";
-  if (prefix.startsWith("NCBK")) return "terrain_delta";
-  const lower = String(name || "").toLowerCase();
-  if (lower.endsWith(".ncf1") || lower.endsWith(".ncf")) return "forged_item";
-  if (lower.endsWith(".ncm3") || lower.endsWith(".ncm")) return "building";
-  if (lower.endsWith(".ncbk")) return "terrain_delta";
-  return null;
-}
-
-function detectNcm4TextProfile(prefix) {
-  try {
-    const encoded = prefix.slice("NCM4P:".length).replaceAll("-", "+").replaceAll("_", "/");
-    const padded = encoded + "=".repeat((4 - encoded.length % 4) % 4);
-    const header = atob(padded.slice(0, 12));
-    if (header.slice(0, 4) !== "NC4P" || header.length < 6) return null;
-    return { 1: "terrain_delta", 2: "building", 3: "forged_item" }[header.charCodeAt(5)] || null;
-  } catch {
-    return null;
-  }
 }
 
 function selectProfileWithoutLoading(profile) {
@@ -687,32 +670,60 @@ function updateNcmPreview() {
   const inspect = state.inspect;
   const semantics = inspect?.semantics;
   const building = semantics?.profile === "building" ? semantics.semantics : null;
+  const forged = semantics?.profile === "forged_item" ? semantics.semantics : null;
   elements.ncmPreviewCanvas.dataset.previewProfile = String(semantics?.profile || "");
   elements.ncmPreviewCanvas.dataset.previewFormat = String(inspect?.format || "");
   elements.ncmPreviewCanvas.dataset.previewSemanticRoot = String(inspect?.semanticRoot || "");
   elements.ncmPreviewCanvas.dataset.previewVoxelCount = String(inspect?.voxelCount ?? "");
-  if (Array.isArray(building?.size)) {
-    elements.ncmPreviewCanvas.dataset.previewDimensions = building.size.join("x");
+  const dimensions = previewDimensions(semantics);
+  if (dimensions) {
+    elements.ncmPreviewCanvas.dataset.previewDimensions = dimensions.machine;
   } else {
     delete elements.ncmPreviewCanvas.dataset.previewDimensions;
   }
   elements.ncmPreviewFormat.textContent = inspect?.format || "—";
-  elements.ncmPreviewDimensions.textContent = Array.isArray(building?.size)
-    ? building.size.join(" × ")
-    : "—";
+  elements.ncmPreviewDimensions.textContent = dimensions?.display || "—";
   elements.ncmPreviewVoxels.textContent = inspect ? formatNumber(inspect.voxelCount) : "—";
   elements.ncmPreviewRoot.textContent = inspect?.semanticRoot || "—";
   elements.ncmPreviewMessage.removeAttribute("data-i18n");
   if (elements.ncmPreviewCanvas.dataset.previewFallback || elements.ncmPreviewCanvas.dataset.previewError) {
     elements.ncmPreviewMessage.textContent = t("preview.webglUnavailable");
-  } else if (building) {
+  } else if (building || forged) {
     elements.ncmPreviewMessage.textContent = t("preview.loading");
   } else if (inspect) {
-    elements.ncmPreviewMessage.textContent = t("preview.buildingOnly");
+    elements.ncmPreviewMessage.textContent = t("preview.profileSummaryOnly");
   } else {
     elements.ncmPreviewMessage.textContent = t("preview.loading");
   }
   ncmPreviewScene?.setInspection(inspect);
+}
+
+function previewDimensions(wrapper) {
+  if (wrapper?.profile === "building" && Array.isArray(wrapper.semantics?.size)) {
+    const values = wrapper.semantics.size;
+    return { machine: values.join("x"), display: values.join(" × ") };
+  }
+  if (wrapper?.profile !== "forged_item") return null;
+  const geometry = wrapper.semantics?.geometry;
+  if (Array.isArray(geometry?.appearance?.dimensionsQ)) {
+    const values = geometry.appearance.dimensionsQ.map((value) => value / 64);
+    return { machine: values.join("x"), display: values.map(formatModelDimension).join(" × ") };
+  }
+  if (!Array.isArray(geometry?.components) || !geometry.components.length) return null;
+  const minimum = [Infinity, Infinity, Infinity];
+  const maximum = [-Infinity, -Infinity, -Infinity];
+  for (const component of geometry.components) {
+    for (let axis = 0; axis < 3; axis += 1) {
+      minimum[axis] = Math.min(minimum[axis], component.offsetQ[axis] - component.dimensionsQ[axis] / 2);
+      maximum[axis] = Math.max(maximum[axis], component.offsetQ[axis] + component.dimensionsQ[axis] / 2);
+    }
+  }
+  const values = minimum.map((value, axis) => (maximum[axis] - value) / 64);
+  return { machine: values.join("x"), display: values.map(formatModelDimension).join(" × ") };
+}
+
+function formatModelDimension(value) {
+  return Number(value.toFixed(3)).toLocaleString(getLocale(), { maximumFractionDigits: 3 });
 }
 
 function strategyLabel(strategy) {

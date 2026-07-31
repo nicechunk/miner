@@ -7,7 +7,7 @@ smaller byte representation. A candidate enters the best set only after it is
 serialized, decoded from scratch, bounded, and shown byte-for-byte semantically
 equal to the target.
 
-The Alpha search genome is `Ncm4BuildingProgram`, a strongly typed Rust AST.
+The current search genome is `Ncm4BuildingProgram`, a strongly typed Rust AST.
 Mutation never flips arbitrary encoded bytes. Every change clears the previous
 residual; `exactify_ncm4_building` rasterizes the structural program, computes
 the complete target difference, races six residual codecs, and independently
@@ -97,7 +97,7 @@ globalIsland = shardIndex * islandsPerProcess + localIsland
 ```
 
 `shardIndex < shardCount` is validated. Shards can exchange final verified
-candidates through ordinary files, but Alpha 1 has no network coordinator,
+candidates through ordinary files, but version 1 has no network coordinator,
 task server, leaderboard, or reward protocol.
 
 ## Hot-loop status

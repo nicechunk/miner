@@ -48,8 +48,8 @@
     "zhHant": "繁體中文"
   },
   "hero": {
-    "worldSignal": "Mundo de investigación de vóxeles en vivo",
-    "eyebrow": "Proof of Useful Work / Vista previa de investigación local",
+    "worldSignal": "Espacio de trabajo de compresión de vóxeles en vivo",
+    "eyebrow": "Proof of Useful Work / Minero local determinista",
     "title": "Comprime el mundo, preserva cada vóxel",
     "lede": "Busque en un lenguaje de voxel acotado una codificación más corta que reconstruya exactamente el mismo terreno, edificio o elemento falsificado.",
     "try": "Abrir Miner",
@@ -75,8 +75,8 @@
     "forgeDetail": "Inspección de artículos"
   },
   "demo": {
-    "kicker": "Consola informática local / el NCM pegado permanece en este dispositivo",
-    "title": "Laboratorio de compresión del navegador",
+    "kicker": "Consola informática local / el NCM o NCF pegado permanece en este dispositivo",
+    "title": "Minero de compresión del navegador",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "Perfil de compresión",
     "tab1": "Carga de trabajo 01",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "Listo",
-    "readyDetail": "La casa predeterminada está cargada. Pegue NCM3 o NCM4P y pulse Iniciar.",
+    "readyDetail": "La casa predeterminada está cargada. Pegue NCM3, NCM4P o NCF1 y pulse Iniciar.",
     "exactNoImprovement": "Coincidencia exacta · sin mejora de almacenamiento",
     "exactSmaller": "Coincidencia exacta · estrictamente más pequeño",
     "hiddenPaused": "La página quedó oculta, por lo que se detuvo el trabajo de la CPU local.",
     "inputChanged": "La entrada cambió.",
     "inspecting": "Inspeccionar localmente",
     "inspectingDetail": "El núcleo Rust/WASM está canonicalizando este activo.",
-    "loadFirst": "Pegue primero un valor NCM3 o NCM4P y cárguelo.",
+    "loadFirst": "Pegue primero un valor NCM3, NCM4P o NCF1 y cárguelo.",
     "mismatchDetail": "El verificador encontró {count} discrepancias.",
     "noImprovementDetail": "El candidato verificado es igual o mayor que el titular. {suffix}",
     "pageClosed": "La página estaba cerrada.",
@@ -118,15 +118,18 @@
     "verificationFailed": "La verificación falló"
   },
   "preview": {
-    "panelAria": "Vista 3D del NCM decodificado",
-    "title": "Modelo NCM analizado",
-    "canvasAria": "Modelo canónico de vóxeles NCM",
+    "panelAria": "Vista 3D del recurso decodificado",
+    "title": "Modelo de recurso analizado",
+    "canvasAria": "Modelo canónico interactivo del recurso",
     "loading": "Esperando al decodificador Rust/WASM.",
+    "controls": "Arrastra para rotar · Mayús y arrastra para mover · Rueda para ampliar",
+    "resetView": "Restablecer vista",
     "format": "Formato",
     "dimensions": "Dimensiones",
     "voxels": "Vóxeles",
     "semanticRoot": "Raíz semántica",
-    "buildingOnly": "Selecciona Plano de edificio para renderizar los vóxeles NCM canónicos.",
+    "interactive": "Modelo 3D interactivo listo.",
+    "profileSummaryOnly": "Este perfil está disponible como datos canónicos sin una malla 3D dedicada.",
     "webglUnavailable": "WebGL2 no está disponible. Los datos canónicos del modelo se muestran abajo."
   },
   "controls": {
@@ -144,8 +147,8 @@
     "note": "La búsqueda continúa hasta Pausar o Detener. Nunca comienza automáticamente y deja al menos un núcleo lógico libre para la página."
   },
   "ncm4": {
-    "pasteLabel": "Pegar texto NCM3 o NCM4P",
-    "pastePlaceholder": "NCM3:... o NCM4P:...",
+    "pasteLabel": "Pegar texto NCM3, NCM4P o NCF1",
+    "pastePlaceholder": "NCM3:..., NCM4P:... o NCF1....",
     "loadText": "Cargar entrada pegada",
     "fastAnalyze": "Análisis rápido",
     "decode": "Decodificar",
@@ -175,7 +178,7 @@
     "diffMismatch": "{count} diferencias semánticas",
     "ncm3Remains": "NCM3 sigue siendo la mejor representación.",
     "ncm3RemainsDetail": "El candidato NCM4 verificado no es estrictamente menor, por lo que se conservan los bytes NCM3 originales. {suffix}",
-    "pasteRequired": "Pegue primero un valor NCM3 o NCM4P.",
+    "pasteRequired": "Pegue primero un valor NCM3, NCM4P o NCF1.",
     "quadSummary": "{count} cuadriláteros geométricos canónicos",
     "semanticReady": "Semántica canónica lista",
     "strategyAudit": "auditoría determinista del lenguaje",
@@ -228,7 +231,7 @@
     "copied": "Copiado"
   },
   "privacy": {
-    "preview": "Vista previa de la investigación local",
+    "preview": "Minería local determinista",
     "noTransactions": "Sin transacciones, recompensas, billetera, RPC ni telemetría.",
     "local": "Sus archivos nunca salen de este navegador."
   },
@@ -272,8 +275,8 @@
     "encodingBody": "aplica un hash a una representación de byte particular. Diferentes codificaciones exactas pueden compartir lo primero y deben diferir en lo segundo.",
     "limitsTitle": "Límites estrictos de recursos",
     "limitsBody": "Sin punto flotante, recursividad, saltos, bucles ilimitados, código dinámico, relojes ni estadísticas de resultados confiables. Las variantes canónicas y la aritmética comprobada son obligatorias.",
-    "boundaryTitle": "Límite honesto",
-    "boundaryBody": "Esta vista previa no tiene billetera, RPC, recompensa, grupo, tabla de clasificación ni verificador Solana PoUW implementado. Se reserva una interfaz de adaptador de cadena; los reclamos en cadena no lo son."
+    "boundaryTitle": "Límite operativo actual",
+    "boundaryBody": "Este minero funciona actualmente de forma local, sin billetera, RPC, recompensa, grupo, clasificación ni verificador Solana PoUW desplegado. Se reserva una interfaz de adaptador de cadena; no se afirma ninguna confirmación en cadena."
   },
   "faq": {
     "sectionAria": "Preguntas y fuente",
@@ -282,10 +285,10 @@
     "exactAnswer": "No. El verificador compara la semántica canónica y cada identidad coordinada/material. Un vóxel, material, campo de forja inmutable o agarre modificado cambia el resultado.",
     "optimalQuestion": "¿El minero demuestra una codificación global más corta?",
     "optimalAnswer": "No. Demuestra que un candidato es exacto, acotado y estrictamente más bajo que el titular. Ninguna mejora encontrada es un resultado válido.",
-    "uploadQuestion": "¿El NCM pegado sale de este navegador?",
-    "uploadAnswer": "No. El NCM pegado se pasa directamente a los Web Workers locales. La página no incluye punto final de carga, telemetría, CDN de terceros, solicitud de API GitHub, billetera ni cliente RPC.",
+    "uploadQuestion": "¿El NCM o NCF pegado sale de este navegador?",
+    "uploadAnswer": "No. El código de recurso pegado se pasa directamente a los Web Workers locales. La página no incluye punto final de carga, telemetría, CDN de terceros, solicitud de API GitHub, billetera ni cliente RPC.",
     "negativeQuestion": "¿Por qué un perfil puede mostrar ahorros negativos?",
-    "negativeAnswer": "Algunos activos NCM3 o NCF1 existentes ya son muy compactos. La demostración informa que honestamente y nunca vuelve a etiquetar bytes iguales o mayores como ahorro de almacenamiento."
+    "negativeAnswer": "Algunos activos NCM3 o NCF1 ya son muy compactos. El minero lo informa con precisión y nunca presenta una codificación igual o mayor como ahorro de almacenamiento."
   },
   "source": {
     "kicker": "Implementación abierta",
@@ -303,7 +306,7 @@
     "socialAria": "NiceChunk enlaces sociales",
     "github": "GitHub",
     "x": "x",
-    "text": "NiceChunk PoUW Miner v1/software de investigación determinista",
+    "text": "NiceChunk PoUW Miner v1 / software de compresión determinista",
     "copyright": "2026 NiceChunk. Reservados todos los derechos."
   },
   "errors": {

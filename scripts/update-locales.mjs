@@ -27,7 +27,8 @@ mergeInto(english, {
     failed: "Failed",
   },
   preview: {
-    buildingOnly: "Select Building Blueprint to render canonical NCM voxels.",
+    interactive: "Interactive 3D model ready.",
+    profileSummaryOnly: "This profile is available as canonical data without a dedicated 3D mesh.",
     webglUnavailable: "WebGL2 is unavailable. Canonical model data is still shown below.",
   },
   ncm4: {
@@ -41,7 +42,7 @@ mergeInto(english, {
     diffMismatch: "{count} semantic mismatches",
     ncm3Remains: "NCM3 remains the best representation.",
     ncm3RemainsDetail: "The verified NCM4 candidate is not strictly smaller, so the original NCM3 bytes remain selected. {suffix}",
-    pasteRequired: "Paste an NCM3 or NCM4P value first.",
+    pasteRequired: "Paste an NCM3, NCM4P, or NCF1 value first.",
     quadSummary: "{count} canonical geometry quads",
     semanticReady: "Canonical semantics ready",
     strategyAudit: "deterministic language audit",
@@ -72,7 +73,7 @@ mergeInto(english, {
     inputChanged: "Input changed.",
     inspecting: "Inspecting locally",
     inspectingDetail: "The Rust/WASM core is canonicalizing this asset.",
-    loadFirst: "Paste an NCM3 or NCM4P value and load it first.",
+    loadFirst: "Paste an NCM3, NCM4P, or NCF1 value and load it first.",
     mismatchDetail: "The verifier found {count} mismatches.",
     noImprovementDetail: "The verified candidate is equal to or larger than the incumbent. {suffix}",
     pageClosed: "The page was closed.",
@@ -106,111 +107,138 @@ const languageNames = {
 
 const previewMessages = {
   en: {
-    panelAria: "Decoded NCM 3D preview",
-    title: "Parsed NCM model",
-    canvasAria: "Canonical NCM voxel model",
+    panelAria: "Decoded asset 3D preview",
+    title: "Parsed asset model",
+    canvasAria: "Interactive canonical asset model",
     loading: "Waiting for the Rust/WASM decoder.",
+    interactive: "Interactive 3D model ready.",
+    controls: "Drag to rotate · Shift-drag to move · Wheel to zoom",
+    resetView: "Reset view",
     format: "Format",
     dimensions: "Dimensions",
     voxels: "Voxels",
     semanticRoot: "Semantic root",
-    buildingOnly: "Select Building Blueprint to render canonical NCM voxels.",
+    profileSummaryOnly: "This profile is available as canonical data without a dedicated 3D mesh.",
     webglUnavailable: "WebGL2 is unavailable. Canonical model data is still shown below.",
   },
   es: {
-    panelAria: "Vista 3D del NCM decodificado",
-    title: "Modelo NCM analizado",
-    canvasAria: "Modelo canónico de vóxeles NCM",
+    panelAria: "Vista 3D del recurso decodificado",
+    title: "Modelo de recurso analizado",
+    canvasAria: "Modelo canónico interactivo del recurso",
     loading: "Esperando al decodificador Rust/WASM.",
+    interactive: "Modelo 3D interactivo listo.",
+    controls: "Arrastra para rotar · Mayús y arrastra para mover · Rueda para ampliar",
+    resetView: "Restablecer vista",
     format: "Formato",
     dimensions: "Dimensiones",
     voxels: "Vóxeles",
     semanticRoot: "Raíz semántica",
-    buildingOnly: "Selecciona Plano de edificio para renderizar los vóxeles NCM canónicos.",
+    profileSummaryOnly: "Este perfil está disponible como datos canónicos sin una malla 3D dedicada.",
     webglUnavailable: "WebGL2 no está disponible. Los datos canónicos del modelo se muestran abajo.",
   },
   fr: {
-    panelAria: "Aperçu 3D du NCM décodé",
-    title: "Modèle NCM analysé",
-    canvasAria: "Modèle voxel NCM canonique",
+    panelAria: "Aperçu 3D de l’actif décodé",
+    title: "Modèle d’actif analysé",
+    canvasAria: "Modèle canonique interactif de l’actif",
     loading: "En attente du décodeur Rust/WASM.",
+    interactive: "Modèle 3D interactif prêt.",
+    controls: "Glisser pour pivoter · Maj-glisser pour déplacer · Molette pour zoomer",
+    resetView: "Réinitialiser la vue",
     format: "Format",
     dimensions: "Dimensions",
     voxels: "Voxels",
     semanticRoot: "Racine sémantique",
-    buildingOnly: "Sélectionnez Plan de bâtiment pour afficher les voxels NCM canoniques.",
+    profileSummaryOnly: "Ce profil reste disponible sous forme de données canoniques sans maillage 3D dédié.",
     webglUnavailable: "WebGL2 est indisponible. Les données canoniques du modèle restent affichées ci-dessous.",
   },
   de: {
-    panelAria: "3D-Vorschau des dekodierten NCM",
-    title: "Analysiertes NCM-Modell",
-    canvasAria: "Kanonisches NCM-Voxelmodell",
+    panelAria: "3D-Vorschau des dekodierten Assets",
+    title: "Analysiertes Asset-Modell",
+    canvasAria: "Interaktives kanonisches Asset-Modell",
     loading: "Warten auf den Rust/WASM-Decoder.",
+    interactive: "Interaktives 3D-Modell ist bereit.",
+    controls: "Ziehen zum Drehen · Umschalt-Ziehen zum Verschieben · Rad zum Zoomen",
+    resetView: "Ansicht zurücksetzen",
     format: "Format",
     dimensions: "Abmessungen",
     voxels: "Voxel",
     semanticRoot: "Semantische Wurzel",
-    buildingOnly: "Wählen Sie Bauplan, um die kanonischen NCM-Voxel darzustellen.",
+    profileSummaryOnly: "Dieses Profil ist als kanonische Daten ohne eigenes 3D-Netz verfügbar.",
     webglUnavailable: "WebGL2 ist nicht verfügbar. Die kanonischen Modelldaten werden unten weiterhin angezeigt.",
   },
   ja: {
-    panelAria: "デコード済み NCM の 3D プレビュー",
-    title: "解析済み NCM モデル",
-    canvasAria: "正規 NCM ボクセルモデル",
+    panelAria: "デコード済みアセットの 3D プレビュー",
+    title: "解析済みアセットモデル",
+    canvasAria: "インタラクティブな正規アセットモデル",
     loading: "Rust/WASM デコーダーを待機しています。",
+    interactive: "インタラクティブ 3D モデルの準備ができました。",
+    controls: "ドラッグで回転 · Shift+ドラッグで移動 · ホイールでズーム",
+    resetView: "表示をリセット",
     format: "形式",
     dimensions: "寸法",
     voxels: "ボクセル",
     semanticRoot: "セマンティックルート",
-    buildingOnly: "建築設計図を選択すると、正規 NCM ボクセルを表示します。",
+    profileSummaryOnly: "このプロファイルは専用 3D メッシュなしでも正規データとして利用できます。",
     webglUnavailable: "WebGL2 を利用できません。正規モデルデータは下に引き続き表示されます。",
   },
   ru: {
-    panelAria: "Трёхмерный просмотр декодированного NCM",
-    title: "Разобранная модель NCM",
-    canvasAria: "Каноническая воксельная модель NCM",
+    panelAria: "Трёхмерный просмотр декодированного объекта",
+    title: "Разобранная модель объекта",
+    canvasAria: "Интерактивная каноническая модель объекта",
     loading: "Ожидание декодера Rust/WASM.",
+    interactive: "Интерактивная 3D-модель готова.",
+    controls: "Перетаскивание — вращение · Shift — перемещение · Колесо — масштаб",
+    resetView: "Сбросить вид",
     format: "Формат",
     dimensions: "Размеры",
     voxels: "Воксели",
     semanticRoot: "Семантический корень",
-    buildingOnly: "Выберите чертёж здания для отображения канонических вокселей NCM.",
+    profileSummaryOnly: "Этот профиль доступен как канонические данные без отдельной 3D-сетки.",
     webglUnavailable: "WebGL2 недоступен. Канонические данные модели по-прежнему показаны ниже.",
   },
   ko: {
-    panelAria: "디코딩된 NCM 3D 미리보기",
-    title: "해석된 NCM 모델",
-    canvasAria: "정규 NCM 복셀 모델",
+    panelAria: "디코딩된 자산 3D 미리보기",
+    title: "해석된 자산 모델",
+    canvasAria: "인터랙티브 정규 자산 모델",
     loading: "Rust/WASM 디코더를 기다리는 중입니다.",
+    interactive: "인터랙티브 3D 모델이 준비되었습니다.",
+    controls: "드래그하여 회전 · Shift-드래그하여 이동 · 휠로 확대",
+    resetView: "보기 초기화",
     format: "형식",
     dimensions: "크기",
     voxels: "복셀",
     semanticRoot: "시맨틱 루트",
-    buildingOnly: "건물 설계도를 선택하면 정규 NCM 복셀을 렌더링합니다.",
+    profileSummaryOnly: "이 프로필은 전용 3D 메시 없이도 정규 데이터로 제공됩니다.",
     webglUnavailable: "WebGL2를 사용할 수 없습니다. 정규 모델 데이터는 아래에 계속 표시됩니다.",
   },
   "zh-Hant": {
-    panelAria: "已解碼 NCM 3D 預覽",
-    title: "NCM 解析模型",
-    canvasAria: "規範 NCM 體素模型",
+    panelAria: "已解碼資產 3D 預覽",
+    title: "已解析資產模型",
+    canvasAria: "可互動的規範資產模型",
     loading: "正在等待 Rust/WASM 解碼器。",
+    interactive: "可互動 3D 模型已就緒。",
+    controls: "拖曳旋轉 · Shift 拖曳平移 · 滾輪縮放",
+    resetView: "重設視角",
     format: "格式",
     dimensions: "尺寸",
     voxels: "體素",
     semanticRoot: "語意根",
-    buildingOnly: "請選擇建築藍圖，以渲染規範 NCM 體素。",
+    profileSummaryOnly: "此 Profile 會顯示規範資料，目前沒有專用 3D 網格。",
     webglUnavailable: "WebGL2 無法使用，規範模型資料仍顯示於下方。",
   },
   "zh-Hans": {
-    panelAria: "已解码 NCM 3D 预览",
-    title: "NCM 解析模型",
-    canvasAria: "规范 NCM 体素模型",
+    panelAria: "已解码资产 3D 预览",
+    title: "已解析资产模型",
+    canvasAria: "可交互的规范资产模型",
     loading: "正在等待 Rust/WASM 解码器。",
+    interactive: "可交互 3D 模型已就绪。",
+    controls: "拖动旋转 · Shift 拖动平移 · 滚轮缩放",
+    resetView: "重置视角",
     format: "格式",
     dimensions: "尺寸",
     voxels: "体素",
     semanticRoot: "语义根",
-    buildingOnly: "请选择建筑蓝图，以渲染规范 NCM 体素。",
+    profileSummaryOnly: "此 Profile 会显示规范数据，目前没有专用 3D 网格。",
     webglUnavailable: "WebGL2 不可用，规范模型数据仍显示在下方。",
   },
 };
@@ -255,8 +283,8 @@ const overrides = {
       "play": "Spielen"
     },
     "hero": {
-      "worldSignal": "Live-Voxel-Forschungswelt",
-      "eyebrow": "Proof of Useful Work / Lokale Forschungsvorschau",
+      "worldSignal": "Live-Arbeitsbereich für Voxel-Kompression",
+      "eyebrow": "Proof of Useful Work / Deterministischer lokaler Miner",
       "title": "Komprimieren Sie die Welt, bewahren Sie jedes Voxel",
       "lede": "Durchsuchen Sie eine begrenzte Voxelsprache nach einer kürzeren Codierung, die genau dasselbe Gelände, dasselbe Gebäude oder denselben gefälschten Gegenstand rekonstruiert.",
       "try": "Miner öffnen",
@@ -282,8 +310,8 @@ const overrides = {
       "forgeDetail": "Artikelinspektion"
     },
     "demo": {
-      "kicker": "Lokale Rechenkonsole / eingefügter NCM-Text bleibt auf diesem Gerät",
-      "title": "Labor zur Browserkomprimierung",
+      "kicker": "Lokale Rechenkonsole / eingefügter NCM- oder NCF-Text bleibt auf diesem Gerät",
+      "title": "Browser-Kompressions-Miner",
       "workspaceId": "NC-POUW / VM-1",
       "profileAria": "Kompressionsprofil",
       "tab1": "Arbeitsaufwand 01",
@@ -299,14 +327,14 @@ const overrides = {
     },
     "status": {
       "ready": "Bereit",
-      "readyDetail": "Das Standard-Cottage ist geladen. Fügen Sie NCM3 oder NCM4P ein und drücken Sie Start.",
+      "readyDetail": "Das Standard-Cottage ist geladen. Fügen Sie NCM3, NCM4P oder NCF1 ein und drücken Sie Start.",
       "exactNoImprovement": "Exakte Übereinstimmung · keine Speicherverbesserung",
       "exactSmaller": "Genaue Übereinstimmung · streng kleiner",
       "hiddenPaused": "Die Seite wurde ausgeblendet, sodass die lokale CPU-Arbeit angehalten wurde.",
       "inputChanged": "Eingabe geändert.",
       "inspecting": "Wird lokal geprüft",
       "inspectingDetail": "Der Rust/WASM-Kern kanonisiert dieses Asset.",
-      "loadFirst": "Fügen Sie zuerst NCM3 oder NCM4P ein und laden Sie den Text.",
+      "loadFirst": "Fügen Sie zuerst NCM3, NCM4P oder NCF1 ein und laden Sie den Text.",
       "mismatchDetail": "Der Prüfer hat {count} Nichtübereinstimmungen festgestellt.",
       "noImprovementDetail": "Der verifizierte Kandidat ist gleich oder größer als der Amtsinhaber. {suffix}",
       "pageClosed": "Die Seite wurde geschlossen.",
@@ -382,7 +410,7 @@ const overrides = {
       "copied": "Kopiert"
     },
     "privacy": {
-      "preview": "Vorschau auf die lokale Forschung",
+      "preview": "Deterministisches lokales Mining",
       "noTransactions": "Keine Transaktionen, Belohnungen, Wallet, RPC oder Telemetrie.",
       "local": "Ihre Dateien verlassen diesen Browser nie."
     },
@@ -426,8 +454,8 @@ const overrides = {
       "encodingBody": "hasht eine bestimmte Bytedarstellung. Unterschiedliche exakte Kodierungen können Ersteres gemeinsam haben und müssen sich im Letzteren unterscheiden.",
       "limitsTitle": "Harte Ressourcengrenzen",
       "limitsBody": "Kein Gleitkomma, keine Rekursion, keine Sprünge, keine unbegrenzten Schleifen, kein dynamischer Code, keine Uhren oder vertrauenswürdige Ergebnisstatistiken. Kanonische Varianten und geprüfte Arithmetik sind obligatorisch.",
-      "boundaryTitle": "Ehrliche Grenze",
-      "boundaryBody": "Diese Vorschau verfügt über kein Wallet, RPC, keine Belohnung, keinen Pool, keine Bestenliste und keinen bereitgestellten Solana PoUW Verifizierer. Eine Kettenadapterschnittstelle ist reserviert; Kettenansprüche sind es nicht."
+      "boundaryTitle": "Aktueller Betriebsrahmen",
+      "boundaryBody": "Dieser Miner arbeitet derzeit lokal ohne Wallet, RPC, Belohnung, Pool, Bestenliste oder bereitgestellten Solana-PoUW-Verifizierer. Eine Chain-Adapter-Schnittstelle ist reserviert; eine Chain-Bestätigung wird nicht behauptet."
     },
     "faq": {
       "sectionAria": "Fragen und Quelle",
@@ -436,10 +464,10 @@ const overrides = {
       "exactAnswer": "Nein. Der Prüfer vergleicht die kanonische Semantik und jede Koordinaten-/Materialidentität. Ein geändertes Voxel, Material, unveränderliches Schmiedefeld oder Griff ändert das Ergebnis.",
       "optimalQuestion": "Beweist der Miner eine weltweit kürzeste Kodierung?",
       "optimalAnswer": "Nein. Es beweist, dass ein Kandidat exakt, begrenzt und strikt kürzer ist als der Amtsinhaber. Keine gefundene Verbesserung ist ein gültiges Ergebnis.",
-      "uploadQuestion": "Verlässt eingefügter NCM-Text diesen Browser?",
-      "uploadAnswer": "Nein. Eingefügter NCM-Text wird direkt an lokale Web Workers übergeben. Die Seite enthält keinen Upload-Endpunkt, keine Telemetrie, kein Drittanbieter-CDN, keine GitHub-API-Anfrage, kein Wallet und keinen RPC-Client.",
+      "uploadQuestion": "Verlässt eingefügter NCM- oder NCF-Text diesen Browser?",
+      "uploadAnswer": "Nein. Eingefügter Asset-Code wird direkt an lokale Web Workers übergeben. Die Seite enthält keinen Upload-Endpunkt, keine Telemetrie, kein Drittanbieter-CDN, keine GitHub-API-Anfrage, kein Wallet und keinen RPC-Client.",
       "negativeQuestion": "Warum kann ein Profil negative Einsparungen anzeigen?",
-      "negativeAnswer": "Einige vorhandene NCM3- oder NCF1-Assets sind bereits sehr kompakt. Die Demo berichtet, dass gleiche oder größere Bytes ehrlich gesagt niemals als Speichereinsparungen umetikettiert werden."
+      "negativeAnswer": "Einige vorhandene NCM3- oder NCF1-Assets sind bereits sehr kompakt. Der Miner meldet dies ehrlich und bezeichnet gleiche oder größere Kodierungen niemals als Speichereinsparung."
     },
     "source": {
       "kicker": "Offene Implementierung",
@@ -457,7 +485,7 @@ const overrides = {
       "socialAria": "NiceChunk soziale Links",
       "github": "GitHub",
       "x": "X",
-      "text": "NiceChunk PoUW Miner v1 / deterministische Forschungssoftware",
+      "text": "NiceChunk PoUW Miner v1 / deterministische Kompressionssoftware",
       "copyright": "2026 NiceChunk. Alle Rechte vorbehalten."
     },
     "errors": {
@@ -509,8 +537,8 @@ const overrides = {
       "play": "Jugar"
     },
     "hero": {
-      "worldSignal": "Mundo de investigación de vóxeles en vivo",
-      "eyebrow": "Proof of Useful Work / Vista previa de investigación local",
+      "worldSignal": "Espacio de trabajo de compresión de vóxeles en vivo",
+      "eyebrow": "Proof of Useful Work / Minero local determinista",
       "title": "Comprime el mundo, preserva cada vóxel",
       "lede": "Busque en un lenguaje de voxel acotado una codificación más corta que reconstruya exactamente el mismo terreno, edificio o elemento falsificado.",
       "try": "Abrir Miner",
@@ -536,8 +564,8 @@ const overrides = {
       "forgeDetail": "Inspección de artículos"
     },
     "demo": {
-      "kicker": "Consola informática local / el NCM pegado permanece en este dispositivo",
-      "title": "Laboratorio de compresión del navegador",
+      "kicker": "Consola informática local / el NCM o NCF pegado permanece en este dispositivo",
+      "title": "Minero de compresión del navegador",
       "workspaceId": "NC-POUW / VM-1",
       "profileAria": "Perfil de compresión",
       "tab1": "Carga de trabajo 01",
@@ -553,14 +581,14 @@ const overrides = {
     },
     "status": {
       "ready": "Listo",
-      "readyDetail": "La casa predeterminada está cargada. Pegue NCM3 o NCM4P y pulse Iniciar.",
+      "readyDetail": "La casa predeterminada está cargada. Pegue NCM3, NCM4P o NCF1 y pulse Iniciar.",
       "exactNoImprovement": "Coincidencia exacta · sin mejora de almacenamiento",
       "exactSmaller": "Coincidencia exacta · estrictamente más pequeño",
       "hiddenPaused": "La página quedó oculta, por lo que se detuvo el trabajo de la CPU local.",
       "inputChanged": "La entrada cambió.",
       "inspecting": "Inspeccionar localmente",
       "inspectingDetail": "El núcleo Rust/WASM está canonicalizando este activo.",
-      "loadFirst": "Pegue primero un valor NCM3 o NCM4P y cárguelo.",
+      "loadFirst": "Pegue primero un valor NCM3, NCM4P o NCF1 y cárguelo.",
       "mismatchDetail": "El verificador encontró {count} discrepancias.",
       "noImprovementDetail": "El candidato verificado es igual o mayor que el titular. {suffix}",
       "pageClosed": "La página estaba cerrada.",
@@ -636,7 +664,7 @@ const overrides = {
       "copied": "Copiado"
     },
     "privacy": {
-      "preview": "Vista previa de la investigación local",
+      "preview": "Minería local determinista",
       "noTransactions": "Sin transacciones, recompensas, billetera, RPC ni telemetría.",
       "local": "Sus archivos nunca salen de este navegador."
     },
@@ -680,8 +708,8 @@ const overrides = {
       "encodingBody": "aplica un hash a una representación de byte particular. Diferentes codificaciones exactas pueden compartir lo primero y deben diferir en lo segundo.",
       "limitsTitle": "Límites estrictos de recursos",
       "limitsBody": "Sin punto flotante, recursividad, saltos, bucles ilimitados, código dinámico, relojes ni estadísticas de resultados confiables. Las variantes canónicas y la aritmética comprobada son obligatorias.",
-      "boundaryTitle": "Límite honesto",
-      "boundaryBody": "Esta vista previa no tiene billetera, RPC, recompensa, grupo, tabla de clasificación ni verificador Solana PoUW implementado. Se reserva una interfaz de adaptador de cadena; los reclamos en cadena no lo son."
+      "boundaryTitle": "Límite operativo actual",
+      "boundaryBody": "Este minero funciona actualmente de forma local, sin billetera, RPC, recompensa, grupo, clasificación ni verificador Solana PoUW desplegado. Se reserva una interfaz de adaptador de cadena; no se afirma ninguna confirmación en cadena."
     },
     "faq": {
       "sectionAria": "Preguntas y fuente",
@@ -690,10 +718,10 @@ const overrides = {
       "exactAnswer": "No. El verificador compara la semántica canónica y cada identidad coordinada/material. Un vóxel, material, campo de forja inmutable o agarre modificado cambia el resultado.",
       "optimalQuestion": "¿El minero demuestra una codificación global más corta?",
       "optimalAnswer": "No. Demuestra que un candidato es exacto, acotado y estrictamente más bajo que el titular. Ninguna mejora encontrada es un resultado válido.",
-      "uploadQuestion": "¿El NCM pegado sale de este navegador?",
-      "uploadAnswer": "No. El NCM pegado se pasa directamente a los Web Workers locales. La página no incluye punto final de carga, telemetría, CDN de terceros, solicitud de API GitHub, billetera ni cliente RPC.",
+      "uploadQuestion": "¿El NCM o NCF pegado sale de este navegador?",
+      "uploadAnswer": "No. El código de recurso pegado se pasa directamente a los Web Workers locales. La página no incluye punto final de carga, telemetría, CDN de terceros, solicitud de API GitHub, billetera ni cliente RPC.",
       "negativeQuestion": "¿Por qué un perfil puede mostrar ahorros negativos?",
-      "negativeAnswer": "Algunos activos NCM3 o NCF1 existentes ya son muy compactos. La demostración informa que honestamente y nunca vuelve a etiquetar bytes iguales o mayores como ahorro de almacenamiento."
+      "negativeAnswer": "Algunos activos NCM3 o NCF1 ya son muy compactos. El minero lo informa con precisión y nunca presenta una codificación igual o mayor como ahorro de almacenamiento."
     },
     "source": {
       "kicker": "Implementación abierta",
@@ -711,7 +739,7 @@ const overrides = {
       "socialAria": "NiceChunk enlaces sociales",
       "github": "GitHub",
       "x": "x",
-      "text": "NiceChunk PoUW Miner v1/software de investigación determinista",
+      "text": "NiceChunk PoUW Miner v1 / software de compresión determinista",
       "copyright": "2026 NiceChunk. Reservados todos los derechos."
     },
     "errors": {
@@ -763,8 +791,8 @@ const overrides = {
       "play": "Jouer"
     },
     "hero": {
-      "worldSignal": "Monde de recherche de voxels en direct",
-      "eyebrow": "Proof of Useful Work/Aperçu de la recherche locale",
+      "worldSignal": "Espace de travail de compression voxel en direct",
+      "eyebrow": "Proof of Useful Work / Mineur local déterministe",
       "title": "Compressez le monde, préservez chaque voxel",
       "lede": "Recherchez dans un langage voxel limité un encodage plus court qui reconstruit exactement le même terrain, bâtiment ou élément forgé.",
       "try": "Ouvrir Miner",
@@ -790,8 +818,8 @@ const overrides = {
       "forgeDetail": "Inspection des articles"
     },
     "demo": {
-      "kicker": "Console de calcul locale / le NCM collé reste sur cet appareil",
-      "title": "Laboratoire de compression de navigateur",
+      "kicker": "Console de calcul locale / le NCM ou NCF collé reste sur cet appareil",
+      "title": "Mineur de compression du navigateur",
       "workspaceId": "NC-POUW / VM-1",
       "profileAria": "Profil de compression",
       "tab1": "Charge de travail 01",
@@ -807,14 +835,14 @@ const overrides = {
     },
     "status": {
       "ready": "Prêt",
-      "readyDetail": "Le cottage par défaut est chargé. Collez du NCM3 ou NCM4P, puis appuyez sur Démarrer.",
+      "readyDetail": "Le cottage par défaut est chargé. Collez du NCM3, NCM4P ou NCF1, puis appuyez sur Démarrer.",
       "exactNoImprovement": "Correspondance exacte · aucune amélioration du stockage",
       "exactSmaller": "Correspondance exacte · strictement plus petit",
       "hiddenPaused": "La page est devenue masquée, le travail du processeur local a donc été suspendu.",
       "inputChanged": "L'entrée a été modifiée.",
       "inspecting": "Inspecter localement",
       "inspectingDetail": "Le noyau Rust/WASM canonise cet actif.",
-      "loadFirst": "Collez d'abord une valeur NCM3 ou NCM4P et chargez-la.",
+      "loadFirst": "Collez d'abord une valeur NCM3, NCM4P ou NCF1 et chargez-la.",
       "mismatchDetail": "Le vérificateur a trouvé des incohérences {count}.",
       "noImprovementDetail": "Le candidat vérifié est égal ou supérieur au titulaire. {suffix}",
       "pageClosed": "La page était fermée.",
@@ -890,7 +918,7 @@ const overrides = {
       "copied": "Copié"
     },
     "privacy": {
-      "preview": "Aperçu de la recherche locale",
+      "preview": "Minage local déterministe",
       "noTransactions": "Aucune transaction, récompense, portefeuille, RPC ou télémétrie.",
       "local": "Vos fichiers ne quittent jamais ce navigateur."
     },
@@ -934,8 +962,8 @@ const overrides = {
       "encodingBody": "hache une représentation d'octet particulière. Différents codages exacts peuvent partager le premier et doivent différer dans le second.",
       "limitsTitle": "Limites de ressources strictes",
       "limitsBody": "Pas de virgule flottante, de récursion, de sauts, de boucles illimitées, de code dynamique, d'horloges ou de statistiques de résultats fiables. Les variantes canoniques et l'arithmétique vérifiée sont obligatoires.",
-      "boundaryTitle": "Limite honnête",
-      "boundaryBody": "Cet aperçu n'a pas de portefeuille, RPC, de récompense, de pool, de classement ou de vérificateur Solana PoUW déployé. Une interface d'adaptateur de chaîne est réservée ; les affirmations en chaîne ne le sont pas."
+      "boundaryTitle": "Périmètre opérationnel actuel",
+      "boundaryBody": "Ce mineur fonctionne actuellement en local, sans portefeuille, RPC, récompense, pool, classement ni vérificateur Solana PoUW déployé. Une interface d’adaptateur de chaîne est réservée ; aucune confirmation on-chain n’est revendiquée."
     },
     "faq": {
       "sectionAria": "Questions et source",
@@ -944,10 +972,10 @@ const overrides = {
       "exactAnswer": "Non. Le vérificateur compare la sémantique canonique et chaque identité coordonnée/matérielle. Un voxel, un matériau, un champ de forge immuable ou une poignée modifié change le résultat.",
       "optimalQuestion": "Le mineur prouve-t-il un codage globalement le plus court ?",
       "optimalAnswer": "Non. Cela prouve qu’un candidat est exact, limité et strictement plus petit que le candidat sortant. Aucune amélioration trouvée n’est un résultat valide.",
-      "uploadQuestion": "Le NCM collé quitte-t-il ce navigateur ?",
-      "uploadAnswer": "Non. Le NCM collé est transmis directement aux Web Workers locaux. La page ne comprend aucun point de terminaison de téléversement, télémétrie, CDN tiers, demande d'API GitHub, portefeuille ou client RPC.",
+      "uploadQuestion": "Le NCM ou NCF collé quitte-t-il ce navigateur ?",
+      "uploadAnswer": "Non. Le code d’actif collé est transmis directement aux Web Workers locaux. La page ne comprend aucun point de terminaison de téléversement, télémétrie, CDN tiers, demande d'API GitHub, portefeuille ou client RPC.",
       "negativeQuestion": "Pourquoi un profil peut-il afficher des économies négatives ?",
-      "negativeAnswer": "Certains actifs NCM3 ou NCF1 existants sont déjà très compacts. La démo rapporte qu'honnêtement et jamais, on ne réétiquete jamais les octets égaux ou plus grands comme des économies de stockage."
+      "negativeAnswer": "Certains actifs NCM3 ou NCF1 sont déjà très compacts. Le mineur le signale fidèlement et ne présente jamais un encodage égal ou plus grand comme une économie de stockage."
     },
     "source": {
       "kicker": "Implémentation ouverte",
@@ -965,7 +993,7 @@ const overrides = {
       "socialAria": "NiceChunk liens sociaux",
       "github": "GitHub",
       "x": "X",
-      "text": "NiceChunk PoUW Miner v1 / logiciel de recherche déterministe",
+      "text": "NiceChunk PoUW Miner v1 / logiciel de compression déterministe",
       "copyright": "2026 NiceChunk. Tous droits réservés."
     },
     "errors": {
@@ -1017,8 +1045,8 @@ const overrides = {
       "play": "プレイ"
     },
     "hero": {
-      "worldSignal": "ライブボクセル研究の世界",
-      "eyebrow": "Proof of Useful Work / ローカル リサーチ プレビュー",
+      "worldSignal": "ライブボクセル圧縮ワークスペース",
+      "eyebrow": "Proof of Useful Work / 決定論的ローカルマイナー",
       "title": "世界を圧縮し、すべてのボクセルを保存",
       "lede": "境界ボクセル言語を検索して、まったく同じ地形、建物、または偽造品を再構築する短いエンコードを探します。",
       "try": "Miner を開く",
@@ -1044,8 +1072,8 @@ const overrides = {
       "forgeDetail": "現物検査"
     },
     "demo": {
-      "kicker": "ローカル計算コンソール / 貼り付けた NCM はこの端末内に留まります",
-      "title": "ブラウザ圧縮ラボ",
+      "kicker": "ローカル計算コンソール / 貼り付けた NCM・NCF はこの端末内に留まります",
+      "title": "ブラウザ圧縮マイナー",
       "workspaceId": "NC-POUW / VM-1",
       "profileAria": "圧縮プロファイル",
       "tab1": "ワークロード 01",
@@ -1061,14 +1089,14 @@ const overrides = {
     },
     "status": {
       "ready": "準備完了",
-      "readyDetail": "既定のコテージを読み込みました。NCM3 または NCM4P を貼り付けて開始を押してください。",
+      "readyDetail": "既定のコテージを読み込みました。NCM3、NCM4P、NCF1 のいずれかを貼り付けて開始を押してください。",
       "exactNoImprovement": "完全一致 · ストレージの改善なし",
       "exactSmaller": "完全一致 · 厳密に小さい",
       "hiddenPaused": "ページが非表示になったため、ローカル CPU の作業が一時停止されました。",
       "inputChanged": "入力が変更されました。",
       "inspecting": "ローカルで検査中",
       "inspectingDetail": "Rust/WASM コアはこのアセットを正規化しています。",
-      "loadFirst": "先に NCM3 または NCM4P を貼り付けて読み込んでください。",
+      "loadFirst": "先に NCM3、NCM4P、NCF1 のいずれかを貼り付けて読み込んでください。",
       "mismatchDetail": "検証者は {count} の不一致を検出しました。",
       "noImprovementDetail": "検証された候補者は現職者と同等以上です。 {suffix}",
       "pageClosed": "ページは閉じられました。",
@@ -1144,7 +1172,7 @@ const overrides = {
       "copied": "コピーされました"
     },
     "privacy": {
-      "preview": "ローカルリサーチプレビュー",
+      "preview": "決定論的ローカルマイニング",
       "noTransactions": "トランザクション、報酬、ウォレット、RPC、テレメトリはありません。",
       "local": "ファイルがこのブラウザから離れることはありません。"
     },
@@ -1188,8 +1216,8 @@ const overrides = {
       "encodingBody": "1 つの特定のバイト表現をハッシュします。異なる正確なエンコーディングは前者を共有できますが、後者は異なる必要があります。",
       "limitsTitle": "ハードなリソース制限",
       "limitsBody": "浮動小数点、再帰、ジャンプ、無制限ループ、動的コード、クロック、または信頼できる結果統計はありません。正規のバリアントとチェックされた算術演算は必須です。",
-      "boundaryTitle": "正直な境界線",
-      "boundaryBody": "このプレビューには、ウォレット、RPC、報酬、プール、リーダーボード、またはデプロイされた Solana PoUW 検証ツールがありません。チェーン アダプター インターフェイスは予約されています。チェーンクレームはそうではありません。"
+      "boundaryTitle": "現在の動作範囲",
+      "boundaryBody": "このマイナーは現在ローカルで動作し、ウォレット、RPC、報酬、プール、リーダーボード、デプロイ済み Solana PoUW 検証ツールは使用しません。チェーンアダプター用インターフェイスは予約済みですが、オンチェーン確認は主張しません。"
     },
     "faq": {
       "sectionAria": "質問とソース",
@@ -1198,10 +1226,10 @@ const overrides = {
       "exactAnswer": "いいえ。検証者は正規のセマンティクスとすべての座標/マテリアルのアイデンティティを比較します。ボクセル、マテリアル、不変の鍛造フィールド、またはグリップを変更すると、結果が変わります。",
       "optimalQuestion": "マイナーは世界的に最も短いエンコーディングを証明しますか?",
       "optimalAnswer": "いいえ、これは、ある候補者が正確で、制限があり、現職者よりも厳密に身長が低いことを証明しています。改善が見つからなかった場合は、有効な結果となります。",
-      "uploadQuestion": "貼り付けた NCM はこのブラウザの外へ送信されますか?",
-      "uploadAnswer": "いいえ。貼り付けた NCM はローカルの Web Workers に直接渡されます。このページには、アップロード エンドポイント、テレメトリ、サードパーティ CDN、GitHub API リクエスト、ウォレット、または RPC クライアントは含まれていません。",
+      "uploadQuestion": "貼り付けた NCM または NCF はこのブラウザの外へ送信されますか?",
+      "uploadAnswer": "いいえ。貼り付けたアセットコードはローカルの Web Workers に直接渡されます。このページには、アップロード エンドポイント、テレメトリ、サードパーティ CDN、GitHub API リクエスト、ウォレット、または RPC クライアントは含まれていません。",
       "negativeQuestion": "プロフィールにマイナスの貯蓄額が表示されるのはなぜですか?",
-      "negativeAnswer": "既存の NCM3 または NCF1 アセットの一部は、すでに非常にコンパクトです。デモでは、正直に言って、同等以上のバイトをストレージ節約として再ラベル付けすることは決してないことが報告されています。"
+      "negativeAnswer": "既存の NCM3 または NCF1 アセットには、すでに非常にコンパクトなものがあります。マイナーは結果を正確に表示し、同等以上のエンコードを保存量削減とは表示しません。"
     },
     "source": {
       "kicker": "オープン実装",
@@ -1219,7 +1247,7 @@ const overrides = {
       "socialAria": "NiceChunk ソーシャル リンク",
       "github": "GitHub",
       "x": "×",
-      "text": "NiceChunk PoUW Miner v1 / 決定論的研究ソフトウェア",
+      "text": "NiceChunk PoUW Miner v1 / 決定論的圧縮ソフトウェア",
       "copyright": "2026 NiceChunk。無断転載を禁じます。"
     },
     "errors": {
@@ -1271,8 +1299,8 @@ const overrides = {
       "play": "플레이"
     },
     "hero": {
-      "worldSignal": "라이브 복셀 연구 세계",
-      "eyebrow": "Proof of Useful Work / 지역 연구 미리보기",
+      "worldSignal": "라이브 복셀 압축 작업 공간",
+      "eyebrow": "Proof of Useful Work / 결정론적 로컬 마이너",
       "title": "세계를 압축하고 모든 복셀을 보존하세요",
       "lede": "정확히 동일한 지형, 건물 또는 위조된 항목을 재구성하는 더 짧은 인코딩을 위해 제한된 복셀 언어를 검색합니다.",
       "try": "Miner 열기",
@@ -1298,8 +1326,8 @@ const overrides = {
       "forgeDetail": "품목검사"
     },
     "demo": {
-      "kicker": "로컬 컴퓨팅 콘솔 / 붙여 넣은 NCM은 이 기기에만 남습니다",
-      "title": "브라우저 압축 연구실",
+      "kicker": "로컬 컴퓨팅 콘솔 / 붙여 넣은 NCM·NCF는 이 기기에만 남습니다",
+      "title": "브라우저 압축 마이너",
       "workspaceId": "NC-POUW / VM-1",
       "profileAria": "압축 프로필",
       "tab1": "작업량 01",
@@ -1315,14 +1343,14 @@ const overrides = {
     },
     "status": {
       "ready": "준비",
-      "readyDetail": "기본 코티지가 로드되었습니다. NCM3 또는 NCM4P를 붙여 넣고 시작을 누르세요.",
+      "readyDetail": "기본 코티지가 로드되었습니다. NCM3, NCM4P 또는 NCF1을 붙여 넣고 시작을 누르세요.",
       "exactNoImprovement": "정확히 일치 · 저장용량 개선 없음",
       "exactSmaller": "정확한 일치 · 엄격하게 더 작음",
       "hiddenPaused": "페이지가 숨겨져서 로컬 CPU 작업이 일시 중지되었습니다.",
       "inputChanged": "입력이 변경되었습니다.",
       "inspecting": "로컬에서 검사 중",
       "inspectingDetail": "Rust/WASM 코어가 이 자산을 정규화하는 중입니다.",
-      "loadFirst": "먼저 NCM3 또는 NCM4P를 붙여 넣고 불러오세요.",
+      "loadFirst": "먼저 NCM3, NCM4P 또는 NCF1을 붙여 넣고 불러오세요.",
       "mismatchDetail": "검증자가 {count} 불일치를 발견했습니다.",
       "noImprovementDetail": "검증된 후보자는 현직 후보자와 동일하거나 그 이상입니다. {suffix}",
       "pageClosed": "페이지가 닫혔습니다.",
@@ -1398,7 +1426,7 @@ const overrides = {
       "copied": "복사됨"
     },
     "privacy": {
-      "preview": "지역 조사 미리보기",
+      "preview": "결정론적 로컬 마이닝",
       "noTransactions": "거래, 보상, 지갑, RPC 또는 원격 측정이 없습니다.",
       "local": "귀하의 파일은 이 브라우저를 떠나지 않습니다."
     },
@@ -1442,8 +1470,8 @@ const overrides = {
       "encodingBody": "하나의 특정 바이트 표현을 해시합니다. 서로 다른 정확한 인코딩은 전자를 공유할 수 있으며 후자는 달라야 합니다.",
       "limitsTitle": "하드 리소스 제한",
       "limitsBody": "부동 소수점, 재귀, 점프, 무제한 루프, 동적 코드, 시계 또는 신뢰할 수 있는 결과 통계가 없습니다. 표준 변형 및 검사 산술은 필수입니다.",
-      "boundaryTitle": "정직한 경계",
-      "boundaryBody": "이 미리보기에는 지갑, RPC, 보상, 풀, 리더보드 또는 배포된 Solana PoUW 검증자가 없습니다. 체인 어댑터 인터페이스가 예약되어 있습니다. 체인 클레임은 그렇지 않습니다."
+      "boundaryTitle": "현재 운영 범위",
+      "boundaryBody": "이 마이너는 현재 지갑, RPC, 보상, 풀, 리더보드 또는 배포된 Solana PoUW 검증자 없이 로컬에서 실행됩니다. 체인 어댑터 인터페이스는 예약되어 있으며 온체인 확인을 주장하지 않습니다."
     },
     "faq": {
       "sectionAria": "질문과 출처",
@@ -1452,10 +1480,10 @@ const overrides = {
       "exactAnswer": "아니요. 검증자는 표준 의미와 모든 좌표/물질 ID를 비교합니다. 복셀, 재질, 불변 단조 필드 또는 그립이 변경되면 결과가 변경됩니다.",
       "optimalQuestion": "광부가 전 세계적으로 가장 짧은 인코딩을 증명합니까?",
       "optimalAnswer": "아니요. 이는 한 후보자가 현직 후보자보다 정확하고 제한적이며 엄격하게 키가 작다는 것을 증명합니다. 개선 사항이 발견되지 않은 것은 유효한 결과입니다.",
-      "uploadQuestion": "붙여 넣은 NCM이 이 브라우저 밖으로 전송됩니까?",
-      "uploadAnswer": "아니요. 붙여 넣은 NCM은 로컬 Web Workers로 직접 전달됩니다. 페이지에는 업로드 엔드포인트, 원격 분석, 타사 CDN, GitHub API 요청, 지갑 또는 RPC 클라이언트가 포함되어 있지 않습니다.",
+      "uploadQuestion": "붙여 넣은 NCM 또는 NCF가 이 브라우저 밖으로 전송됩니까?",
+      "uploadAnswer": "아니요. 붙여 넣은 자산 코드는 로컬 Web Workers로 직접 전달됩니다. 페이지에는 업로드 엔드포인트, 원격 분석, 타사 CDN, GitHub API 요청, 지갑 또는 RPC 클라이언트가 포함되어 있지 않습니다.",
       "negativeQuestion": "프로필에 마이너스 절감액이 표시되는 이유는 무엇입니까?",
-      "negativeAnswer": "일부 기존 NCM3 또는 NCF1 자산은 이미 매우 컴팩트합니다. 데모에서는 동일하거나 더 큰 바이트를 스토리지 절약으로 정직하게 다시 표시하지 않는다고 보고합니다."
+      "negativeAnswer": "일부 기존 NCM3 또는 NCF1 자산은 이미 매우 컴팩트합니다. 마이너는 이를 정확히 보고하며 같거나 더 큰 인코딩을 저장 절감으로 표시하지 않습니다."
     },
     "source": {
       "kicker": "개방형 구현",
@@ -1473,7 +1501,7 @@ const overrides = {
       "socialAria": "NiceChunk 소셜 링크",
       "github": "GitHub",
       "x": "X",
-      "text": "NiceChunk PoUW Miner v1 / 결정론적 연구 소프트웨어",
+      "text": "NiceChunk PoUW Miner v1 / 결정론적 압축 소프트웨어",
       "copyright": "2026년 NiceChunk. 모든 권리 보유."
     },
     "errors": {
@@ -1525,8 +1553,8 @@ const overrides = {
       "play": "Играть"
     },
     "hero": {
-      "worldSignal": "Живой мир воксельных исследований",
-      "eyebrow": "Proof of Useful Work / Предварительный просмотр местных исследований",
+      "worldSignal": "Рабочая среда сжатия вокселей",
+      "eyebrow": "Proof of Useful Work / Детерминированный локальный майнер",
       "title": "Сжимайте мир, сохраняйте каждый воксел",
       "lede": "Найдите в ограниченном языке вокселей более короткую кодировку, которая реконструирует точно такую же местность, здание или выкованный предмет.",
       "try": "Открыть Miner",
@@ -1552,8 +1580,8 @@ const overrides = {
       "forgeDetail": "Проверка товара"
     },
     "demo": {
-      "kicker": "Локальные вычисления / вставленный NCM остаётся на этом устройстве",
-      "title": "Лаборатория сжатия браузера",
+      "kicker": "Локальные вычисления / вставленные NCM и NCF остаются на этом устройстве",
+      "title": "Браузерный майнер сжатия",
       "workspaceId": "NC-POUW / VM-1",
       "profileAria": "Профиль сжатия",
       "tab1": "Рабочая нагрузка 01",
@@ -1569,14 +1597,14 @@ const overrides = {
     },
     "status": {
       "ready": "Готов",
-      "readyDetail": "Коттедж по умолчанию загружен. Вставьте NCM3 или NCM4P и нажмите «Старт».",
+      "readyDetail": "Коттедж по умолчанию загружен. Вставьте NCM3, NCM4P или NCF1 и нажмите «Старт».",
       "exactNoImprovement": "Точное совпадение · без улучшения хранилища",
       "exactSmaller": "Точное совпадение · строго меньше",
       "hiddenPaused": "Страница стала скрытой, поэтому работа локального процессора была приостановлена.",
       "inputChanged": "Ввод изменен.",
       "inspecting": "Локальная проверка",
       "inspectingDetail": "Ядро Rust/WASM канонизирует этот ресурс.",
-      "loadFirst": "Сначала вставьте NCM3 или NCM4P и загрузите текст.",
+      "loadFirst": "Сначала вставьте NCM3, NCM4P или NCF1 и загрузите текст.",
       "mismatchDetail": "Верификатор обнаружил несоответствия {count}.",
       "noImprovementDetail": "Подтвержденный кандидат равен или больше действующего президента. {suffix}",
       "pageClosed": "Страница была закрыта.",
@@ -1652,7 +1680,7 @@ const overrides = {
       "copied": "Скопировано"
     },
     "privacy": {
-      "preview": "Предварительный просмотр местных исследований",
+      "preview": "Детерминированный локальный майнинг",
       "noTransactions": "Никаких транзакций, вознаграждений, кошелька, RPC или телеметрии.",
       "local": "Ваши файлы никогда не покидают этот браузер."
     },
@@ -1696,8 +1724,8 @@ const overrides = {
       "encodingBody": "хеширует одно конкретное представление байта. Различные точные кодировки могут использовать первое и отличаться во втором.",
       "limitsTitle": "Жесткие ограничения ресурсов",
       "limitsBody": "Никаких операций с плавающей запятой, рекурсии, переходов, неограниченных циклов, динамического кода, часов или статистики достоверных результатов. Канонические варинты и проверенная арифметика обязательны.",
-      "boundaryTitle": "Честная граница",
-      "boundaryBody": "В этой предварительной версии нет кошелька, RPC, вознаграждения, пула, таблицы лидеров или развернутого верификатора Solana PoUW. Интерфейс адаптера цепи зарезервирован; цепи претензий нет."
+      "boundaryTitle": "Текущая область работы",
+      "boundaryBody": "Этот майнер сейчас работает локально без кошелька, RPC, вознаграждений, пула, рейтинга и развёрнутого верификатора Solana PoUW. Интерфейс адаптера цепи зарезервирован; подтверждение в цепи не заявляется."
     },
     "faq": {
       "sectionAria": "Вопросы и источник",
@@ -1706,10 +1734,10 @@ const overrides = {
       "exactAnswer": "Нет. Верификатор сравнивает каноническую семантику и каждую идентичность координат/материалов. Одно изменение вокселя, материала, неизменяемого поля кузницы или захвата меняет результат.",
       "optimalQuestion": "Доказывает ли майнер глобально самую короткую кодировку?",
       "optimalAnswer": "Нет. Это доказывает, что один кандидат точен, ограничен и строго короче действующего президента. Никакое улучшение не обнаружено, это действительный результат.",
-      "uploadQuestion": "Покидает ли вставленный NCM этот браузер?",
-      "uploadAnswer": "Нет. Вставленный NCM передаётся напрямую локальным Web Workers. На странице нет конечной точки загрузки, телеметрии, стороннего CDN, запроса API GitHub, кошелька или клиента RPC.",
+      "uploadQuestion": "Покидает ли вставленный NCM или NCF этот браузер?",
+      "uploadAnswer": "Нет. Вставленный код объекта передаётся напрямую локальным Web Workers. На странице нет конечной точки загрузки, телеметрии, стороннего CDN, запроса API GitHub, кошелька или клиента RPC.",
       "negativeQuestion": "Почему профиль может показывать отрицательную экономию?",
-      "negativeAnswer": "Некоторые существующие ресурсы NCM3 или NCF1 уже очень компактны. Демо-версия сообщает, что честно и никогда не перемаркирует равные или большие байты как экономию памяти."
+      "negativeAnswer": "Некоторые ресурсы NCM3 или NCF1 уже очень компактны. Майнер точно сообщает результат и не выдаёт равную или большую кодировку за экономию хранилища."
     },
     "source": {
       "kicker": "Открытая реализация",
@@ -1727,7 +1755,7 @@ const overrides = {
       "socialAria": "NiceChunk социальные ссылки",
       "github": "GitHub",
       "x": "Х",
-      "text": "NiceChunk PoUW Miner v1 / программное обеспечение для детерминированных исследований",
+      "text": "NiceChunk PoUW Miner v1 / программное обеспечение детерминированного сжатия",
       "copyright": "2026 NiceChunk. Все права защищены."
     },
     "errors": {
@@ -1779,8 +1807,8 @@ const overrides = {
       "play": "开始游戏"
     },
     "hero": {
-      "worldSignal": "实时体素研究世界",
-      "eyebrow": "有用工作量证明 / 本地研究预览",
+      "worldSignal": "实时体素压缩工作区",
+      "eyebrow": "有用工作量证明 / 确定性本地矿工",
       "title": "压缩世界，保留每个体素",
       "lede": "在有界体素语言中搜索更短的编码，同时精确还原同一份地形、建筑或锻造物品。",
       "try": "打开 Miner",
@@ -1806,8 +1834,8 @@ const overrides = {
       "forgeDetail": "物品检视"
     },
     "demo": {
-      "kicker": "本地计算控制台 / 粘贴的 NCM 仅保留在此设备",
-      "title": "浏览器压缩实验室",
+      "kicker": "本地计算控制台 / 粘贴的 NCM、NCF 仅保留在此设备",
+      "title": "浏览器压缩矿工",
       "workspaceId": "NC-POUW / VM-1",
       "profileAria": "压缩类型",
       "tab1": "工作负载 01",
@@ -1823,14 +1851,14 @@ const overrides = {
     },
     "status": {
       "ready": "就绪",
-      "readyDetail": "默认基础小屋已加载。粘贴 NCM3 或 NCM4P 后点击“开始”。",
+      "readyDetail": "默认基础小屋已加载。粘贴 NCM3、NCM4P 或 NCF1 后点击“开始”。",
       "exactNoImprovement": "精确匹配 · 未节省存储空间",
       "exactSmaller": "精确匹配 · 编码更小",
       "hiddenPaused": "页面进入后台，本地 CPU 计算已暂停。",
       "inputChanged": "输入已更改。",
       "inspecting": "正在本地检验",
       "inspectingDetail": "Rust/WASM 核心正在规范化此资源。",
-      "loadFirst": "请先粘贴并加载 NCM3 或 NCM4P 内容。",
+      "loadFirst": "请先粘贴并加载 NCM3、NCM4P 或 NCF1 内容。",
       "mismatchDetail": "验证器发现 {count} 处不匹配。",
       "noImprovementDetail": "验证后的候选编码不小于现有编码。{suffix}",
       "pageClosed": "页面已关闭。",
@@ -1906,7 +1934,7 @@ const overrides = {
       "copied": "已复制"
     },
     "privacy": {
-      "preview": "本地研究预览",
+      "preview": "确定性本地挖矿",
       "noTransactions": "无交易、奖励、钱包、RPC 或遥测。",
       "local": "文件绝不会离开此浏览器。"
     },
@@ -1950,8 +1978,8 @@ const overrides = {
       "encodingBody": "对某一种具体字节表示进行哈希。不同的精确编码可以共享前者，但后者必须不同。",
       "limitsTitle": "严格资源限制",
       "limitsBody": "禁止浮点数、递归、跳转、无界循环、动态代码、时钟或受信任的结果统计。必须使用规范变长整数与检查算术。",
-      "boundaryTitle": "诚实边界",
-      "boundaryBody": "此预览版不包含钱包、RPC、奖励、矿池、排行榜或已部署的 Solana PoUW 验证器。仅预留链适配器接口，不声明尚未实现的链上能力。"
+      "boundaryTitle": "当前运行边界",
+      "boundaryBody": "此矿工当前在本地运行，不包含钱包、RPC、奖励、矿池、排行榜或已部署的 Solana PoUW 验证器。仅预留链适配器接口，不声明链上确认。"
     },
     "faq": {
       "sectionAria": "问题与源代码",
@@ -1960,10 +1988,10 @@ const overrides = {
       "exactAnswer": "不是。验证器会比较规范语义以及每个坐标和材质身份。任意一个体素、材质、不可变锻造字段或握持点发生变化，结果都会不同。",
       "optimalQuestion": "Miner 能证明这是全局最短编码吗？",
       "optimalAnswer": "不能。它只能证明某个候选编码精确、有界且严格小于现有编码。未找到改进同样是有效结果。",
-      "uploadQuestion": "粘贴的 NCM 会离开当前浏览器吗？",
-      "uploadAnswer": "不会。粘贴的 NCM 只会直接传给本地 Web Workers。页面没有上传端点、遥测、第三方 CDN、GitHub API 请求、钱包或 RPC 客户端。",
+      "uploadQuestion": "粘贴的 NCM 或 NCF 会离开当前浏览器吗？",
+      "uploadAnswer": "不会。粘贴的资产代码只会直接传给本地 Web Workers。页面没有上传端点、遥测、第三方 CDN、GitHub API 请求、钱包或 RPC 客户端。",
       "negativeQuestion": "为什么某些类型会显示负节省？",
-      "negativeAnswer": "部分 NCM3 或 NCF1 资源本身已高度紧凑。演示会如实报告，绝不会把相同或更大的编码标记为节省存储。"
+      "negativeAnswer": "部分 NCM3 或 NCF1 资源本身已高度紧凑。矿工会如实报告，绝不会把相同或更大的编码标记为节省存储。"
     },
     "source": {
       "kicker": "开放实现",
@@ -1981,7 +2009,7 @@ const overrides = {
       "socialAria": "NiceChunk 社交链接",
       "github": "GitHub",
       "x": "X",
-      "text": "NiceChunk PoUW Miner v1 / 确定性研究软件",
+      "text": "NiceChunk PoUW Miner v1 / 确定性压缩软件",
       "copyright": "2026 NiceChunk。保留所有权利。"
     },
     "errors": {
@@ -2033,8 +2061,8 @@ const overrides = {
       "play": "開始遊戲"
     },
     "hero": {
-      "worldSignal": "即時體素研究世界",
-      "eyebrow": "有用工作量證明 / 本地研究預覽",
+      "worldSignal": "即時體素壓縮工作區",
+      "eyebrow": "有用工作量證明 / 確定性本地礦工",
       "title": "壓縮世界，保留每個體素",
       "lede": "在有界體素語言中搜尋較短的編碼，同時精確還原同一份地形、建築或鍛造物品。",
       "try": "開啟 Miner",
@@ -2060,8 +2088,8 @@ const overrides = {
       "forgeDetail": "物品檢視"
     },
     "demo": {
-      "kicker": "本機計算控制台 / 貼上的 NCM 僅保留在此設備",
-      "title": "瀏覽器壓縮實驗室",
+      "kicker": "本機計算控制台 / 貼上的 NCM、NCF 僅保留在此設備",
+      "title": "瀏覽器壓縮礦工",
       "workspaceId": "NC-POUW / VM-1",
       "profileAria": "壓縮類型",
       "tab1": "工作負載 01",
@@ -2077,14 +2105,14 @@ const overrides = {
     },
     "status": {
       "ready": "就緒",
-      "readyDetail": "預設基礎小屋已載入。貼上 NCM3 或 NCM4P 後點擊“開始”。",
+      "readyDetail": "預設基礎小屋已載入。貼上 NCM3、NCM4P 或 NCF1 後點擊“開始”。",
       "exactNoImprovement": "精確匹配 · 未節省儲存空間",
       "exactSmaller": "精確匹配 · 編碼更小",
       "hiddenPaused": "頁面進入後台，本地 CPU 計算已暫停。",
       "inputChanged": "輸入已更改。",
       "inspecting": "正在本地檢驗",
       "inspectingDetail": "Rust/WASM 核心正在規範此資源。",
-      "loadFirst": "請先貼上並載入 NCM3 或 NCM4P 內容。",
+      "loadFirst": "請先貼上並載入 NCM3、NCM4P 或 NCF1 內容。",
       "mismatchDetail": "驗證器發現 {count} 處不符。",
       "noImprovementDetail": "驗證後的候選編碼不小於現有編碼。 {suffix}",
       "pageClosed": "頁面已關閉。",
@@ -2160,7 +2188,7 @@ const overrides = {
       "copied": "已複製"
     },
     "privacy": {
-      "preview": "本地研究預覽",
+      "preview": "確定性本地挖礦",
       "noTransactions": "無交易、獎勵、錢包、RPC 或遙測。",
       "local": "文件絕對不會離開此瀏覽器。"
     },
@@ -2204,8 +2232,8 @@ const overrides = {
       "encodingBody": "對某一種具體位元組表示進行哈希。不同的精確編碼可以共享前者，但後者必須不同。",
       "limitsTitle": "嚴格資源限制",
       "limitsBody": "禁止浮點數、遞歸、跳躍、無界循環、動態程式碼、時鐘或受信任的結果統計。必須使用規範變長整數與檢查算術。",
-      "boundaryTitle": "誠實邊界",
-      "boundaryBody": "此預覽版不包含錢包、RPC、獎勵、礦池、排行榜或已部署的 Solana PoUW 驗證器。僅預留鏈適配器接口，不聲明尚未實現的鏈上能力。"
+      "boundaryTitle": "目前運行邊界",
+      "boundaryBody": "此礦工目前在本機運行，不包含錢包、RPC、獎勵、礦池、排行榜或已部署的 Solana PoUW 驗證器。僅預留鏈適配器介面，不聲明鏈上確認。"
     },
     "faq": {
       "sectionAria": "問題與原始碼",
@@ -2214,10 +2242,10 @@ const overrides = {
       "exactAnswer": "不是。驗證器會比較規範語意以及每個座標和材質身分。任何一個體素、材質、不可變鍛造場或握持點發生變化，結果都會不同。",
       "optimalQuestion": "Miner 能證明這是全域最短編碼嗎？",
       "optimalAnswer": "不能。它只能證明某個候選編碼精確、有界且嚴格小於現有編碼。未找到改進同樣是有效結果。",
-      "uploadQuestion": "貼上的 NCM 會離開目前瀏覽器嗎？",
-      "uploadAnswer": "不會。貼上的 NCM 只會直接傳給本機 Web Workers。頁面沒有上傳端點、遙測、第三方 CDN、GitHub API 請求、錢包或 RPC 用戶端。",
+      "uploadQuestion": "貼上的 NCM 或 NCF 會離開目前瀏覽器嗎？",
+      "uploadAnswer": "不會。貼上的資產代碼只會直接傳給本機 Web Workers。頁面沒有上傳端點、遙測、第三方 CDN、GitHub API 請求、錢包或 RPC 用戶端。",
       "negativeQuestion": "為什麼某些類型會顯示負節省？",
-      "negativeAnswer": "部分 NCM3 或 NCF1 資源本身已高度緊湊。演示會如實報告，絕不會將相同或更大的編碼標記為節省儲存。"
+      "negativeAnswer": "部分 NCM3 或 NCF1 資源本身已高度緊湊。礦工會如實報告，絕不會將相同或更大的編碼標記為節省儲存。"
     },
     "source": {
       "kicker": "開放實現",
@@ -2235,7 +2263,7 @@ const overrides = {
       "socialAria": "NiceChunk 社交鏈接",
       "github": "GitHub",
       "x": "X",
-      "text": "NiceChunk PoUW Miner v1 / 確定性研究軟體",
+      "text": "NiceChunk PoUW Miner v1 / 確定性壓縮軟體",
       "copyright": "2026 NiceChunk。保留所有權利。"
     },
     "errors": {
@@ -2252,8 +2280,8 @@ const overrides = {
 
 const ncm4Overrides = {
   de: {
-    pasteLabel: "NCM3- oder NCM4P-Text einfügen",
-    pastePlaceholder: "NCM3:... oder NCM4P:...",
+    pasteLabel: "NCM3-, NCM4P- oder NCF1-Text einfügen",
+    pastePlaceholder: "NCM3:..., NCM4P:... oder NCF1....",
     loadText: "Eingefügte Eingabe laden",
     fastAnalyze: "Schnellanalyse",
     decode: "Dekodieren",
@@ -2283,7 +2311,7 @@ const ncm4Overrides = {
     diffMismatch: "{count} semantische Abweichungen",
     ncm3Remains: "NCM3 bleibt die beste Darstellung.",
     ncm3RemainsDetail: "Der geprüfte NCM4-Kandidat ist nicht strikt kleiner; daher bleiben die ursprünglichen NCM3-Bytes ausgewählt. {suffix}",
-    pasteRequired: "Fügen Sie zuerst einen NCM3- oder NCM4P-Wert ein.",
+    pasteRequired: "Fügen Sie zuerst einen NCM3-, NCM4P- oder NCF1-Wert ein.",
     quadSummary: "{count} kanonische Geometrie-Quads",
     semanticReady: "Kanonische Semantik bereit",
     strategyAudit: "deterministisches Sprachaudit",
@@ -2293,8 +2321,8 @@ const ncm4Overrides = {
     witnessYes: "Geprüfter kürzerer Nachweis",
   },
   es: {
-    pasteLabel: "Pegar texto NCM3 o NCM4P",
-    pastePlaceholder: "NCM3:... o NCM4P:...",
+    pasteLabel: "Pegar texto NCM3, NCM4P o NCF1",
+    pastePlaceholder: "NCM3:..., NCM4P:... o NCF1....",
     loadText: "Cargar entrada pegada",
     fastAnalyze: "Análisis rápido",
     decode: "Decodificar",
@@ -2324,7 +2352,7 @@ const ncm4Overrides = {
     diffMismatch: "{count} diferencias semánticas",
     ncm3Remains: "NCM3 sigue siendo la mejor representación.",
     ncm3RemainsDetail: "El candidato NCM4 verificado no es estrictamente menor, por lo que se conservan los bytes NCM3 originales. {suffix}",
-    pasteRequired: "Pegue primero un valor NCM3 o NCM4P.",
+    pasteRequired: "Pegue primero un valor NCM3, NCM4P o NCF1.",
     quadSummary: "{count} cuadriláteros geométricos canónicos",
     semanticReady: "Semántica canónica lista",
     strategyAudit: "auditoría determinista del lenguaje",
@@ -2334,8 +2362,8 @@ const ncm4Overrides = {
     witnessYes: "Testigo más corto verificado",
   },
   fr: {
-    pasteLabel: "Coller du texte NCM3 ou NCM4P",
-    pastePlaceholder: "NCM3:... ou NCM4P:...",
+    pasteLabel: "Coller du texte NCM3, NCM4P ou NCF1",
+    pastePlaceholder: "NCM3:..., NCM4P:... ou NCF1....",
     loadText: "Charger l'entrée collée",
     fastAnalyze: "Analyse rapide",
     decode: "Décoder",
@@ -2365,7 +2393,7 @@ const ncm4Overrides = {
     diffMismatch: "{count} différences sémantiques",
     ncm3Remains: "NCM3 reste la meilleure représentation.",
     ncm3RemainsDetail: "Le candidat NCM4 vérifié n'est pas strictement plus petit ; les octets NCM3 d'origine restent sélectionnés. {suffix}",
-    pasteRequired: "Collez d'abord une valeur NCM3 ou NCM4P.",
+    pasteRequired: "Collez d'abord une valeur NCM3, NCM4P ou NCF1.",
     quadSummary: "{count} quadrilatères géométriques canoniques",
     semanticReady: "Sémantique canonique prête",
     strategyAudit: "audit déterministe du langage",
@@ -2375,8 +2403,8 @@ const ncm4Overrides = {
     witnessYes: "Témoin plus court vérifié",
   },
   ja: {
-    pasteLabel: "NCM3 または NCM4P テキストを貼り付け",
-    pastePlaceholder: "NCM3:... または NCM4P:...",
+    pasteLabel: "NCM3、NCM4P、NCF1 テキストを貼り付け",
+    pastePlaceholder: "NCM3:...、NCM4P:...、NCF1....",
     loadText: "貼り付けた入力を読み込む",
     fastAnalyze: "高速分析",
     decode: "デコード",
@@ -2406,7 +2434,7 @@ const ncm4Overrides = {
     diffMismatch: "意味の不一致 {count} 件",
     ncm3Remains: "NCM3 が引き続き最良の表現です。",
     ncm3RemainsDetail: "検証済み NCM4 候補は厳密に小さくないため、元の NCM3 バイトを保持します。{suffix}",
-    pasteRequired: "まず NCM3 または NCM4P の値を貼り付けてください。",
+    pasteRequired: "まず NCM3、NCM4P、NCF1 のいずれかを貼り付けてください。",
     quadSummary: "正規形幾何クアッド {count} 個",
     semanticReady: "正規意味データ準備完了",
     strategyAudit: "決定論的言語監査",
@@ -2416,8 +2444,8 @@ const ncm4Overrides = {
     witnessYes: "より短い証明を検証済み",
   },
   ru: {
-    pasteLabel: "Вставить текст NCM3 или NCM4P",
-    pastePlaceholder: "NCM3:... или NCM4P:...",
+    pasteLabel: "Вставить текст NCM3, NCM4P или NCF1",
+    pastePlaceholder: "NCM3:..., NCM4P:... или NCF1....",
     loadText: "Загрузить вставленные данные",
     fastAnalyze: "Быстрый анализ",
     decode: "Декодировать",
@@ -2447,7 +2475,7 @@ const ncm4Overrides = {
     diffMismatch: "Семантических различий: {count}",
     ncm3Remains: "NCM3 остаётся лучшим представлением.",
     ncm3RemainsDetail: "Проверенный NCM4 не меньше строго, поэтому выбраны исходные байты NCM3. {suffix}",
-    pasteRequired: "Сначала вставьте значение NCM3 или NCM4P.",
+    pasteRequired: "Сначала вставьте значение NCM3, NCM4P или NCF1.",
     quadSummary: "Канонических геометрических квадов: {count}",
     semanticReady: "Каноническая семантика готова",
     strategyAudit: "детерминированный аудит языка",
@@ -2457,8 +2485,8 @@ const ncm4Overrides = {
     witnessYes: "Более короткое доказательство проверено",
   },
   ko: {
-    pasteLabel: "NCM3 또는 NCM4P 텍스트 붙여넣기",
-    pastePlaceholder: "NCM3:... 또는 NCM4P:...",
+    pasteLabel: "NCM3, NCM4P 또는 NCF1 텍스트 붙여넣기",
+    pastePlaceholder: "NCM3:..., NCM4P:... 또는 NCF1....",
     loadText: "붙여넣은 입력 불러오기",
     fastAnalyze: "빠른 분석",
     decode: "디코드",
@@ -2488,7 +2516,7 @@ const ncm4Overrides = {
     diffMismatch: "의미 불일치 {count}개",
     ncm3Remains: "NCM3가 여전히 가장 좋은 표현입니다.",
     ncm3RemainsDetail: "검증된 NCM4 후보가 엄격히 더 작지 않아 원본 NCM3 바이트를 유지합니다. {suffix}",
-    pasteRequired: "먼저 NCM3 또는 NCM4P 값을 붙여넣으세요.",
+    pasteRequired: "먼저 NCM3, NCM4P 또는 NCF1 값을 붙여넣으세요.",
     quadSummary: "정규 기하 쿼드 {count}개",
     semanticReady: "정규 의미 정보 준비 완료",
     strategyAudit: "결정적 언어 감사",
@@ -2498,8 +2526,8 @@ const ncm4Overrides = {
     witnessYes: "검증된 더 짧은 증거",
   },
   "zh-Hans": {
-    pasteLabel: "粘贴 NCM3 或 NCM4P 文本",
-    pastePlaceholder: "NCM3:... 或 NCM4P:...",
+    pasteLabel: "粘贴 NCM3、NCM4P 或 NCF1 文本",
+    pastePlaceholder: "NCM3:...、NCM4P:... 或 NCF1....",
     loadText: "加载粘贴内容",
     fastAnalyze: "快速分析",
     decode: "解码",
@@ -2529,7 +2557,7 @@ const ncm4Overrides = {
     diffMismatch: "{count} 个语义不匹配",
     ncm3Remains: "NCM3 仍是最优表达。",
     ncm3RemainsDetail: "已验证的 NCM4 候选没有严格更短，因此继续选用原 NCM3 字节。{suffix}",
-    pasteRequired: "请先粘贴 NCM3 或 NCM4P 内容。",
+    pasteRequired: "请先粘贴 NCM3、NCM4P 或 NCF1 内容。",
     quadSummary: "{count} 个规范几何四边形",
     semanticReady: "规范语义已就绪",
     strategyAudit: "确定性语言审计",
@@ -2539,8 +2567,8 @@ const ncm4Overrides = {
     witnessYes: "已验证更短 witness",
   },
   "zh-Hant": {
-    pasteLabel: "貼上 NCM3 或 NCM4P 文字",
-    pastePlaceholder: "NCM3:... 或 NCM4P:...",
+    pasteLabel: "貼上 NCM3、NCM4P 或 NCF1 文字",
+    pastePlaceholder: "NCM3:...、NCM4P:... 或 NCF1....",
     loadText: "載入貼上內容",
     fastAnalyze: "快速分析",
     decode: "解碼",
@@ -2570,7 +2598,7 @@ const ncm4Overrides = {
     diffMismatch: "{count} 個語意不匹配",
     ncm3Remains: "NCM3 仍是最佳表達。",
     ncm3RemainsDetail: "已驗證的 NCM4 候選沒有嚴格更短，因此繼續選用原 NCM3 位元組。{suffix}",
-    pasteRequired: "請先貼上 NCM3 或 NCM4P 內容。",
+    pasteRequired: "請先貼上 NCM3、NCM4P 或 NCF1 內容。",
     quadSummary: "{count} 個規範幾何四邊形",
     semanticReady: "規範語意已就緒",
     strategyAudit: "確定性語言審計",

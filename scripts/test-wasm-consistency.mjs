@@ -19,6 +19,16 @@ try {
   for (const vector of golden.vectors) {
     const inputPath = resolve(root, "test-vectors", vector.file);
     const input = await readFile(inputPath);
+    const detectionInput = vector.profile === "forged_item"
+      ? Buffer.from(`NCF1.${input.toString("base64url")}`)
+      : input;
+    const detected = JSON.parse(wasmModule.detect_input_json(detectionInput));
+    assertEqual(detected.profile, vector.profile, `${vector.file} detected profile`);
+    assertEqual(detected.format, {
+      terrain_delta: "chunkbroken-v1",
+      building: "ncm3-v1",
+      forged_item: "ncf1-v15",
+    }[vector.profile], `${vector.file} detected format`);
     const inspected = JSON.parse(wasmModule.inspect_json(vector.profile, input));
     assertEqual(inspected.semanticRoot, vector.semanticRoot, `${vector.file} semantic root`);
     assertEqual(inspected.encodingHash, vector.encodingHash, `${vector.file} encoding hash`);

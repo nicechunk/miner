@@ -54,7 +54,7 @@ island receive the more expensive formal CPU evaluation. Too few survivors can
 reduce search quality, while too many reduce GPU speedup.
 
 Use `--accelerator auto` to permit a reported CPU fallback when CUDA is absent.
-Use `--accelerator cuda` for benchmarks and production research runs where
+Use `--accelerator cuda` for benchmarks and production mining runs where
 silent fallback would invalidate the measurement. CUDA currently supports
 direct NCM3/NCM4 Building inputs only. Terrain, forged items, TaskV1 mining,
 WASM, and browsers continue to use CPU.
@@ -74,7 +74,7 @@ attempt order.
 
 ## RTX 4090 evidence
 
-The Alpha 7 validation host used an RTX 4090 24 GB (compute capability 8.9),
+The `0.2.0-alpha.7` validation host used an RTX 4090 24 GB (compute capability 8.9),
 NVIDIA driver 580.173.02, and 32 logical CPU threads. With 12 islands,
 population 64, 20 generations, seed 123, batch 2,048, and eight survivors:
 

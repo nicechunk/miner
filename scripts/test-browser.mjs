@@ -18,6 +18,9 @@ const buildingInputs = Object.fromEntries(await Promise.all(
     (await readFile(resolve(root, "test-vectors", "building", `${name}.ncm3`), "utf8")).trim(),
   ]),
 ));
+const forgedInput = `NCF1.${Buffer.from(await readFile(
+  resolve(root, "test-vectors", "forged_item", "complex-painted-cavity.ncf1"),
+)).toString("base64url")}`;
 const wasmDelayMs = Math.max(0, Number(process.env.POUW_WASM_DELAY_MS || 0));
 const noWebGlOnly = process.env.POUW_NO_WEBGL_ONLY === "1";
 const requestedBrowserNames = String(process.env.POUW_BROWSER_TARGETS || "")
@@ -255,6 +258,58 @@ async function testBrowser(browser, label, origin, requests) {
     assert(variantPreview.root === await page.locator("#targetRoot").textContent(), `${label} ${variant} preview root differs from verification`);
     assert(JSON.stringify(variantPreview) !== JSON.stringify(defaultPreview), `${label} ${variant} NCM preview data did not change`);
   }
+
+  await page.locator("#inputText").fill(forgedInput);
+  await page.locator("#loadTextButton").click();
+  await page.waitForFunction(() => {
+    const canvas = document.getElementById("ncmPreviewCanvas");
+    return document.getElementById("inputFormat")?.textContent === "ncf1-v15"
+      && canvas?.dataset.previewProfile === "forged_item"
+      && (canvas.dataset.previewAsset === "forged-item" || Boolean(canvas.dataset.previewFallback))
+      && (canvas.dataset.previewReady === "true"
+        || Boolean(canvas.dataset.previewFallback)
+        || Boolean(canvas.dataset.previewError));
+  }, null, { timeout: 30_000 });
+  assert(await page.locator('[data-profile="forged_item"]').getAttribute("aria-selected") === "true", `${label} NCF1 paste did not select the forged-item mining profile`);
+  assert(await page.locator("#ncmPreviewFormat").textContent() === "ncf1-v15", `${label} forged preview did not identify NCF1 v15`);
+  assert(await page.locator("#ncmPreviewRoot").textContent() === await page.locator("#targetRoot").textContent(), `${label} forged preview semantic root differs from verification`);
+  assert(Number((await page.locator("#ncmPreviewVoxels").textContent()).replaceAll(/\D/gu, "")) > 0, `${label} forged preview geometry count is empty`);
+  if (hasWebGlScene) {
+    assert(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-ready") === "true", `${label} forged item did not render through Chunk.js WebGL2`);
+    assert(Number(await page.locator("#ncmPreviewCanvas").getAttribute("data-preview-mesh-triangles")) > 0, `${label} forged item mesh has no triangles`);
+    const canvas = page.locator("#ncmPreviewCanvas");
+    const box = await canvas.boundingBox();
+    assert(box, `${label} forged preview canvas has no layout box`);
+    const initialYaw = await canvas.getAttribute("data-preview-yaw");
+    await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.55);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.68, box.y + box.height * 0.46, { steps: 5 });
+    await page.mouse.up();
+    assert(await canvas.getAttribute("data-preview-yaw") !== initialYaw, `${label} drag did not rotate the forged model camera`);
+    const initialZoom = await canvas.getAttribute("data-preview-zoom");
+    await page.mouse.wheel(0, -180);
+    assert(await canvas.getAttribute("data-preview-zoom") !== initialZoom, `${label} wheel did not zoom the forged model camera`);
+    const initialPan = await canvas.getAttribute("data-preview-pan");
+    await page.keyboard.down("Shift");
+    await page.mouse.move(box.x + box.width * 0.52, box.y + box.height * 0.56);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.63, { steps: 4 });
+    await page.mouse.up();
+    await page.keyboard.up("Shift");
+    assert(await canvas.getAttribute("data-preview-pan") !== initialPan, `${label} shift-drag did not pan the forged model camera`);
+    await page.locator("#previewResetButton").click();
+    assert(await canvas.getAttribute("data-preview-yaw") === "0.73000", `${label} preview reset did not restore yaw`);
+    assert(await canvas.getAttribute("data-preview-zoom") === "1.00000", `${label} preview reset did not restore zoom`);
+  }
+  await page.locator("#workerCount").fill("1");
+  await page.locator("#populationInput").fill("4");
+  await page.locator("#startButton").click();
+  await page.waitForFunction(() => (
+    document.getElementById("minerWorldCanvas")?.dataset.scenePhase === "running"
+    && Number(document.getElementById("attempts")?.textContent.replaceAll(/\D/gu, "") || 0) > 0
+    && document.getElementById("exactStatus")?.textContent === "Exact Match"
+  ), null, { timeout: 30_000 });
+  await page.locator("#stopButton").click();
 
   await page.locator("#inputText").fill(buildingInputs["complex-cottage"]);
   await page.locator("#loadTextButton").click();

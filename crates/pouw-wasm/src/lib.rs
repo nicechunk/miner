@@ -3,10 +3,10 @@
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use pouw_core::{
-    candidate_encoding_hash, decode_candidate, decode_ncm4, deterministic_ncm4_seed, encoding_hash,
-    hash_hex, import_asset, semantic_root, verify_result, Error, IncumbentFormat, LimitsV1,
-    Profile, ResultV1, SearchMetadataV1, TaskV1, VerificationReportV1, COST_MODEL_VERSION,
-    NCM4_VERSION, PROTOCOL_VERSION, SOFTWARE_VERSION, VM_VERSION,
+    candidate_encoding_hash, decode_candidate, decode_ncm4, detect_format, deterministic_ncm4_seed,
+    encoding_hash, hash_hex, import_asset, semantic_root, verify_result, DetectedFormat, Error,
+    IncumbentFormat, LimitsV1, Profile, ResultV1, SearchMetadataV1, TaskV1, VerificationReportV1,
+    COST_MODEL_VERSION, NCM4_VERSION, PROTOCOL_VERSION, SOFTWARE_VERSION, VM_VERSION,
 };
 use pouw_search::{
     best_baseline, mine, resume, CheckpointV1, Ncm4SearchCheckpoint, Ncm4SearchSession,
@@ -25,6 +25,31 @@ pub fn version_json() -> String {
         "ncm4Version": NCM4_VERSION,
     })
     .to_string()
+}
+
+#[wasm_bindgen]
+pub fn detect_input_json(input: &[u8]) -> Result<String, JsValue> {
+    let limits = LimitsV1::default();
+    let detected = detect_format(input);
+    let profile = match detected {
+        DetectedFormat::ChunkBrokenV1 => Profile::TerrainDelta,
+        DetectedFormat::Ncm3V1 => Profile::Building,
+        DetectedFormat::Ncf1V15 => Profile::ForgedItem,
+        DetectedFormat::Ncm4PouwV1 => decode_ncm4(input, &limits).map_err(js_error)?.profile,
+        DetectedFormat::PouwVmV1 => detect_vm_profile(input, &limits)?,
+        DetectedFormat::Unknown => {
+            return Err(js_error(Error::invalid(
+                "unknown-input-format",
+                "Input is not canonical NCM3, NCF1, ChunkBroken, NCM4P, or PoUW VM data.",
+            )))
+        }
+    };
+    let imported = import_asset(profile, input, &limits).map_err(js_error)?;
+    Ok(json!({
+        "profile": profile.as_str(),
+        "format": imported.format.as_str(),
+    })
+    .to_string())
 }
 
 #[wasm_bindgen]
@@ -462,6 +487,22 @@ fn browser_config(
 
 fn parse_profile(value: &str) -> Result<Profile, JsValue> {
     value.parse().map_err(js_error)
+}
+
+fn detect_vm_profile(input: &[u8], limits: &LimitsV1) -> Result<Profile, JsValue> {
+    [
+        Profile::TerrainDelta,
+        Profile::Building,
+        Profile::ForgedItem,
+    ]
+    .into_iter()
+    .find(|profile| decode_candidate(input, *profile, limits).is_ok())
+    .ok_or_else(|| {
+        js_error(Error::invalid(
+            "unknown-vm-profile",
+            "PoUW VM input does not contain a supported canonical profile.",
+        ))
+    })
 }
 
 fn js_error(error: Error) -> JsValue {

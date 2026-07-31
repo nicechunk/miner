@@ -1,6 +1,8 @@
 import { ChunkManager } from "nicechunk-chunk-runtime/chunk/chunk-manager.js";
 import { createBuildingChunkMeshes } from "nicechunk-chunk-runtime/construction/building-mesher.js";
 import { createBuildingPlacement, parseNcm3Building } from "nicechunk-chunk-runtime/construction/building-parser.js";
+import { decodeForgeVolumeMm3 } from "nicechunk-chunk-runtime/forge/forge-core.js";
+import { buildForgeDesignMesh } from "nicechunk-chunk-runtime/forge/forge-mesher.js";
 import { loadPeasantGuyAvatarMesh } from "nicechunk-chunk-runtime/renderer/avatar-mesh.js";
 import { createCameraState } from "nicechunk-chunk-runtime/renderer/camera.js";
 import {
@@ -8,6 +10,7 @@ import {
   EQUIPMENT_MODEL_ID,
   equipmentModelBounds,
 } from "nicechunk-chunk-runtime/renderer/equipment-model.js";
+import { createForgedWorldItemMesh } from "nicechunk-chunk-runtime/renderer/forged-world-mesh.js";
 import { WebGL2VoxelRenderer } from "nicechunk-chunk-runtime/renderer/webgl2-renderer.js";
 import { BLOCK_ID, MATERIAL_ID } from "nicechunk-chunk-runtime/world/block-registry.js";
 import {
@@ -475,9 +478,9 @@ export function createMinerWorldScene(canvas, options = {}) {
 }
 
 /**
- * Render the canonical building semantics returned by pouw-core/WASM.
- * This deliberately does not decode NCM in JavaScript: the browser only turns
- * the already verified coordinate/material map into Chunk.js mesh input.
+ * Render canonical asset semantics returned by pouw-core/WASM. JavaScript does
+ * not decode NCM or NCF bytes here; it only adapts the verified semantic model
+ * to the public Chunk.js building and forge meshers.
  */
 export function createNcmPreviewScene(canvas, options = {}) {
   if (!(canvas instanceof HTMLCanvasElement)) return createNoopPreviewController();
@@ -488,6 +491,9 @@ export function createNcmPreviewScene(canvas, options = {}) {
   const frameInterval = 1_000 / maxFps;
   let renderer = null;
   let chunks = [];
+  let forgedActor = null;
+  let forgedMesh = null;
+  let forgedMeshId = null;
   let bounds = null;
   let inspection = null;
   let initialization = null;
@@ -498,6 +504,10 @@ export function createNcmPreviewScene(canvas, options = {}) {
   let visible = true;
   let destroyed = false;
   let revision = 0;
+  let readyRevision = -1;
+  const orbit = { yaw: 0.73, pitch: 0.48, zoom: 1, pan: [0, 0, 0] };
+  const pointers = new Map();
+  let gesture = null;
 
   canvas.dataset.previewReady = "false";
   canvas.dataset.previewRenderer = "chunk.js-webgl2";
@@ -507,7 +517,8 @@ export function createNcmPreviewScene(canvas, options = {}) {
   };
 
   const schedule = () => {
-    if (animationFrame || destroyed || document.hidden || !visible || !renderer || !bounds || !chunks.length) return;
+    if (animationFrame || destroyed || document.hidden || !visible || !renderer || !bounds
+      || (!chunks.length && !forgedActor)) return;
     animationFrame = requestAnimationFrame(renderFrame);
   };
 
@@ -552,6 +563,7 @@ export function createNcmPreviewScene(canvas, options = {}) {
         clearColor: [0.035, 0.047, 0.055, 1],
       });
       renderer.init();
+      uploadForgedMesh();
       delete canvas.dataset.previewError;
       schedule();
     } catch (error) {
@@ -561,23 +573,33 @@ export function createNcmPreviewScene(canvas, options = {}) {
 
   function renderFrame(timestamp, force = false) {
     animationFrame = 0;
-    if (destroyed || document.hidden || !visible || !renderer || !bounds || !chunks.length) return;
+    if (destroyed || document.hidden || !visible || !renderer || !bounds
+      || (!chunks.length && !forgedActor)) return;
     if (!force && timestamp - lastFrameTime < frameInterval) {
       schedule();
       return;
     }
     lastFrameTime = timestamp;
     try {
-      const camera = previewCameraState(bounds, canvasAspect(canvas));
-      renderer.prepareChunksForRender(chunks, {
+      const camera = previewCameraState(bounds, canvasAspect(canvas), orbit);
+      const preparation = renderer.prepareChunksForRender(chunks, {
         maxUploads: Math.max(8, chunks.length * 2),
         cameraState: camera,
       });
-      const stats = renderer.render(camera, chunks, [], [previewFoundationOverlay(bounds)]);
+      const overlays = forgedActor ? [] : [previewFoundationOverlay(bounds)];
+      const stats = renderer.render(camera, chunks, forgedActor ? [forgedActor] : [], overlays);
       canvas.dataset.previewReady = "true";
       canvas.dataset.previewChunks = String(chunks.length);
       canvas.dataset.previewTriangles = String(stats.triangles || 0);
       setFrameState("ready");
+      if (readyRevision !== revision) {
+        readyRevision = revision;
+        options.onReady?.({
+          profile: inspection?.semantics?.profile,
+          triangles: Number(stats.triangles || 0),
+        });
+      }
+      if (preparation?.pendingUploads) schedule();
     } catch (error) {
       markUnavailable(error);
     }
@@ -587,32 +609,60 @@ export function createNcmPreviewScene(canvas, options = {}) {
     revision += 1;
     inspection = nextInspection || null;
     chunks = [];
+    releaseForgedMesh();
+    forgedActor = null;
+    forgedMesh = null;
     bounds = null;
+    readyRevision = -1;
+    resetView(false);
     canvas.dataset.previewReady = "false";
     canvas.dataset.previewProfile = String(inspection?.semantics?.profile || "");
     canvas.dataset.previewFormat = String(inspection?.format || "");
     canvas.dataset.previewSemanticRoot = String(inspection?.semanticRoot || "");
     canvas.dataset.previewVoxelCount = String(inspection?.voxelCount ?? "");
     delete canvas.dataset.previewDimensions;
+    delete canvas.dataset.previewAsset;
+    delete canvas.dataset.previewMeshId;
     renderer?.pruneChunks(new Set());
 
-    if (inspection?.semantics?.profile !== "building") {
+    if (!inspection) {
+      setFrameState("waiting");
+      return;
+    }
+    if (inspection.semantics?.profile !== "building"
+      && inspection.semantics?.profile !== "forged_item") {
       setFrameState(inspection ? "unsupported" : "waiting");
       return;
     }
 
     try {
       const currentRevision = revision;
-      const placement = createCanonicalBuildingPlacement(inspection);
-      chunks = createBuildingChunkMeshes(placement, { chunkSize: 16, revision: currentRevision });
-      bounds = placement.bounds;
-      const size = inspection.semantics.semantics.size;
-      canvas.dataset.previewDimensions = size.join("x");
-      canvas.dataset.previewChunks = String(chunks.length);
-      setFrameState(chunks.length ? "loading" : "empty");
-      if (!chunks.length) return;
+      if (inspection.semantics.profile === "building") {
+        const placement = createCanonicalBuildingPlacement(inspection);
+        chunks = createBuildingChunkMeshes(placement, { chunkSize: 16, revision: currentRevision });
+        bounds = placement.bounds;
+        const size = inspection.semantics.semantics.size;
+        canvas.dataset.previewDimensions = size.join("x");
+        canvas.dataset.previewChunks = String(chunks.length);
+        canvas.dataset.previewAsset = "building";
+        setFrameState(chunks.length ? "loading" : "empty");
+        if (!chunks.length) return;
+      } else {
+        const forged = createCanonicalForgedPreview(inspection);
+        forgedActor = forged.actor;
+        forgedMesh = forged.mesh;
+        forgedMeshId = forged.actor.meshId;
+        bounds = forged.bounds;
+        canvas.dataset.previewDimensions = [bounds.width, bounds.height, bounds.depth].join("x");
+        canvas.dataset.previewChunks = "0";
+        canvas.dataset.previewAsset = "forged-item";
+        canvas.dataset.previewMeshId = forgedMeshId;
+        canvas.dataset.previewMeshTriangles = String(forged.mesh.triangleCount || 0);
+        setFrameState("loading");
+      }
       if (renderer) {
         renderer.pruneChunks(new Set(chunks.map((chunk) => chunk.id)));
+        uploadForgedMesh();
         renderFrame(performance.now(), true);
       } else if (!initialization) {
         initialization = initialize().finally(() => {
@@ -623,6 +673,135 @@ export function createNcmPreviewScene(canvas, options = {}) {
       markUnavailable(error);
     }
   }
+
+  function uploadForgedMesh() {
+    if (!renderer || !forgedMesh || !forgedMeshId) return;
+    renderer.removeAvatarMesh(forgedMeshId);
+    renderer.uploadAvatarMesh(forgedMeshId, forgedMesh);
+  }
+
+  function releaseForgedMesh() {
+    if (renderer && forgedMeshId) renderer.removeAvatarMesh(forgedMeshId);
+    forgedMeshId = null;
+  }
+
+  function resetView(render = true) {
+    orbit.yaw = 0.73;
+    orbit.pitch = 0.48;
+    orbit.zoom = 1;
+    orbit.pan = [0, 0, 0];
+    updateOrbitDataset();
+    if (render) renderFrame(performance.now(), true);
+  }
+
+  function updateOrbitDataset() {
+    canvas.dataset.previewYaw = orbit.yaw.toFixed(5);
+    canvas.dataset.previewPitch = orbit.pitch.toFixed(5);
+    canvas.dataset.previewZoom = orbit.zoom.toFixed(5);
+    canvas.dataset.previewPan = orbit.pan.map((value) => value.toFixed(5)).join(",");
+  }
+
+  function panView(deltaX, deltaY) {
+    if (!bounds) return;
+    const radius = previewBoundsRadius(bounds) * orbit.zoom;
+    const scale = Math.max(0.001, radius / Math.max(160, canvas.clientHeight || 1));
+    orbit.pan[0] += (-deltaX * Math.sin(orbit.yaw)) * scale;
+    orbit.pan[2] += (deltaX * Math.cos(orbit.yaw)) * scale;
+    orbit.pan[1] += deltaY * scale;
+  }
+
+  function renderInteraction() {
+    updateOrbitDataset();
+    renderFrame(performance.now(), true);
+  }
+
+  const handlePointerDown = (event) => {
+    canvas.focus({ preventScroll: true });
+    canvas.setPointerCapture?.(event.pointerId);
+    pointers.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+      mode: event.button !== 0 || event.shiftKey ? "pan" : "orbit",
+    });
+    gesture = null;
+    canvas.dataset.previewDragging = "true";
+    event.preventDefault();
+  };
+
+  const handlePointerMove = (event) => {
+    const previous = pointers.get(event.pointerId);
+    if (!previous) return;
+    pointers.set(event.pointerId, { ...previous, x: event.clientX, y: event.clientY });
+    if (pointers.size >= 2) {
+      const [left, right] = [...pointers.values()].slice(0, 2);
+      const nextGesture = {
+        distance: Math.max(1, Math.hypot(right.x - left.x, right.y - left.y)),
+        x: (left.x + right.x) * 0.5,
+        y: (left.y + right.y) * 0.5,
+      };
+      if (gesture) {
+        orbit.zoom = clampPreview(orbit.zoom * gesture.distance / nextGesture.distance, 0.28, 6);
+        panView(nextGesture.x - gesture.x, nextGesture.y - gesture.y);
+      }
+      gesture = nextGesture;
+    } else if (previous.mode === "pan" || event.shiftKey) {
+      panView(event.clientX - previous.x, event.clientY - previous.y);
+    } else {
+      orbit.yaw -= (event.clientX - previous.x) * 0.008;
+      orbit.pitch = clampPreview(orbit.pitch + (event.clientY - previous.y) * 0.006, -1.25, 1.25);
+    }
+    renderInteraction();
+    event.preventDefault();
+  };
+
+  const handlePointerUp = (event) => {
+    pointers.delete(event.pointerId);
+    gesture = null;
+    if (!pointers.size) delete canvas.dataset.previewDragging;
+    event.preventDefault();
+  };
+
+  const handleWheel = (event) => {
+    orbit.zoom = clampPreview(orbit.zoom * Math.exp(event.deltaY * 0.0012), 0.28, 6);
+    renderInteraction();
+    event.preventDefault();
+  };
+
+  const handleKeyDown = (event) => {
+    const key = event.key;
+    if (key === "Home" || key === "0") {
+      resetView();
+    } else if (key === "+" || key === "=") {
+      orbit.zoom = clampPreview(orbit.zoom * 0.86, 0.28, 6);
+      renderInteraction();
+    } else if (key === "-" || key === "_") {
+      orbit.zoom = clampPreview(orbit.zoom * 1.16, 0.28, 6);
+      renderInteraction();
+    } else if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) {
+      const horizontal = key === "ArrowLeft" ? -16 : key === "ArrowRight" ? 16 : 0;
+      const vertical = key === "ArrowUp" ? -16 : key === "ArrowDown" ? 16 : 0;
+      if (event.shiftKey) panView(horizontal, vertical);
+      else {
+        orbit.yaw -= horizontal * 0.008;
+        orbit.pitch = clampPreview(orbit.pitch + vertical * 0.006, -1.25, 1.25);
+      }
+      renderInteraction();
+    } else {
+      return;
+    }
+    event.preventDefault();
+  };
+
+  canvas.tabIndex = canvas.tabIndex >= 0 ? canvas.tabIndex : 0;
+  canvas.addEventListener("pointerdown", handlePointerDown);
+  canvas.addEventListener("pointermove", handlePointerMove);
+  canvas.addEventListener("pointerup", handlePointerUp);
+  canvas.addEventListener("pointercancel", handlePointerUp);
+  canvas.addEventListener("wheel", handleWheel, { passive: false });
+  canvas.addEventListener("dblclick", resetView);
+  canvas.addEventListener("keydown", handleKeyDown);
+  canvas.addEventListener("contextmenu", preventDefault);
+  updateOrbitDataset();
 
   const handleVisibility = () => {
     if (document.hidden) {
@@ -652,6 +831,7 @@ export function createNcmPreviewScene(canvas, options = {}) {
 
   return {
     setInspection,
+    resetView,
     destroy() {
       if (destroyed) return;
       destroyed = true;
@@ -659,10 +839,103 @@ export function createNcmPreviewScene(canvas, options = {}) {
       resizeObserver?.disconnect();
       visibilityObserver?.disconnect();
       document.removeEventListener("visibilitychange", handleVisibility);
+      canvas.removeEventListener("pointerdown", handlePointerDown);
+      canvas.removeEventListener("pointermove", handlePointerMove);
+      canvas.removeEventListener("pointerup", handlePointerUp);
+      canvas.removeEventListener("pointercancel", handlePointerUp);
+      canvas.removeEventListener("wheel", handleWheel);
+      canvas.removeEventListener("dblclick", resetView);
+      canvas.removeEventListener("keydown", handleKeyDown);
+      canvas.removeEventListener("contextmenu", preventDefault);
+      releaseForgedMesh();
       renderer?.dispose();
       renderer = null;
       chunks = [];
       bounds = null;
+    },
+  };
+}
+
+function createCanonicalForgedPreview(inspection) {
+  const semantics = inspection?.semantics?.semantics;
+  const equipment = semantics?.equipment;
+  const geometry = semantics?.geometry;
+  if (!equipment || !geometry) throw new Error("Canonical forged-item semantics are unavailable.");
+
+  const design = {
+    version: 15,
+    equipment: {
+      mass5g: equipment.mass5g,
+      volumeMm3: decodeForgeVolumeMm3(equipment.encodedVolume),
+      attributes6: equipment.attributes6,
+    },
+  };
+  if (geometry.mode === "components") {
+    design.components = geometry.components.map((component) => {
+      const solid = new Uint8Array(14 * 10 * 14);
+      for (const cell of component.solid) {
+        if (!Number.isSafeInteger(cell) || cell < 0 || cell >= solid.length) {
+          throw new Error("Canonical forged-item solid geometry is invalid.");
+        }
+        solid[cell] = 1;
+      }
+      return {
+        resource: component.resource,
+        color444: component.color444,
+        dimsQ: component.dimensionsQ,
+        offsetQ: component.offsetQ,
+        grip: component.grip,
+        solid,
+        paintQuads: component.paint,
+      };
+    });
+  } else if (geometry.mode === "appearance") {
+    design.appearance = {
+      dimsQ: geometry.appearance.dimensionsQ,
+      grip: geometry.appearance.grip,
+      quads: geometry.appearance.quads,
+    };
+  } else {
+    throw new Error("Canonical forged-item geometry mode is unsupported.");
+  }
+
+  const packedMesh = buildForgeDesignMesh(design);
+  const designHash = Number.parseInt(String(inspection.semanticRoot || "0").slice(0, 8), 16) >>> 0;
+  const mesh = createForgedWorldItemMesh({
+    kind: "ncf1-forge-runtime-v1",
+    mesh: packedMesh,
+    designHash,
+  });
+  const local = mesh.localBounds;
+  const bounds = {
+    minX: local.minX,
+    minY: local.minY,
+    minZ: local.minZ,
+    maxX: local.maxX,
+    maxY: local.maxY,
+    maxZ: local.maxZ,
+    width: mesh.bounds.width,
+    height: mesh.bounds.height,
+    depth: mesh.bounds.depth,
+  };
+  const meshId = `canonical-forged-${String(inspection.semanticRoot || "unrooted").slice(0, 16)}`;
+  return {
+    mesh,
+    bounds,
+    actor: {
+      id: meshId,
+      meshId,
+      role: "canonical-forged-item",
+      worldX: 0,
+      worldY: 0,
+      worldZ: 0,
+      localOffsetX: 0,
+      localOffsetY: 0,
+      localOffsetZ: 0,
+      yaw: 0,
+      alwaysVisible: true,
+      cullRadius: Math.max(bounds.width, bounds.height, bounds.depth) * 2,
+      shadowAlpha: 0,
     },
   };
 }
@@ -715,23 +988,35 @@ function isWebGl2UnavailableError(error) {
     .test(String(error?.message || error || ""));
 }
 
-function previewCameraState(bounds, aspect) {
-  const target = [
-    (bounds.minX + bounds.maxX + 1) * 0.5,
-    (bounds.minY + bounds.maxY + 1) * 0.5,
-    (bounds.minZ + bounds.maxZ + 1) * 0.5,
+function previewCameraState(bounds, aspect, orbit) {
+  const center = [
+    bounds.minX + bounds.width * 0.5,
+    bounds.minY + bounds.height * 0.5,
+    bounds.minZ + bounds.depth * 0.5,
   ];
-  const radius = Math.max(2.4, Math.hypot(bounds.width, bounds.height, bounds.depth) * 0.52);
+  const target = center.map((value, axis) => value + orbit.pan[axis]);
+  const radius = previewBoundsRadius(bounds);
   const narrowScale = Math.max(1, 0.9 / Math.max(0.32, aspect));
-  const distance = radius * 3.05 * narrowScale;
-  const angle = 0.73;
-  const horizontal = distance * 0.82;
+  const distance = radius * 3.05 * narrowScale * orbit.zoom;
+  const horizontal = distance * Math.cos(orbit.pitch);
   const eye = [
-    target[0] + Math.cos(angle) * horizontal,
-    target[1] + distance * 0.48,
-    target[2] + Math.sin(angle) * horizontal,
+    target[0] + Math.cos(orbit.yaw) * horizontal,
+    target[1] + Math.sin(orbit.pitch) * distance,
+    target[2] + Math.sin(orbit.yaw) * horizontal,
   ];
   return cameraStateFromPose({ eye, target, fov: 39 }, aspect, Math.max(128, distance * 2.4));
+}
+
+function previewBoundsRadius(bounds) {
+  return Math.max(0.35, Math.hypot(bounds.width, bounds.height, bounds.depth) * 0.52);
+}
+
+function clampPreview(value, minimum, maximum) {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+
+function preventDefault(event) {
+  event.preventDefault();
 }
 
 function previewFoundationOverlay(bounds) {
@@ -1132,6 +1417,7 @@ function createNoopController() {
 function createNoopPreviewController() {
   return {
     setInspection() {},
+    resetView() {},
     destroy() {},
   };
 }

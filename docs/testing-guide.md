@@ -1,4 +1,4 @@
-# Testing NCM4 Alpha
+# Testing NCM4
 
 ## Toolchain
 
@@ -153,7 +153,7 @@ marks the tag release as a pre-release.
 Release tags must exactly equal the workspace/package version, for example:
 
 ```bash
-git tag -a v0.2.0-alpha.7 -m "Release NCM4 Alpha 7"
+git tag -a v0.2.0-alpha.7 -m "Release v0.2.0-alpha.7"
 git push origin v0.2.0-alpha.7
 ```
 

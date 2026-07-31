@@ -48,8 +48,8 @@
     "zhHant": "繁體中文"
   },
   "hero": {
-    "worldSignal": "Live-Voxel-Forschungswelt",
-    "eyebrow": "Proof of Useful Work / Lokale Forschungsvorschau",
+    "worldSignal": "Live-Arbeitsbereich für Voxel-Kompression",
+    "eyebrow": "Proof of Useful Work / Deterministischer lokaler Miner",
     "title": "Komprimieren Sie die Welt, bewahren Sie jedes Voxel",
     "lede": "Durchsuchen Sie eine begrenzte Voxelsprache nach einer kürzeren Codierung, die genau dasselbe Gelände, dasselbe Gebäude oder denselben gefälschten Gegenstand rekonstruiert.",
     "try": "Miner öffnen",
@@ -75,8 +75,8 @@
     "forgeDetail": "Artikelinspektion"
   },
   "demo": {
-    "kicker": "Lokale Rechenkonsole / eingefügter NCM-Text bleibt auf diesem Gerät",
-    "title": "Labor zur Browserkomprimierung",
+    "kicker": "Lokale Rechenkonsole / eingefügter NCM- oder NCF-Text bleibt auf diesem Gerät",
+    "title": "Browser-Kompressions-Miner",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "Kompressionsprofil",
     "tab1": "Arbeitsaufwand 01",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "Bereit",
-    "readyDetail": "Das Standard-Cottage ist geladen. Fügen Sie NCM3 oder NCM4P ein und drücken Sie Start.",
+    "readyDetail": "Das Standard-Cottage ist geladen. Fügen Sie NCM3, NCM4P oder NCF1 ein und drücken Sie Start.",
     "exactNoImprovement": "Exakte Übereinstimmung · keine Speicherverbesserung",
     "exactSmaller": "Genaue Übereinstimmung · streng kleiner",
     "hiddenPaused": "Die Seite wurde ausgeblendet, sodass die lokale CPU-Arbeit angehalten wurde.",
     "inputChanged": "Eingabe geändert.",
     "inspecting": "Wird lokal geprüft",
     "inspectingDetail": "Der Rust/WASM-Kern kanonisiert dieses Asset.",
-    "loadFirst": "Fügen Sie zuerst NCM3 oder NCM4P ein und laden Sie den Text.",
+    "loadFirst": "Fügen Sie zuerst NCM3, NCM4P oder NCF1 ein und laden Sie den Text.",
     "mismatchDetail": "Der Prüfer hat {count} Nichtübereinstimmungen festgestellt.",
     "noImprovementDetail": "Der verifizierte Kandidat ist gleich oder größer als der Amtsinhaber. {suffix}",
     "pageClosed": "Die Seite wurde geschlossen.",
@@ -118,15 +118,18 @@
     "verificationFailed": "Die Überprüfung ist fehlgeschlagen"
   },
   "preview": {
-    "panelAria": "3D-Vorschau des dekodierten NCM",
-    "title": "Analysiertes NCM-Modell",
-    "canvasAria": "Kanonisches NCM-Voxelmodell",
+    "panelAria": "3D-Vorschau des dekodierten Assets",
+    "title": "Analysiertes Asset-Modell",
+    "canvasAria": "Interaktives kanonisches Asset-Modell",
     "loading": "Warten auf den Rust/WASM-Decoder.",
+    "controls": "Ziehen zum Drehen · Umschalt-Ziehen zum Verschieben · Rad zum Zoomen",
+    "resetView": "Ansicht zurücksetzen",
     "format": "Format",
     "dimensions": "Abmessungen",
     "voxels": "Voxel",
     "semanticRoot": "Semantische Wurzel",
-    "buildingOnly": "Wählen Sie Bauplan, um die kanonischen NCM-Voxel darzustellen.",
+    "interactive": "Interaktives 3D-Modell ist bereit.",
+    "profileSummaryOnly": "Dieses Profil ist als kanonische Daten ohne eigenes 3D-Netz verfügbar.",
     "webglUnavailable": "WebGL2 ist nicht verfügbar. Die kanonischen Modelldaten werden unten weiterhin angezeigt."
   },
   "controls": {
@@ -144,8 +147,8 @@
     "note": "Die Suche läuft bis Pause oder Stopp weiter. Sie startet nie automatisch und lässt mindestens einen logischen Kern für die Seite frei."
   },
   "ncm4": {
-    "pasteLabel": "NCM3- oder NCM4P-Text einfügen",
-    "pastePlaceholder": "NCM3:... oder NCM4P:...",
+    "pasteLabel": "NCM3-, NCM4P- oder NCF1-Text einfügen",
+    "pastePlaceholder": "NCM3:..., NCM4P:... oder NCF1....",
     "loadText": "Eingefügte Eingabe laden",
     "fastAnalyze": "Schnellanalyse",
     "decode": "Dekodieren",
@@ -175,7 +178,7 @@
     "diffMismatch": "{count} semantische Abweichungen",
     "ncm3Remains": "NCM3 bleibt die beste Darstellung.",
     "ncm3RemainsDetail": "Der geprüfte NCM4-Kandidat ist nicht strikt kleiner; daher bleiben die ursprünglichen NCM3-Bytes ausgewählt. {suffix}",
-    "pasteRequired": "Fügen Sie zuerst einen NCM3- oder NCM4P-Wert ein.",
+    "pasteRequired": "Fügen Sie zuerst einen NCM3-, NCM4P- oder NCF1-Wert ein.",
     "quadSummary": "{count} kanonische Geometrie-Quads",
     "semanticReady": "Kanonische Semantik bereit",
     "strategyAudit": "deterministisches Sprachaudit",
@@ -228,7 +231,7 @@
     "copied": "Kopiert"
   },
   "privacy": {
-    "preview": "Vorschau auf die lokale Forschung",
+    "preview": "Deterministisches lokales Mining",
     "noTransactions": "Keine Transaktionen, Belohnungen, Wallet, RPC oder Telemetrie.",
     "local": "Ihre Dateien verlassen diesen Browser nie."
   },
@@ -272,8 +275,8 @@
     "encodingBody": "hasht eine bestimmte Bytedarstellung. Unterschiedliche exakte Kodierungen können Ersteres gemeinsam haben und müssen sich im Letzteren unterscheiden.",
     "limitsTitle": "Harte Ressourcengrenzen",
     "limitsBody": "Kein Gleitkomma, keine Rekursion, keine Sprünge, keine unbegrenzten Schleifen, kein dynamischer Code, keine Uhren oder vertrauenswürdige Ergebnisstatistiken. Kanonische Varianten und geprüfte Arithmetik sind obligatorisch.",
-    "boundaryTitle": "Ehrliche Grenze",
-    "boundaryBody": "Diese Vorschau verfügt über kein Wallet, RPC, keine Belohnung, keinen Pool, keine Bestenliste und keinen bereitgestellten Solana PoUW Verifizierer. Eine Kettenadapterschnittstelle ist reserviert; Kettenansprüche sind es nicht."
+    "boundaryTitle": "Aktueller Betriebsrahmen",
+    "boundaryBody": "Dieser Miner arbeitet derzeit lokal ohne Wallet, RPC, Belohnung, Pool, Bestenliste oder bereitgestellten Solana-PoUW-Verifizierer. Eine Chain-Adapter-Schnittstelle ist reserviert; eine Chain-Bestätigung wird nicht behauptet."
   },
   "faq": {
     "sectionAria": "Fragen und Quelle",
@@ -282,10 +285,10 @@
     "exactAnswer": "Nein. Der Prüfer vergleicht die kanonische Semantik und jede Koordinaten-/Materialidentität. Ein geändertes Voxel, Material, unveränderliches Schmiedefeld oder Griff ändert das Ergebnis.",
     "optimalQuestion": "Beweist der Miner eine weltweit kürzeste Kodierung?",
     "optimalAnswer": "Nein. Es beweist, dass ein Kandidat exakt, begrenzt und strikt kürzer ist als der Amtsinhaber. Keine gefundene Verbesserung ist ein gültiges Ergebnis.",
-    "uploadQuestion": "Verlässt eingefügter NCM-Text diesen Browser?",
-    "uploadAnswer": "Nein. Eingefügter NCM-Text wird direkt an lokale Web Workers übergeben. Die Seite enthält keinen Upload-Endpunkt, keine Telemetrie, kein Drittanbieter-CDN, keine GitHub-API-Anfrage, kein Wallet und keinen RPC-Client.",
+    "uploadQuestion": "Verlässt eingefügter NCM- oder NCF-Text diesen Browser?",
+    "uploadAnswer": "Nein. Eingefügter Asset-Code wird direkt an lokale Web Workers übergeben. Die Seite enthält keinen Upload-Endpunkt, keine Telemetrie, kein Drittanbieter-CDN, keine GitHub-API-Anfrage, kein Wallet und keinen RPC-Client.",
     "negativeQuestion": "Warum kann ein Profil negative Einsparungen anzeigen?",
-    "negativeAnswer": "Einige vorhandene NCM3- oder NCF1-Assets sind bereits sehr kompakt. Die Demo berichtet, dass gleiche oder größere Bytes ehrlich gesagt niemals als Speichereinsparungen umetikettiert werden."
+    "negativeAnswer": "Einige vorhandene NCM3- oder NCF1-Assets sind bereits sehr kompakt. Der Miner meldet dies ehrlich und bezeichnet gleiche oder größere Kodierungen niemals als Speichereinsparung."
   },
   "source": {
     "kicker": "Offene Implementierung",
@@ -303,7 +306,7 @@
     "socialAria": "NiceChunk soziale Links",
     "github": "GitHub",
     "x": "X",
-    "text": "NiceChunk PoUW Miner v1 / deterministische Forschungssoftware",
+    "text": "NiceChunk PoUW Miner v1 / deterministische Kompressionssoftware",
     "copyright": "2026 NiceChunk. Alle Rechte vorbehalten."
   },
   "errors": {

@@ -1,4 +1,4 @@
-# NCM4 Alpha Architecture
+# NCM4 Architecture
 
 ## Compatibility boundary
 
@@ -62,7 +62,7 @@ Preflight runs before deep search and reports source bytes, all NCM4 byte
 components, the fixed lower bound, deterministic seed length, exactness,
 witness status, and the selected format. Building deep search is recommended
 only when the current language is plausibly competitive. Terrain and forged
-items use exact wrappers in Alpha 1 and explicitly return no deep-search
+items use exact wrappers in version 1 and explicitly return no deep-search
 recommendation.
 
 The product rule is monotonic:
@@ -111,7 +111,7 @@ byte components, generation, strategy, attempts, and the actual best-history
 curve. It never uploads source bytes.
 
 The current Chunk.js scene provides the existing profile views and the UI
-exposes verified source/candidate semantic summaries. Alpha 1 does not yet
+exposes verified source/candidate semantic summaries. Version 1 does not yet
 construct two independent voxel meshes plus a per-cell colored difference
 overlay. That rendering gap does not weaken exact verification, but it remains
 a product limitation rather than being described as complete dual rendering.
@@ -122,4 +122,4 @@ The search evaluator boundary can later accept bitset-incremental CPU, SIMD,
 WebGPU, or CUDA evaluators, provided final candidates still pass the independent
 Rust decoder. The chain adapter boundary can transport tasks/results to a
 future verifier. Neither GPU execution nor a Solana program is implemented or
-claimed in Alpha 1.
+claimed in version 1.

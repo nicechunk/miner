@@ -6,6 +6,25 @@ independently.
 
 ## Unreleased
 
+### Added
+
+- Detect pasted NCM3, NCM4P, and NCF1 inputs in the shared Rust/WASM core and
+  automatically select the matching Building or Forged Item mining profile.
+- Render canonical building voxels and complete NCF1 component geometry in an
+  interactive Chunk.js model with rotate, pan, zoom, keyboard, and reset
+  controls.
+
+### Changed
+
+- Present the browser Miner, CLI, README, release notes, and protocol
+  documentation as the released deterministic compression product rather than
+  a research laboratory or preview.
+
+### Fixed
+
+- Keep parsing, mining, and verification operational when WebGL2 is unavailable
+  by degrading only the interactive 3D view to its canonical data summary.
+
 ## 0.2.0-alpha.7 - 2026-07-30
 
 ### Fixed
@@ -86,7 +105,7 @@ independently.
 
 ### Added
 
-- Experimental NCM4 PoUW format with collision-safe `NC4P` binary magic and
+- Initial NCM4 PoUW format with collision-safe `NC4P` binary magic and
   `NCM4P:` text transport.
 - Format dispatcher that maps NCM3, NCM4, ChunkBroken, and NCF1 into shared
   canonical semantics and domain-separated SHA-256 roots.
@@ -105,7 +124,7 @@ independently.
   verified Worker migration, and NCM4 metrics/history UI.
 - Real variant and held-out Building fixtures with strictly shorter NCM4
   witnesses.
-- Cross-platform Alpha release workflow including Web/WASM, aggregate
+- Cross-platform release workflow including Web/WASM, aggregate
   `SHA256SUMS`, pre-release metadata, and an independent property-test job.
 
 ### Fixed
@@ -124,7 +143,7 @@ independently.
   semantic roots are unchanged.
 - NCM4 never wins unless independent decode is exact and normalized binary
   bytes are strictly fewer; otherwise the source format remains selected.
-- Terrain and forged-item NCM4 use exact wrappers in this Alpha. Compact search
+- Terrain and forged-item NCM4 use exact wrappers in this release. Compact search
   for those profiles, GPU evaluators, pools, wallets, rewards, and an on-chain
   verifier are not included.
 

@@ -48,8 +48,8 @@
     "zhHant": "繁體中文"
   },
   "hero": {
-    "worldSignal": "라이브 복셀 연구 세계",
-    "eyebrow": "Proof of Useful Work / 지역 연구 미리보기",
+    "worldSignal": "라이브 복셀 압축 작업 공간",
+    "eyebrow": "Proof of Useful Work / 결정론적 로컬 마이너",
     "title": "세계를 압축하고 모든 복셀을 보존하세요",
     "lede": "정확히 동일한 지형, 건물 또는 위조된 항목을 재구성하는 더 짧은 인코딩을 위해 제한된 복셀 언어를 검색합니다.",
     "try": "Miner 열기",
@@ -75,8 +75,8 @@
     "forgeDetail": "품목검사"
   },
   "demo": {
-    "kicker": "로컬 컴퓨팅 콘솔 / 붙여 넣은 NCM은 이 기기에만 남습니다",
-    "title": "브라우저 압축 연구실",
+    "kicker": "로컬 컴퓨팅 콘솔 / 붙여 넣은 NCM·NCF는 이 기기에만 남습니다",
+    "title": "브라우저 압축 마이너",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "압축 프로필",
     "tab1": "작업량 01",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "준비",
-    "readyDetail": "기본 코티지가 로드되었습니다. NCM3 또는 NCM4P를 붙여 넣고 시작을 누르세요.",
+    "readyDetail": "기본 코티지가 로드되었습니다. NCM3, NCM4P 또는 NCF1을 붙여 넣고 시작을 누르세요.",
     "exactNoImprovement": "정확히 일치 · 저장용량 개선 없음",
     "exactSmaller": "정확한 일치 · 엄격하게 더 작음",
     "hiddenPaused": "페이지가 숨겨져서 로컬 CPU 작업이 일시 중지되었습니다.",
     "inputChanged": "입력이 변경되었습니다.",
     "inspecting": "로컬에서 검사 중",
     "inspectingDetail": "Rust/WASM 코어가 이 자산을 정규화하는 중입니다.",
-    "loadFirst": "먼저 NCM3 또는 NCM4P를 붙여 넣고 불러오세요.",
+    "loadFirst": "먼저 NCM3, NCM4P 또는 NCF1을 붙여 넣고 불러오세요.",
     "mismatchDetail": "검증자가 {count} 불일치를 발견했습니다.",
     "noImprovementDetail": "검증된 후보자는 현직 후보자와 동일하거나 그 이상입니다. {suffix}",
     "pageClosed": "페이지가 닫혔습니다.",
@@ -118,15 +118,18 @@
     "verificationFailed": "확인 실패"
   },
   "preview": {
-    "panelAria": "디코딩된 NCM 3D 미리보기",
-    "title": "해석된 NCM 모델",
-    "canvasAria": "정규 NCM 복셀 모델",
+    "panelAria": "디코딩된 자산 3D 미리보기",
+    "title": "해석된 자산 모델",
+    "canvasAria": "인터랙티브 정규 자산 모델",
     "loading": "Rust/WASM 디코더를 기다리는 중입니다.",
+    "controls": "드래그하여 회전 · Shift-드래그하여 이동 · 휠로 확대",
+    "resetView": "보기 초기화",
     "format": "형식",
     "dimensions": "크기",
     "voxels": "복셀",
     "semanticRoot": "시맨틱 루트",
-    "buildingOnly": "건물 설계도를 선택하면 정규 NCM 복셀을 렌더링합니다.",
+    "interactive": "인터랙티브 3D 모델이 준비되었습니다.",
+    "profileSummaryOnly": "이 프로필은 전용 3D 메시 없이도 정규 데이터로 제공됩니다.",
     "webglUnavailable": "WebGL2를 사용할 수 없습니다. 정규 모델 데이터는 아래에 계속 표시됩니다."
   },
   "controls": {
@@ -144,8 +147,8 @@
     "note": "검색은 일시 중지 또는 중지를 누를 때까지 계속됩니다. 자동으로 시작되지 않으며 페이지용 논리 코어를 하나 이상 남겨 둡니다."
   },
   "ncm4": {
-    "pasteLabel": "NCM3 또는 NCM4P 텍스트 붙여넣기",
-    "pastePlaceholder": "NCM3:... 또는 NCM4P:...",
+    "pasteLabel": "NCM3, NCM4P 또는 NCF1 텍스트 붙여넣기",
+    "pastePlaceholder": "NCM3:..., NCM4P:... 또는 NCF1....",
     "loadText": "붙여넣은 입력 불러오기",
     "fastAnalyze": "빠른 분석",
     "decode": "디코드",
@@ -175,7 +178,7 @@
     "diffMismatch": "의미 불일치 {count}개",
     "ncm3Remains": "NCM3가 여전히 가장 좋은 표현입니다.",
     "ncm3RemainsDetail": "검증된 NCM4 후보가 엄격히 더 작지 않아 원본 NCM3 바이트를 유지합니다. {suffix}",
-    "pasteRequired": "먼저 NCM3 또는 NCM4P 값을 붙여넣으세요.",
+    "pasteRequired": "먼저 NCM3, NCM4P 또는 NCF1 값을 붙여넣으세요.",
     "quadSummary": "정규 기하 쿼드 {count}개",
     "semanticReady": "정규 의미 정보 준비 완료",
     "strategyAudit": "결정적 언어 감사",
@@ -228,7 +231,7 @@
     "copied": "복사됨"
   },
   "privacy": {
-    "preview": "지역 조사 미리보기",
+    "preview": "결정론적 로컬 마이닝",
     "noTransactions": "거래, 보상, 지갑, RPC 또는 원격 측정이 없습니다.",
     "local": "귀하의 파일은 이 브라우저를 떠나지 않습니다."
   },
@@ -272,8 +275,8 @@
     "encodingBody": "하나의 특정 바이트 표현을 해시합니다. 서로 다른 정확한 인코딩은 전자를 공유할 수 있으며 후자는 달라야 합니다.",
     "limitsTitle": "하드 리소스 제한",
     "limitsBody": "부동 소수점, 재귀, 점프, 무제한 루프, 동적 코드, 시계 또는 신뢰할 수 있는 결과 통계가 없습니다. 표준 변형 및 검사 산술은 필수입니다.",
-    "boundaryTitle": "정직한 경계",
-    "boundaryBody": "이 미리보기에는 지갑, RPC, 보상, 풀, 리더보드 또는 배포된 Solana PoUW 검증자가 없습니다. 체인 어댑터 인터페이스가 예약되어 있습니다. 체인 클레임은 그렇지 않습니다."
+    "boundaryTitle": "현재 운영 범위",
+    "boundaryBody": "이 마이너는 현재 지갑, RPC, 보상, 풀, 리더보드 또는 배포된 Solana PoUW 검증자 없이 로컬에서 실행됩니다. 체인 어댑터 인터페이스는 예약되어 있으며 온체인 확인을 주장하지 않습니다."
   },
   "faq": {
     "sectionAria": "질문과 출처",
@@ -282,10 +285,10 @@
     "exactAnswer": "아니요. 검증자는 표준 의미와 모든 좌표/물질 ID를 비교합니다. 복셀, 재질, 불변 단조 필드 또는 그립이 변경되면 결과가 변경됩니다.",
     "optimalQuestion": "광부가 전 세계적으로 가장 짧은 인코딩을 증명합니까?",
     "optimalAnswer": "아니요. 이는 한 후보자가 현직 후보자보다 정확하고 제한적이며 엄격하게 키가 작다는 것을 증명합니다. 개선 사항이 발견되지 않은 것은 유효한 결과입니다.",
-    "uploadQuestion": "붙여 넣은 NCM이 이 브라우저 밖으로 전송됩니까?",
-    "uploadAnswer": "아니요. 붙여 넣은 NCM은 로컬 Web Workers로 직접 전달됩니다. 페이지에는 업로드 엔드포인트, 원격 분석, 타사 CDN, GitHub API 요청, 지갑 또는 RPC 클라이언트가 포함되어 있지 않습니다.",
+    "uploadQuestion": "붙여 넣은 NCM 또는 NCF가 이 브라우저 밖으로 전송됩니까?",
+    "uploadAnswer": "아니요. 붙여 넣은 자산 코드는 로컬 Web Workers로 직접 전달됩니다. 페이지에는 업로드 엔드포인트, 원격 분석, 타사 CDN, GitHub API 요청, 지갑 또는 RPC 클라이언트가 포함되어 있지 않습니다.",
     "negativeQuestion": "프로필에 마이너스 절감액이 표시되는 이유는 무엇입니까?",
-    "negativeAnswer": "일부 기존 NCM3 또는 NCF1 자산은 이미 매우 컴팩트합니다. 데모에서는 동일하거나 더 큰 바이트를 스토리지 절약으로 정직하게 다시 표시하지 않는다고 보고합니다."
+    "negativeAnswer": "일부 기존 NCM3 또는 NCF1 자산은 이미 매우 컴팩트합니다. 마이너는 이를 정확히 보고하며 같거나 더 큰 인코딩을 저장 절감으로 표시하지 않습니다."
   },
   "source": {
     "kicker": "개방형 구현",
@@ -303,7 +306,7 @@
     "socialAria": "NiceChunk 소셜 링크",
     "github": "GitHub",
     "x": "X",
-    "text": "NiceChunk PoUW Miner v1 / 결정론적 연구 소프트웨어",
+    "text": "NiceChunk PoUW Miner v1 / 결정론적 압축 소프트웨어",
     "copyright": "2026년 NiceChunk. 모든 권리 보유."
   },
   "errors": {

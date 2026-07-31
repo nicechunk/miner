@@ -54,11 +54,22 @@ const sceneCottage = sourceScene.match(/const COTTAGE_NCM3 = "([^"]+)"/u)?.[1];
 if (!defaultNcm || defaultNcm !== sceneCottage) {
   throw new Error("Paste input must default to the current Hollow Cottage NCM3 encoding");
 }
-if (!html.includes('id="ncmPreviewCanvas"') || !sourceScene.includes("createNcmPreviewScene") || !sourceScene.includes("createCanonicalBuildingPlacement")) {
-  throw new Error("Miner must render Rust/WASM canonical NCM semantics in the left 3D preview");
+if (!html.includes('id="ncmPreviewCanvas"') || !sourceScene.includes("createNcmPreviewScene")
+  || !sourceScene.includes("createCanonicalBuildingPlacement")
+  || !sourceScene.includes("createCanonicalForgedPreview")
+  || !sourceScene.includes("buildForgeDesignMesh")) {
+  throw new Error("Miner must render Rust/WASM canonical NCM and NCF semantics in the left 3D preview");
 }
 if (!sourceApp.includes("ncmPreviewScene.setInspection(state.inspect)")) {
-  throw new Error("NCM preview must update from the inspected WASM result");
+  throw new Error("Asset preview must update from the inspected WASM result");
+}
+if (!sourceApp.includes('{ type: "detect", input: detectionInput }')
+  || /function detectInputProfile/u.test(sourceApp)) {
+  throw new Error("Pasted input format and mining profile must be selected by the Rust/WASM detector");
+}
+if (!html.includes('id="previewResetButton"') || !sourceScene.includes('addEventListener("pointermove"')
+  || !sourceScene.includes('addEventListener("wheel"')) {
+  throw new Error("Asset preview must expose real rotate, pan, zoom, and reset controls");
 }
 if (!sourceStyles.includes('.ncm-preview-frame[data-preview-state="ready"]')) {
   throw new Error("NCM preview is missing its rendered and fallback visual states");

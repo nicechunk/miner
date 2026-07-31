@@ -1,4 +1,4 @@
-//! Experimental NCM4 PoUW profile (`NC4P`).
+//! NCM4 PoUW profile (`NC4P`).
 //!
 //! Chunk.js already uses the public `NCM4:` prefix for an incompatible
 //! character-animation record. This codec therefore has a distinct binary

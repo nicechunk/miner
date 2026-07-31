@@ -48,8 +48,8 @@
     "zhHant": "繁體中文"
   },
   "hero": {
-    "worldSignal": "即時體素研究世界",
-    "eyebrow": "有用工作量證明 / 本地研究預覽",
+    "worldSignal": "即時體素壓縮工作區",
+    "eyebrow": "有用工作量證明 / 確定性本地礦工",
     "title": "壓縮世界，保留每個體素",
     "lede": "在有界體素語言中搜尋較短的編碼，同時精確還原同一份地形、建築或鍛造物品。",
     "try": "開啟 Miner",
@@ -75,8 +75,8 @@
     "forgeDetail": "物品檢視"
   },
   "demo": {
-    "kicker": "本機計算控制台 / 貼上的 NCM 僅保留在此設備",
-    "title": "瀏覽器壓縮實驗室",
+    "kicker": "本機計算控制台 / 貼上的 NCM、NCF 僅保留在此設備",
+    "title": "瀏覽器壓縮礦工",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "壓縮類型",
     "tab1": "工作負載 01",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "就緒",
-    "readyDetail": "預設基礎小屋已載入。貼上 NCM3 或 NCM4P 後點擊“開始”。",
+    "readyDetail": "預設基礎小屋已載入。貼上 NCM3、NCM4P 或 NCF1 後點擊“開始”。",
     "exactNoImprovement": "精確匹配 · 未節省儲存空間",
     "exactSmaller": "精確匹配 · 編碼更小",
     "hiddenPaused": "頁面進入後台，本地 CPU 計算已暫停。",
     "inputChanged": "輸入已更改。",
     "inspecting": "正在本地檢驗",
     "inspectingDetail": "Rust/WASM 核心正在規範此資源。",
-    "loadFirst": "請先貼上並載入 NCM3 或 NCM4P 內容。",
+    "loadFirst": "請先貼上並載入 NCM3、NCM4P 或 NCF1 內容。",
     "mismatchDetail": "驗證器發現 {count} 處不符。",
     "noImprovementDetail": "驗證後的候選編碼不小於現有編碼。 {suffix}",
     "pageClosed": "頁面已關閉。",
@@ -118,15 +118,18 @@
     "verificationFailed": "驗證失敗"
   },
   "preview": {
-    "panelAria": "已解碼 NCM 3D 預覽",
-    "title": "NCM 解析模型",
-    "canvasAria": "規範 NCM 體素模型",
+    "panelAria": "已解碼資產 3D 預覽",
+    "title": "已解析資產模型",
+    "canvasAria": "可互動的規範資產模型",
     "loading": "正在等待 Rust/WASM 解碼器。",
+    "controls": "拖曳旋轉 · Shift 拖曳平移 · 滾輪縮放",
+    "resetView": "重設視角",
     "format": "格式",
     "dimensions": "尺寸",
     "voxels": "體素",
     "semanticRoot": "語意根",
-    "buildingOnly": "請選擇建築藍圖，以渲染規範 NCM 體素。",
+    "interactive": "可互動 3D 模型已就緒。",
+    "profileSummaryOnly": "此 Profile 會顯示規範資料，目前沒有專用 3D 網格。",
     "webglUnavailable": "WebGL2 無法使用，規範模型資料仍顯示於下方。"
   },
   "controls": {
@@ -144,8 +147,8 @@
     "note": "搜尋會持續運行，直到點擊暫停或停止；不會自動啟動，並會為頁面至少保留一個邏輯 CPU 核心。"
   },
   "ncm4": {
-    "pasteLabel": "貼上 NCM3 或 NCM4P 文字",
-    "pastePlaceholder": "NCM3:... 或 NCM4P:...",
+    "pasteLabel": "貼上 NCM3、NCM4P 或 NCF1 文字",
+    "pastePlaceholder": "NCM3:...、NCM4P:... 或 NCF1....",
     "loadText": "載入貼上內容",
     "fastAnalyze": "快速分析",
     "decode": "解碼",
@@ -175,7 +178,7 @@
     "diffMismatch": "{count} 個語意不匹配",
     "ncm3Remains": "NCM3 仍是最佳表達。",
     "ncm3RemainsDetail": "已驗證的 NCM4 候選沒有嚴格更短，因此繼續選用原 NCM3 位元組。{suffix}",
-    "pasteRequired": "請先貼上 NCM3 或 NCM4P 內容。",
+    "pasteRequired": "請先貼上 NCM3、NCM4P 或 NCF1 內容。",
     "quadSummary": "{count} 個規範幾何四邊形",
     "semanticReady": "規範語意已就緒",
     "strategyAudit": "確定性語言審計",
@@ -228,7 +231,7 @@
     "copied": "已複製"
   },
   "privacy": {
-    "preview": "本地研究預覽",
+    "preview": "確定性本地挖礦",
     "noTransactions": "無交易、獎勵、錢包、RPC 或遙測。",
     "local": "文件絕對不會離開此瀏覽器。"
   },
@@ -272,8 +275,8 @@
     "encodingBody": "對某一種具體位元組表示進行哈希。不同的精確編碼可以共享前者，但後者必須不同。",
     "limitsTitle": "嚴格資源限制",
     "limitsBody": "禁止浮點數、遞歸、跳躍、無界循環、動態程式碼、時鐘或受信任的結果統計。必須使用規範變長整數與檢查算術。",
-    "boundaryTitle": "誠實邊界",
-    "boundaryBody": "此預覽版不包含錢包、RPC、獎勵、礦池、排行榜或已部署的 Solana PoUW 驗證器。僅預留鏈適配器接口，不聲明尚未實現的鏈上能力。"
+    "boundaryTitle": "目前運行邊界",
+    "boundaryBody": "此礦工目前在本機運行，不包含錢包、RPC、獎勵、礦池、排行榜或已部署的 Solana PoUW 驗證器。僅預留鏈適配器介面，不聲明鏈上確認。"
   },
   "faq": {
     "sectionAria": "問題與原始碼",
@@ -282,10 +285,10 @@
     "exactAnswer": "不是。驗證器會比較規範語意以及每個座標和材質身分。任何一個體素、材質、不可變鍛造場或握持點發生變化，結果都會不同。",
     "optimalQuestion": "Miner 能證明這是全域最短編碼嗎？",
     "optimalAnswer": "不能。它只能證明某個候選編碼精確、有界且嚴格小於現有編碼。未找到改進同樣是有效結果。",
-    "uploadQuestion": "貼上的 NCM 會離開目前瀏覽器嗎？",
-    "uploadAnswer": "不會。貼上的 NCM 只會直接傳給本機 Web Workers。頁面沒有上傳端點、遙測、第三方 CDN、GitHub API 請求、錢包或 RPC 用戶端。",
+    "uploadQuestion": "貼上的 NCM 或 NCF 會離開目前瀏覽器嗎？",
+    "uploadAnswer": "不會。貼上的資產代碼只會直接傳給本機 Web Workers。頁面沒有上傳端點、遙測、第三方 CDN、GitHub API 請求、錢包或 RPC 用戶端。",
     "negativeQuestion": "為什麼某些類型會顯示負節省？",
-    "negativeAnswer": "部分 NCM3 或 NCF1 資源本身已高度緊湊。演示會如實報告，絕不會將相同或更大的編碼標記為節省儲存。"
+    "negativeAnswer": "部分 NCM3 或 NCF1 資源本身已高度緊湊。礦工會如實報告，絕不會將相同或更大的編碼標記為節省儲存。"
   },
   "source": {
     "kicker": "開放實現",
@@ -303,7 +306,7 @@
     "socialAria": "NiceChunk 社交鏈接",
     "github": "GitHub",
     "x": "X",
-    "text": "NiceChunk PoUW Miner v1 / 確定性研究軟體",
+    "text": "NiceChunk PoUW Miner v1 / 確定性壓縮軟體",
     "copyright": "2026 NiceChunk。保留所有權利。"
   },
   "errors": {

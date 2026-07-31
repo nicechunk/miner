@@ -1,8 +1,8 @@
-# NCM4 PoUW Binary Specification (Alpha 1)
+# NCM4 PoUW Binary Specification (Version 1)
 
 ## Status and compatibility
 
-This document specifies the experimental NCM4 PoUW version 1 implemented by
+This document specifies NCM4 PoUW version 1 implemented by
 `pouw-core` in Miner `0.2.0-alpha.7`. NCM4 is a new format. It does not modify
 the NCM3 prefix, opcodes, decoder, overwrite rules, limits, or semantic output.
 
@@ -46,7 +46,7 @@ u8[payloadLength] payload
 
 The profile and wrapped format must match. The wrapped payload is parsed by the
 strict existing importer, not treated as opaque bytes. The decoder recomputes
-canonical semantics and the semantic root. Alpha 1 uses this codec for terrain
+canonical semantics and the semantic root. Version 1 uses this codec for terrain
 and forged items; because it adds 11 or 10 bytes respectively, it is not called
 a compression win and deep NCM4 search is not recommended for those profiles.
 

@@ -1,9 +1,9 @@
 # NiceChunk Proof of Useful Work Miner
 
 This repository is the source of truth for the NiceChunk Proof of Useful Work
-Miner. Version `0.2.0-alpha.7` adds an optional CUDA batch evaluator to the
-experimental NCM4 PoUW codec and persistent multi-island search session while
-preserving NCM3 byte-for-byte.
+Miner. The current release includes an optional CUDA batch evaluator for the
+NCM4 PoUW codec and a persistent multi-island search session while preserving
+NCM3 byte-for-byte.
 It contains the deterministic core and verifier, native CLI, WASM bindings,
 static browser miner, schemas, vectors, benchmarks, and release automation.
 
@@ -12,10 +12,11 @@ exact residual. A result is useful only when independent decoding reproduces
 the target semantic root exactly and the stored candidate is strictly shorter
 than the incumbent encoding.
 
-This is a research preview. It does not submit transactions, issue rewards, or
+The Miner is released for deterministic local compression and independent
+verification. It currently does not submit transactions, issue rewards, or
 claim that the verifier is deployed as a Solana program.
 
-## NCM4 Alpha
+## NCM4
 
 NCM4 PoUW is additive. Existing `NCM3:` input still enters the unchanged NCM3
 decoder and produces the same canonical scene and semantic root. Both formats
@@ -32,7 +33,7 @@ so this codec deliberately uses binary magic `NC4P` and text prefix `NCM4P:`.
 The product remains NCM4, but an old client cannot mistake it for NCM3 or the
 character record.
 
-The Alpha building grammar has a compact palette, adaptive coordinate fields,
+The NCM4 building grammar has a compact palette, adaptive coordinate fields,
 13 bounded opcodes, and six exact residual codecs. Language preflight reports
 the complete stored-byte cost before deep search. A result wins only when an
 independent decode has mismatch count zero and is strictly shorter. Otherwise
@@ -42,6 +43,14 @@ Current measured witnesses are 57 bytes versus 64 for the real cottage, 60
 versus 64 for a structural variant, and 79 versus 96 for a held-out workshop.
 See [the NCM4 benchmark report](docs/ncm4-benchmarks.md) for exact roots,
 parameters, and multi-thread throughput.
+
+The browser Miner accepts pasted `NCM3:`, `NCM4P:`, and `NCF1.` data. The Rust
+core detects the format and selects the Building or Forged Item profile before
+inspection. Its left-hand Chunk.js canvas renders the canonical WASM semantics
+as a real interactive 3D building or forged-item mesh with orbit, pan, zoom,
+keyboard controls, and view reset. WebGL2 is optional: format detection,
+compression, search, and verification continue with a canonical data summary
+when 3D rendering is unavailable.
 
 ## CUDA acceleration
 
@@ -135,7 +144,7 @@ See `docs/deployment.md` before publishing or installing Nginx configuration.
 The v1 VM baseline remains in `docs/benchmarks.md`; NCM4 is specified in
 `docs/ncm4-spec.md` and measured in `docs/ncm4-benchmarks.md`.
 
-## Alpha boundaries
+## Current boundaries
 
 - Compact NCM4 search currently targets Building. Terrain and forged-item NCM4
   imports are exact bounded wrappers; the existing PoUW v1 VM remains smaller

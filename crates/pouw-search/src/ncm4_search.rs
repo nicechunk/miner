@@ -1874,7 +1874,7 @@ fn building_target(imported: &ImportedAsset) -> Result<&BuildingSemantics> {
     let Semantics::Building(target) = &imported.semantics else {
         return Err(Error::invalid(
             "ncm4-search-profile",
-            "NCM4 alpha search currently supports the building profile.",
+            "NCM4 search currently supports the building profile.",
         ));
     };
     Ok(target)

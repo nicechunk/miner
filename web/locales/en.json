@@ -48,8 +48,8 @@
     "zhHant": "繁體中文"
   },
   "hero": {
-    "worldSignal": "Live voxel research world",
-    "eyebrow": "Proof of Useful Work / Local Research Preview",
+    "worldSignal": "Live voxel compression workspace",
+    "eyebrow": "Proof of Useful Work / Deterministic Local Miner",
     "title": "Compress the world, preserve every voxel",
     "lede": "Search a bounded voxel language for a shorter encoding that reconstructs exactly the same terrain, building, or forged item.",
     "try": "Open Miner",
@@ -75,8 +75,8 @@
     "forgeDetail": "Item inspection"
   },
   "demo": {
-    "kicker": "Local compute console / pasted NCM stays on this device",
-    "title": "Browser compression lab",
+    "kicker": "Local compute console / pasted NCM or NCF stays on this device",
+    "title": "Browser compression miner",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "Compression profile",
     "tab1": "Workload 01",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "Ready",
-    "readyDetail": "The default cottage is loaded. Paste NCM3 or NCM4P, then press Start.",
+    "readyDetail": "The default cottage is loaded. Paste NCM3, NCM4P, or NCF1, then press Start.",
     "exactNoImprovement": "Exact Match · no storage improvement",
     "exactSmaller": "Exact Match · strictly smaller",
     "hiddenPaused": "The page became hidden, so local CPU work was paused.",
     "inputChanged": "Input changed.",
     "inspecting": "Inspecting locally",
     "inspectingDetail": "The Rust/WASM core is canonicalizing this asset.",
-    "loadFirst": "Paste an NCM3 or NCM4P value and load it first.",
+    "loadFirst": "Paste an NCM3, NCM4P, or NCF1 value and load it first.",
     "mismatchDetail": "The verifier found {count} mismatches.",
     "noImprovementDetail": "The verified candidate is equal to or larger than the incumbent. {suffix}",
     "pageClosed": "The page was closed.",
@@ -118,15 +118,18 @@
     "verificationFailed": "Verification failed"
   },
   "preview": {
-    "panelAria": "Decoded NCM 3D preview",
-    "title": "Parsed NCM model",
-    "canvasAria": "Canonical NCM voxel model",
+    "panelAria": "Decoded asset 3D preview",
+    "title": "Parsed asset model",
+    "canvasAria": "Interactive canonical asset model",
     "loading": "Waiting for the Rust/WASM decoder.",
+    "controls": "Drag to rotate · Shift-drag to move · Wheel to zoom",
+    "resetView": "Reset view",
     "format": "Format",
     "dimensions": "Dimensions",
     "voxels": "Voxels",
     "semanticRoot": "Semantic root",
-    "buildingOnly": "Select Building Blueprint to render canonical NCM voxels.",
+    "interactive": "Interactive 3D model ready.",
+    "profileSummaryOnly": "This profile is available as canonical data without a dedicated 3D mesh.",
     "webglUnavailable": "WebGL2 is unavailable. Canonical model data is still shown below."
   },
   "controls": {
@@ -144,8 +147,8 @@
     "note": "Search runs continuously until Pause or Stop. It never starts automatically and leaves at least one logical core available for the page."
   },
   "ncm4": {
-    "pasteLabel": "Paste NCM3 or NCM4P text",
-    "pastePlaceholder": "NCM3:... or NCM4P:...",
+    "pasteLabel": "Paste NCM3, NCM4P, or NCF1 text",
+    "pastePlaceholder": "NCM3:..., NCM4P:..., or NCF1....",
     "loadText": "Load pasted input",
     "fastAnalyze": "Fast Analyze",
     "decode": "Decode",
@@ -175,7 +178,7 @@
     "diffMismatch": "{count} semantic mismatches",
     "ncm3Remains": "NCM3 remains the best representation.",
     "ncm3RemainsDetail": "The verified NCM4 candidate is not strictly smaller, so the original NCM3 bytes remain selected. {suffix}",
-    "pasteRequired": "Paste an NCM3 or NCM4P value first.",
+    "pasteRequired": "Paste an NCM3, NCM4P, or NCF1 value first.",
     "quadSummary": "{count} canonical geometry quads",
     "semanticReady": "Canonical semantics ready",
     "strategyAudit": "deterministic language audit",
@@ -228,7 +231,7 @@
     "copied": "Copied"
   },
   "privacy": {
-    "preview": "Local research preview",
+    "preview": "Local deterministic mining",
     "noTransactions": "No transactions, rewards, wallet, RPC, or telemetry.",
     "local": "Your files never leave this browser."
   },
@@ -272,8 +275,8 @@
     "encodingBody": "hashes one particular byte representation. Different exact encodings can share the former and must differ in the latter.",
     "limitsTitle": "Hard resource limits",
     "limitsBody": "No floating point, recursion, jumps, unbounded loops, dynamic code, clocks, or trusted result statistics. Canonical varints and checked arithmetic are mandatory.",
-    "boundaryTitle": "Honest boundary",
-    "boundaryBody": "This preview has no wallet, RPC, reward, pool, leaderboard, or deployed Solana PoUW verifier. A chain adapter interface is reserved; chain claims are not."
+    "boundaryTitle": "Current operating boundary",
+    "boundaryBody": "This miner currently runs locally without a wallet, RPC, reward, pool, leaderboard, or deployed Solana PoUW verifier. A chain adapter interface is reserved; no chain confirmation is claimed."
   },
   "faq": {
     "sectionAria": "Questions and source",
@@ -282,10 +285,10 @@
     "exactAnswer": "No. The verifier compares canonical semantics and every coordinate/material identity. One changed voxel, material, immutable forge field, or grip changes the result.",
     "optimalQuestion": "Does the miner prove a globally shortest encoding?",
     "optimalAnswer": "No. It proves that one candidate is exact, bounded, and strictly shorter than the incumbent. No improvement found is a valid result.",
-    "uploadQuestion": "Does pasted NCM leave this browser?",
-    "uploadAnswer": "No. Pasted NCM is passed directly to local Web Workers. The page includes no upload endpoint, telemetry, third-party CDN, GitHub API request, wallet, or RPC client.",
+    "uploadQuestion": "Does pasted NCM or NCF leave this browser?",
+    "uploadAnswer": "No. Pasted asset code is passed directly to local Web Workers. The page includes no upload endpoint, telemetry, third-party CDN, GitHub API request, wallet, or RPC client.",
     "negativeQuestion": "Why can a profile show negative savings?",
-    "negativeAnswer": "Some existing NCM3 or NCF1 assets are already highly compact. The demo reports that honestly and never relabels equal or larger bytes as storage savings."
+    "negativeAnswer": "Some existing NCM3 or NCF1 assets are already highly compact. The miner reports that honestly and never relabels equal or larger bytes as storage savings."
   },
   "source": {
     "kicker": "Open implementation",
@@ -303,7 +306,7 @@
     "socialAria": "NiceChunk social links",
     "github": "GitHub",
     "x": "X",
-    "text": "NiceChunk PoUW Miner v1 / deterministic research software",
+    "text": "NiceChunk PoUW Miner v1 / deterministic compression software",
     "copyright": "2026 NiceChunk. All rights reserved."
   },
   "errors": {

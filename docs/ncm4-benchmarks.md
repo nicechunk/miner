@@ -1,9 +1,9 @@
-# NCM4 Alpha Benchmark Report
+# NCM4 Benchmark Report
 
 ## Method
 
 Measurements were taken on 2026-07-30 UTC with
-`nicechunk-miner 0.2.0-alpha.5`, Rust 1.88.0, and the NCM4 Alpha change set
+`nicechunk-miner 0.2.0-alpha.5`, Rust 1.88.0, and the corresponding NCM4 change set
 based on Miner commit `f88b6773be9f5a13fa505dffd1a76092b3d28afc` for the
 storage fixtures and `af54e076c1359a62efb2549bdb4939f16fe93060` for the
 population-parallel comparison. The release tag/manifest records the final
@@ -57,7 +57,7 @@ NCM4 but is not described as one additional byte of storage savings.
 
 ## Other profiles
 
-Alpha 1 has no compact NCM4 terrain or forged grammar. Its exact wrappers are
+Version 1 has no compact NCM4 terrain or forged grammar. Its exact wrappers are
 expected to lose to their source, and preflight does not recommend deep NCM4
 search:
 
@@ -105,7 +105,7 @@ island workloads remain significant.
 
 ### Threads beyond the island count
 
-Alpha 5 also flattens every island's offspring into one ordered Rayon batch.
+Version `0.2.0-alpha.5` also flattens every island's offspring into one ordered Rayon batch.
 This keeps 12 persistent islands while allowing a larger thread pool to evaluate
 their combined population. The comparison used 40 threads, 12 islands,
 population 64, 50 generations, and seed 123 on `complex-cottage`:

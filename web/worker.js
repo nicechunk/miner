@@ -2,6 +2,7 @@ import init, {
   BrowserNcm4Session,
   baseline_json,
   decode_ncm4_json,
+  detect_input_json,
   inspect_json,
   migrate_checkpoint_elite,
   mine_slice_json,
@@ -44,6 +45,8 @@ async function handle(message) {
   await ensureInitialized();
   if (message.type === "version") {
     respond(JSON.parse(version_json()), message.requestId);
+  } else if (message.type === "detect") {
+    respond(JSON.parse(detect_input_json(message.input)), message.requestId);
   } else if (message.type === "inspect") {
     respond(JSON.parse(inspect_json(message.profile, message.input)), message.requestId);
   } else if (message.type === "baseline") {

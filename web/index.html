@@ -72,8 +72,8 @@
   <main>
     <section class="hero" aria-labelledby="heroTitle">
       <div class="hero-copy">
-        <div class="hero-signal"><span aria-hidden="true"></span><span data-i18n="hero.worldSignal">Live voxel research world</span></div>
-        <p class="eyebrow" data-i18n="hero.eyebrow">Proof of Useful Work / Local Research Preview</p>
+        <div class="hero-signal"><span aria-hidden="true"></span><span data-i18n="hero.worldSignal">Live voxel compression workspace</span></div>
+        <p class="eyebrow" data-i18n="hero.eyebrow">Proof of Useful Work / Deterministic Local Miner</p>
         <h1 id="heroTitle" data-i18n="hero.title">Compress the world, preserve every voxel</h1>
         <p class="hero-lede" data-i18n="hero.lede">Search a bounded voxel language for a shorter encoding that reconstructs exactly the same terrain, building, or forged item.</p>
         <div class="hero-actions">
@@ -138,8 +138,8 @@
     <section id="demo" class="section demo-section" aria-labelledby="demoTitle">
       <div class="section-heading demo-heading">
         <div>
-          <p class="section-kicker" data-i18n="demo.kicker">Local compute console / pasted NCM stays on this device</p>
-          <h2 id="demoTitle" data-i18n="demo.title">Browser compression lab</h2>
+          <p class="section-kicker" data-i18n="demo.kicker">Local compute console / pasted NCM or NCF stays on this device</p>
+          <h2 id="demoTitle" data-i18n="demo.title">Browser compression miner</h2>
         </div>
         <p class="workspace-id" data-i18n="demo.workspaceId">NC-POUW / VM-1</p>
       </div>
@@ -173,20 +173,24 @@
           <div id="engineBadge" class="engine-badge" role="status" data-i18n="demo.engineLoading">WASM engine loading...</div>
           <div id="statusBanner" class="status-banner idle" role="status" aria-live="polite">
             <span class="status-dot" aria-hidden="true"></span>
-            <div class="status-copy"><strong data-i18n="status.ready">Ready</strong><span data-i18n="status.readyDetail">The default cottage is loaded. Paste NCM3 or NCM4P, then press Start.</span></div>
+            <div class="status-copy"><strong data-i18n="status.ready">Ready</strong><span data-i18n="status.readyDetail">The default cottage is loaded. Paste NCM3, NCM4P, or NCF1, then press Start.</span></div>
           </div>
         </div>
 
-        <aside class="ncm-preview-panel" aria-label="Decoded NCM 3D preview" data-i18n-aria-label="preview.panelAria">
-          <div class="panel-label"><span data-i18n="preview.title">Parsed NCM model</span><span aria-hidden="true">01</span></div>
+        <aside class="ncm-preview-panel" aria-label="Decoded asset 3D preview" data-i18n-aria-label="preview.panelAria">
+          <div class="panel-label"><span data-i18n="preview.title">Parsed asset model</span><span aria-hidden="true">01</span></div>
           <div id="ncmPreviewFrame" class="ncm-preview-frame" data-preview-state="waiting">
-            <canvas id="ncmPreviewCanvas" aria-label="Canonical NCM voxel model" data-i18n-aria-label="preview.canvasAria"></canvas>
+            <canvas id="ncmPreviewCanvas" tabindex="0" aria-label="Interactive canonical asset model" data-i18n-aria-label="preview.canvasAria"></canvas>
             <div class="ncm-preview-horizon" aria-hidden="true"></div>
             <div class="ncm-preview-fallback" role="status">
-              <strong>NCM / 3D</strong>
+              <strong>NCM / NCF / 3D</strong>
               <span id="ncmPreviewMessage" data-i18n="preview.loading">Waiting for the Rust/WASM decoder.</span>
             </div>
             <span class="ncm-preview-engine" aria-hidden="true">RUST/WASM → CHUNK.JS</span>
+            <div class="ncm-preview-controls">
+              <span data-i18n="preview.controls">Drag to rotate · Shift-drag to move · Wheel to zoom</span>
+              <button id="previewResetButton" type="button" data-i18n="preview.resetView">Reset view</button>
+            </div>
           </div>
           <div class="ncm-preview-facts">
             <div><span data-i18n="preview.format">Format</span><strong id="ncmPreviewFormat">—</strong></div>
@@ -201,8 +205,8 @@
 
         <aside class="control-panel" aria-label="Miner controls" data-i18n-aria-label="controls.panelAria">
           <div class="panel-label"><span data-i18n="controls.configuration">Configuration</span><span aria-hidden="true">02</span></div>
-          <label class="paste-source"><span data-i18n="ncm4.pasteLabel">Paste NCM3 or NCM4P text</span>
-            <textarea id="inputText" rows="7" spellcheck="false" data-i18n-placeholder="ncm4.pastePlaceholder" placeholder="NCM3:... or NCM4P:...">NCM3:ARgWEhkBRAMAAg8ADAE3BAEDDQAKAUYEAgMCCAABRgsCAwYIAAFGBwkDAwEAAUYEAg0NCAABRgQCBAAICAFGEQIEAAgCAUYRAgsACAEBRhECBwABAwFGEQgHAAIDATkEAgMACAABORECAwAIAAE5BAINAAgAATkRAg0ACAABOQMKAg8AAQE5AwoNDwABAUQHAAADAAIBRAgBAQIAAQpGBAsDAAoKRhELAwAKCGADCgIPDAk5AwoCDwwBPg0OBwEEAQFEDBMGAwAD</textarea>
+          <label class="paste-source"><span data-i18n="ncm4.pasteLabel">Paste NCM3, NCM4P, or NCF1 text</span>
+            <textarea id="inputText" rows="7" spellcheck="false" data-i18n-placeholder="ncm4.pastePlaceholder" placeholder="NCM3:..., NCM4P:..., or NCF1....">NCM3:ARgWEhkBRAMAAg8ADAE3BAEDDQAKAUYEAgMCCAABRgsCAwYIAAFGBwkDAwEAAUYEAg0NCAABRgQCBAAICAFGEQIEAAgCAUYRAgsACAEBRhECBwABAwFGEQgHAAIDATkEAgMACAABORECAwAIAAE5BAINAAgAATkRAg0ACAABOQMKAg8AAQE5AwoNDwABAUQHAAADAAIBRAgBAQIAAQpGBAsDAAoKRhELAwAKCGADCgIPDAk5AwoCDwwBPg0OBwEEAQFEDBMGAwAD</textarea>
           </label>
           <button id="loadTextButton" class="button compact secondary" type="button" data-i18n="ncm4.loadText">Load pasted input</button>
 
@@ -283,7 +287,7 @@
       </div>
 
       <div class="privacy-strip">
-        <strong data-i18n="privacy.preview">Local research preview</strong>
+        <strong data-i18n="privacy.preview">Local deterministic mining</strong>
         <span data-i18n="privacy.noTransactions">No transactions, rewards, wallet, RPC, or telemetry.</span>
         <span data-i18n="privacy.local">Your files never leave this browser.</span>
       </div>
@@ -327,7 +331,7 @@ nicechunk-miner verify --task task.ncpow --result result.ncpow</code></pre>
         <article><h3 data-i18n="spec.profilesTitle">Three exact profiles</h3><p><strong>terrain_delta</strong> <span data-i18n="spec.terrainBody">preserves the sorted ChunkBroken deletion set.</span> <strong>building</strong> <span data-i18n="spec.buildingBody">preserves the final NCM voxel/material map.</span> <strong>forged_item</strong> <span data-i18n="spec.forgedBody">preserves equipment identity, full geometry, paint, and grip.</span></p></article>
         <article><h3 data-i18n="spec.identitiesTitle">Two separate identities</h3><p><code>semanticRoot</code> <span data-i18n="spec.semanticBody">hashes canonical final meaning.</span> <code>encodingHash</code> <span data-i18n="spec.encodingBody">hashes one particular byte representation. Different exact encodings can share the former and must differ in the latter.</span></p></article>
         <article><h3 data-i18n="spec.limitsTitle">Hard resource limits</h3><p data-i18n="spec.limitsBody">No floating point, recursion, jumps, unbounded loops, dynamic code, clocks, or trusted result statistics. Canonical varints and checked arithmetic are mandatory.</p></article>
-        <article><h3 data-i18n="spec.boundaryTitle">Honest boundary</h3><p data-i18n="spec.boundaryBody">This preview has no wallet, RPC, reward, pool, leaderboard, or deployed Solana PoUW verifier. A chain adapter interface is reserved; chain claims are not.</p></article>
+        <article><h3 data-i18n="spec.boundaryTitle">Current operating boundary</h3><p data-i18n="spec.boundaryBody">This miner currently runs locally without a wallet, RPC, reward, pool, leaderboard, or deployed Solana PoUW verifier. A chain adapter interface is reserved; no chain confirmation is claimed.</p></article>
       </div>
     </section>
 
@@ -336,8 +340,8 @@ nicechunk-miner verify --task task.ncpow --result result.ncpow</code></pre>
         <h2 id="faqTitle" data-i18n="faq.title">FAQ</h2>
         <details><summary data-i18n="faq.exactQuestion">Does exact mean visually similar?</summary><p data-i18n="faq.exactAnswer">No. The verifier compares canonical semantics and every coordinate/material identity. One changed voxel, material, immutable forge field, or grip changes the result.</p></details>
         <details><summary data-i18n="faq.optimalQuestion">Does the miner prove a globally shortest encoding?</summary><p data-i18n="faq.optimalAnswer">No. It proves that one candidate is exact, bounded, and strictly shorter than the incumbent. No improvement found is a valid result.</p></details>
-        <details><summary data-i18n="faq.uploadQuestion">Does pasted NCM leave this browser?</summary><p data-i18n="faq.uploadAnswer">No. Pasted NCM is passed directly to local Web Workers. The page includes no upload endpoint, telemetry, third-party CDN, GitHub API request, wallet, or RPC client.</p></details>
-        <details><summary data-i18n="faq.negativeQuestion">Why can a profile show negative savings?</summary><p data-i18n="faq.negativeAnswer">Some existing NCM3 or NCF1 assets are already highly compact. The demo reports that honestly and never relabels equal or larger bytes as storage savings.</p></details>
+        <details><summary data-i18n="faq.uploadQuestion">Does pasted NCM or NCF leave this browser?</summary><p data-i18n="faq.uploadAnswer">No. Pasted asset code is passed directly to local Web Workers. The page includes no upload endpoint, telemetry, third-party CDN, GitHub API request, wallet, or RPC client.</p></details>
+        <details><summary data-i18n="faq.negativeQuestion">Why can a profile show negative savings?</summary><p data-i18n="faq.negativeAnswer">Some existing NCM3 or NCF1 assets are already highly compact. The miner reports that honestly and never relabels equal or larger bytes as storage savings.</p></details>
       </div>
 
       <div class="source-section" aria-labelledby="sourceTitle">
@@ -372,7 +376,7 @@ nicechunk-miner verify --task task.ncpow --result result.ncpow</code></pre>
       <a data-link="organization" href="https://github.com/nicechunk" rel="noreferrer" data-i18n="footer.github">GitHub</a>
       <a href="https://x.com/nicechunk" rel="noreferrer" data-i18n="footer.x">X</a>
     </nav>
-    <p class="footer-meta"><span data-i18n="footer.text">NiceChunk PoUW Miner v1 / deterministic research software</span><br><span data-i18n="footer.copyright">2026 NiceChunk. All rights reserved.</span></p>
+    <p class="footer-meta"><span data-i18n="footer.text">NiceChunk PoUW Miner v1 / deterministic compression software</span><br><span data-i18n="footer.copyright">2026 NiceChunk. All rights reserved.</span></p>
   </footer>
 
   <script type="module" src="__APP_URL__"></script>

@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-Protocol v1 is a native/WASM research protocol for proving that a bounded
+Protocol v1 is a native/WASM deterministic protocol for proving that a bounded
 voxel encoding is exactly equivalent to an incumbent and strictly smaller. It
 does not define rewards, wallets, mining pools, an RPC service, or a deployed
 Solana verifier. `ChainAdapterV1` is only a transport boundary; v1 has no chain

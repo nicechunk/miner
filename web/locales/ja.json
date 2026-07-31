@@ -48,8 +48,8 @@
     "zhHant": "繁體中文"
   },
   "hero": {
-    "worldSignal": "ライブボクセル研究の世界",
-    "eyebrow": "Proof of Useful Work / ローカル リサーチ プレビュー",
+    "worldSignal": "ライブボクセル圧縮ワークスペース",
+    "eyebrow": "Proof of Useful Work / 決定論的ローカルマイナー",
     "title": "世界を圧縮し、すべてのボクセルを保存",
     "lede": "境界ボクセル言語を検索して、まったく同じ地形、建物、または偽造品を再構築する短いエンコードを探します。",
     "try": "Miner を開く",
@@ -75,8 +75,8 @@
     "forgeDetail": "現物検査"
   },
   "demo": {
-    "kicker": "ローカル計算コンソール / 貼り付けた NCM はこの端末内に留まります",
-    "title": "ブラウザ圧縮ラボ",
+    "kicker": "ローカル計算コンソール / 貼り付けた NCM・NCF はこの端末内に留まります",
+    "title": "ブラウザ圧縮マイナー",
     "workspaceId": "NC-POUW / VM-1",
     "profileAria": "圧縮プロファイル",
     "tab1": "ワークロード 01",
@@ -92,14 +92,14 @@
   },
   "status": {
     "ready": "準備完了",
-    "readyDetail": "既定のコテージを読み込みました。NCM3 または NCM4P を貼り付けて開始を押してください。",
+    "readyDetail": "既定のコテージを読み込みました。NCM3、NCM4P、NCF1 のいずれかを貼り付けて開始を押してください。",
     "exactNoImprovement": "完全一致 · ストレージの改善なし",
     "exactSmaller": "完全一致 · 厳密に小さい",
     "hiddenPaused": "ページが非表示になったため、ローカル CPU の作業が一時停止されました。",
     "inputChanged": "入力が変更されました。",
     "inspecting": "ローカルで検査中",
     "inspectingDetail": "Rust/WASM コアはこのアセットを正規化しています。",
-    "loadFirst": "先に NCM3 または NCM4P を貼り付けて読み込んでください。",
+    "loadFirst": "先に NCM3、NCM4P、NCF1 のいずれかを貼り付けて読み込んでください。",
     "mismatchDetail": "検証者は {count} の不一致を検出しました。",
     "noImprovementDetail": "検証された候補者は現職者と同等以上です。 {suffix}",
     "pageClosed": "ページは閉じられました。",
@@ -118,15 +118,18 @@
     "verificationFailed": "検証に失敗しました"
   },
   "preview": {
-    "panelAria": "デコード済み NCM の 3D プレビュー",
-    "title": "解析済み NCM モデル",
-    "canvasAria": "正規 NCM ボクセルモデル",
+    "panelAria": "デコード済みアセットの 3D プレビュー",
+    "title": "解析済みアセットモデル",
+    "canvasAria": "インタラクティブな正規アセットモデル",
     "loading": "Rust/WASM デコーダーを待機しています。",
+    "controls": "ドラッグで回転 · Shift+ドラッグで移動 · ホイールでズーム",
+    "resetView": "表示をリセット",
     "format": "形式",
     "dimensions": "寸法",
     "voxels": "ボクセル",
     "semanticRoot": "セマンティックルート",
-    "buildingOnly": "建築設計図を選択すると、正規 NCM ボクセルを表示します。",
+    "interactive": "インタラクティブ 3D モデルの準備ができました。",
+    "profileSummaryOnly": "このプロファイルは専用 3D メッシュなしでも正規データとして利用できます。",
     "webglUnavailable": "WebGL2 を利用できません。正規モデルデータは下に引き続き表示されます。"
   },
   "controls": {
@@ -144,8 +147,8 @@
     "note": "検索は一時停止または停止するまで継続します。自動では開始せず、ページ用に少なくとも 1 つの論理コアを残します。"
   },
   "ncm4": {
-    "pasteLabel": "NCM3 または NCM4P テキストを貼り付け",
-    "pastePlaceholder": "NCM3:... または NCM4P:...",
+    "pasteLabel": "NCM3、NCM4P、NCF1 テキストを貼り付け",
+    "pastePlaceholder": "NCM3:...、NCM4P:...、NCF1....",
     "loadText": "貼り付けた入力を読み込む",
     "fastAnalyze": "高速分析",
     "decode": "デコード",
@@ -175,7 +178,7 @@
     "diffMismatch": "意味の不一致 {count} 件",
     "ncm3Remains": "NCM3 が引き続き最良の表現です。",
     "ncm3RemainsDetail": "検証済み NCM4 候補は厳密に小さくないため、元の NCM3 バイトを保持します。{suffix}",
-    "pasteRequired": "まず NCM3 または NCM4P の値を貼り付けてください。",
+    "pasteRequired": "まず NCM3、NCM4P、NCF1 のいずれかを貼り付けてください。",
     "quadSummary": "正規形幾何クアッド {count} 個",
     "semanticReady": "正規意味データ準備完了",
     "strategyAudit": "決定論的言語監査",
@@ -228,7 +231,7 @@
     "copied": "コピーされました"
   },
   "privacy": {
-    "preview": "ローカルリサーチプレビュー",
+    "preview": "決定論的ローカルマイニング",
     "noTransactions": "トランザクション、報酬、ウォレット、RPC、テレメトリはありません。",
     "local": "ファイルがこのブラウザから離れることはありません。"
   },
@@ -272,8 +275,8 @@
     "encodingBody": "1 つの特定のバイト表現をハッシュします。異なる正確なエンコーディングは前者を共有できますが、後者は異なる必要があります。",
     "limitsTitle": "ハードなリソース制限",
     "limitsBody": "浮動小数点、再帰、ジャンプ、無制限ループ、動的コード、クロック、または信頼できる結果統計はありません。正規のバリアントとチェックされた算術演算は必須です。",
-    "boundaryTitle": "正直な境界線",
-    "boundaryBody": "このプレビューには、ウォレット、RPC、報酬、プール、リーダーボード、またはデプロイされた Solana PoUW 検証ツールがありません。チェーン アダプター インターフェイスは予約されています。チェーンクレームはそうではありません。"
+    "boundaryTitle": "現在の動作範囲",
+    "boundaryBody": "このマイナーは現在ローカルで動作し、ウォレット、RPC、報酬、プール、リーダーボード、デプロイ済み Solana PoUW 検証ツールは使用しません。チェーンアダプター用インターフェイスは予約済みですが、オンチェーン確認は主張しません。"
   },
   "faq": {
     "sectionAria": "質問とソース",
@@ -282,10 +285,10 @@
     "exactAnswer": "いいえ。検証者は正規のセマンティクスとすべての座標/マテリアルのアイデンティティを比較します。ボクセル、マテリアル、不変の鍛造フィールド、またはグリップを変更すると、結果が変わります。",
     "optimalQuestion": "マイナーは世界的に最も短いエンコーディングを証明しますか?",
     "optimalAnswer": "いいえ、これは、ある候補者が正確で、制限があり、現職者よりも厳密に身長が低いことを証明しています。改善が見つからなかった場合は、有効な結果となります。",
-    "uploadQuestion": "貼り付けた NCM はこのブラウザの外へ送信されますか?",
-    "uploadAnswer": "いいえ。貼り付けた NCM はローカルの Web Workers に直接渡されます。このページには、アップロード エンドポイント、テレメトリ、サードパーティ CDN、GitHub API リクエスト、ウォレット、または RPC クライアントは含まれていません。",
+    "uploadQuestion": "貼り付けた NCM または NCF はこのブラウザの外へ送信されますか?",
+    "uploadAnswer": "いいえ。貼り付けたアセットコードはローカルの Web Workers に直接渡されます。このページには、アップロード エンドポイント、テレメトリ、サードパーティ CDN、GitHub API リクエスト、ウォレット、または RPC クライアントは含まれていません。",
     "negativeQuestion": "プロフィールにマイナスの貯蓄額が表示されるのはなぜですか?",
-    "negativeAnswer": "既存の NCM3 または NCF1 アセットの一部は、すでに非常にコンパクトです。デモでは、正直に言って、同等以上のバイトをストレージ節約として再ラベル付けすることは決してないことが報告されています。"
+    "negativeAnswer": "既存の NCM3 または NCF1 アセットには、すでに非常にコンパクトなものがあります。マイナーは結果を正確に表示し、同等以上のエンコードを保存量削減とは表示しません。"
   },
   "source": {
     "kicker": "オープン実装",
@@ -303,7 +306,7 @@
     "socialAria": "NiceChunk ソーシャル リンク",
     "github": "GitHub",
     "x": "×",
-    "text": "NiceChunk PoUW Miner v1 / 決定論的研究ソフトウェア",
+    "text": "NiceChunk PoUW Miner v1 / 決定論的圧縮ソフトウェア",
     "copyright": "2026 NiceChunk。無断転載を禁じます。"
   },
   "errors": {

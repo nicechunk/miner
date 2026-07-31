@@ -1,4 +1,4 @@
-# NiceChunk PoUW / NCM4 Alpha Compatibility Audit
+# NiceChunk PoUW / NCM4 Compatibility Audit
 
 Audit date: 2026-07-30 UTC
 
@@ -98,7 +98,7 @@ therefore uses `NC4P` binary magic and `NCM4P:` text while publishing the
 feature as NCM4 PoUW. NCM3 still uses only `NCM3:`. See `ncm4-spec.md` for the
 versioned layout.
 
-NCM4 Alpha's compact codec is Building-specific. Terrain and forged assets can
+NCM4's current compact codec is Building-specific. Terrain and forged assets can
 be imported/verified through an exact wrapper but are not claimed to compress;
 preflight does not recommend deep NCM4 search for those profiles.
 
@@ -149,10 +149,10 @@ worker compares generated cuboid voxel sets and calls a match exact when a
 64-bit FNV-1a hash of a canonical JSON-like cuboid string matches. Its
 evolutionary mode has elite retention but no typed subtree crossover, automatic
 exact residual, independent consensus verifier, or storage-byte VM fitness.
-PoUW therefore treats NCM-DNA as prior search research, not as a consensus
+PoUW therefore treats NCM-DNA as prior search work, not as a consensus
 codec or reusable verifier.
 
-Proof of Frontier is a separate research surface. It combines frontier contour
+Proof of Frontier is a separate system. It combines frontier contour
 seed compression with an ordinary nonce hash prefix. It is not a deployed PoUW
 task/result protocol and is not wired into this miner.
 
@@ -176,5 +176,5 @@ behavior without becoming a browser backend.
 
 PoUW v1 uses separate SHA-256 domains for canonical semantics, candidate bytes,
 tasks, and results. FNV identifiers remain compatibility metadata only. The v1
-implementation is native/WASM research software and does not claim Solana BPF
+implementation is native/WASM compression software and does not claim Solana BPF
 compatibility or on-chain result acceptance.

@@ -1,6 +1,6 @@
 # Reproducible v1 Benchmark
 
-This table remains the pre-NCM4 PoUW VM baseline. NCM4 Alpha storage witnesses,
+This table remains the pre-NCM4 PoUW VM baseline. NCM4 storage witnesses,
 negative/fallback cases, and 1/2/4/8/12-thread measurements are in
 `ncm4-benchmarks.md`.
 
