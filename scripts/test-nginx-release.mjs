@@ -4,15 +4,10 @@ import {
   appendFile,
   chmod,
   cp,
-  lstat,
   mkdtemp,
   mkdir,
   readFile,
-  readlink,
-  realpath,
-  rename,
   rm,
-  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -24,7 +19,7 @@ const dist = resolve(root, "web", "dist");
 const temporary = await mkdtemp(resolve(tmpdir(), "nicechunk-miner-nginx-"));
 const webRoot = resolve(temporary, "web");
 const minerRoot = resolve(webRoot, "miner");
-const releases = resolve(minerRoot, "releases");
+const releases = resolve(temporary, "releases");
 const nginxBinary = process.env.NGINX || "nginx";
 let nginxProcess;
 
@@ -45,15 +40,17 @@ try {
     await appendFile(resolve(releases, release, "index.html"), `\n<!-- ${release} -->\n`);
   }
 
-  await atomicSwitch("release-one");
-  await assertCurrent("release-one");
-  await atomicSwitch("release-two");
-  await assertCurrent("release-two");
-  await atomicSwitch("release-one");
-  await assertCurrent("release-one");
+  await publishFixture("release-one");
+  await assertPublished("release-one");
+  await publishFixture("release-two");
+  await assertPublished("release-two");
+  await publishFixture("release-one");
+  await assertPublished("release-one");
 
   const snippetSource = await readFile(resolve(root, "nginx", "miner-location.conf"), "utf8");
   assert(snippetSource.includes("return 308 /miner/;"), "Nginx snippet is missing the /miner redirect");
+  assert(snippetSource.includes("root /web/nicechunk;"), "Nginx snippet is not bound to the site-directory root");
+  assert(!snippetSource.includes("/miner/current"), "Nginx snippet still targets the retired current symlink");
   assert(snippetSource.includes("application/wasm"), "Nginx snippet is missing the WASM MIME type");
   assert(snippetSource.includes("return 404;"), "Nginx snippet is missing an explicit fallback 404");
 
@@ -63,7 +60,7 @@ try {
     process.exitCode = 0;
   } else {
     const port = await availablePort();
-    const snippet = snippetSource.replaceAll("/web/nicechunk/miner", minerRoot);
+    const snippet = snippetSource.replaceAll("/web/nicechunk", webRoot);
     const config = resolve(temporary, "nginx.conf");
     await writeFile(config, `
 worker_processes 1;
@@ -94,12 +91,12 @@ http {
     const origin = `http://127.0.0.1:${port}`;
 
     await smoke(origin, "release-one");
-    await atomicSwitch("release-two");
+    await publishFixture("release-two");
     await smoke(origin, "release-two");
-    await atomicSwitch("release-one");
+    await publishFixture("release-one");
     await smoke(origin, "release-one");
-    assert((await readlink(resolve(minerRoot, "current"))) === "releases/release-one", "Rollback target is not release-one");
-    console.log("Nginx config, atomic publish, rollback, MIME/cache/security, asset 404, gzip, and existing-route smoke passed");
+    await assertPublished("release-one");
+    console.log("Nginx config, direct-directory publish, rollback, MIME/cache/security, asset 404, gzip, and existing-route smoke passed");
   }
 } finally {
   if (nginxProcess && nginxProcess.exitCode == null) {
@@ -166,17 +163,14 @@ async function smoke(origin, expectedRelease) {
   assert(await (await fetch(`${origin}/`)).text() === "home-ok", "Existing website root response changed");
 }
 
-async function atomicSwitch(release) {
-  const next = resolve(minerRoot, `.current-${process.pid}`);
-  await rm(next, { force: true });
-  await symlink(`releases/${release}`, next);
-  await rename(next, resolve(minerRoot, "current"));
+async function publishFixture(release) {
+  await rm(minerRoot, { recursive: true, force: true });
+  await cp(resolve(releases, release), minerRoot, { recursive: true });
 }
 
-async function assertCurrent(release) {
-  const actual = await realpath(resolve(minerRoot, "current"));
-  const expected = await realpath(resolve(releases, release));
-  assert(actual === expected, `Expected current=${release}, received ${actual}`);
+async function assertPublished(release) {
+  const html = await readFile(resolve(minerRoot, "index.html"), "utf8");
+  assert(html.includes(`<!-- ${release} -->`), `Expected published release ${release}`);
 }
 
 function hasNginx() {

@@ -7,7 +7,7 @@ There are three separate operations:
 1. build and test native/WASM source;
 2. publish verified CLI archives to a real GitHub Release;
 3. publish the static site through NiceChunk's private, fixed, content-addressed
-   full-site deployment path.
+   site-directory deployment path.
 
 Success in one does not imply the others. A Git push is not a deployment. A
 browser verifier result is not a chain submission. A generated Release workflow
@@ -79,8 +79,10 @@ manifest remains `available:false` and the page exposes no download button.
 The reviewed location snippet is `nginx/miner-location.conf`. It expects:
 
 ```text
-/web/nicechunk/miner/releases/<release-id>/
-/web/nicechunk/miner/current -> releases/<release-id>
+/web/nicechunk/miner/index.html
+/web/nicechunk/miner/asset-manifest.json
+/web/nicechunk/miner/release-manifest.json
+/web/nicechunk/miner/assets/
 ```
 
 It does not change the website document root. It adds a 308 canonical redirect,
@@ -94,49 +96,47 @@ Nginx actually has that module. COOP/COEP are intentionally absent.
 
 NiceChunk's recursive repository rules permit production mutation only through
 `/web/solgame/scripts/sync-to-server.sh` with a release produced by the fixed
-private full-site builder. The public miner tree must not contain the pinned
+private site-directory builder. The public miner tree must not contain the pinned
 host/key, installer, server address, private allowlist, or an alternative
 deployment client.
 
-Before the first miner deployment, an administrator must separately review and
-install the Nginx snippet and extend the private builder/installer for the
-content-addressed miner release plus atomic `current` switch. This cannot be
-bypassed with SSH, SCP, rsync, or a manual copy.
+Before the first independent Miner deployment, an administrator must separately
+review and install the Nginx snippet so `/miner/` reads the same fixed
+`/web/nicechunk/miner/` directory managed by the installer. This cannot be
+bypassed with an unreviewed upload or a manual copy.
 
 After that prerequisite exists, an authorized release follows the mandatory
-full-site sequence: fixed builder, private safety suite, fixed client dry run,
-review of release/manifest/archive identifiers and counts, then the exact
-confirmation command printed by that dry run. The fixed installer must run
-`nginx -t`, reload rather than restart, verify `/miner/` and every asset plus
-existing `/` and `/play/`, and roll back all changed targets on any failure.
+site-directory sequence: fixed builder, private safety suite, fixed client dry
+run, review of release/manifest/archive identifiers and counts, then the exact
+confirmation command printed by that dry run. The fixed installer verifies
+`/miner/` and every asset plus existing `/` and `/play/`, and rolls back all
+changed targets on any failure.
 
 ## Atomic rollback
 
-The installer retains at least the previous complete release. Publishing creates
-a new same-directory temporary symlink to `releases/<new-id>` and atomically
-renames it over `current`. Rollback performs the same operation pointing to the
-recorded previous ID; it never reconstructs files in place. Only after a later
-successful release may an older, non-current, non-rollback release be removed.
+The installer snapshots the previous managed files and control state before
+mutation. Each file is installed with a same-directory temporary file and atomic
+rename; removed files are limited to the preceding manifest. A failed checksum
+or health check restores the complete snapshot and control state.
 
-`scripts/test-nginx-release.mjs` rehearses release one → release two → release
-one while Nginx is serving requests. It proves both release directories remain,
-checks `nginx -t`, and repeats all route/header/MIME/404/gzip checks before and
-after rollback.
+`scripts/test-nginx-release.mjs` rehearses release one -> release two -> release
+one while Nginx is serving requests, checks `nginx -t`, and repeats all
+route/header/MIME/404/gzip checks after publish and rollback.
 
 ## Current publication state
 
-The NiceChunk static-site build now publishes the verified `web/dist` output at
-`/miner/` as part of the complete content-addressed website release. Existing
-hashed Miner assets are served correctly. The production Nginx route still
-falls back to the homepage with HTTP 200 for a missing `/miner/` asset, however,
-so the reviewed strict static location remains an administrator prerequisite.
-The website release process cannot modify `/etc/nginx` and must not bypass that
-boundary.
+The NiceChunk static-site build can publish the verified `web/dist` output at
+`/miner/` as part of a complete website release. Independent Miner releases now
+use the metadata-bound `/web/nicechunk/miner/` site directory. Production must
+bind `/miner/` to that same directory; otherwise Nginx reads the stale
+`/web/nicechunk/dist/miner/` copy and the installer's HTTPS checksum correctly
+forces a rollback. The website release process cannot modify `/etc/nginx` and
+must not bypass that boundary.
 
 Until the reviewed location is installed, a stale or mistyped module URL is
 rejected by the browser because the fallback response is `text/html`, but the
 HTTP status is not the intended 404. `scripts/test-nginx-release.mjs` proves the
-intended MIME, cache, 404, release-switch, and rollback behavior offline.
+intended MIME, cache, 404, direct-directory publish, and rollback behavior offline.
 
 The browser page and public source repository are available independently of a
 CLI release. CLI controls remain unavailable until all platform archives,

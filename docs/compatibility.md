@@ -169,7 +169,7 @@ fallback still returns homepage HTML with HTTP 200 for missing JavaScript and
 WASM paths. The browser refuses to execute that response because its MIME is
 `text/html`, yet the route still needs the reviewed administrator-installed
 static location to return a strict 404. The standalone Nginx fixture tests the
-intended MIME, cache, CSP, compression, atomic release switching, and rollback
+intended MIME, cache, CSP, compression, direct-directory publishing, and rollback
 behavior without becoming a browser backend.
 
 ## Domain separation
